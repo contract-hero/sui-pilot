@@ -3,11 +3,11 @@ name: move-pr-review
 description: |
   Multi-agent deep PR review for Sui Move packages. Orchestrates 11 sui-pilot-agent
   subagents — 10 parallel reviewers + 1 consolidator — to produce a high-confidence,
-  evidence-backed Markdown review of a Move pull request. Each reviewer independently
-  invokes /move-code-review and /move-code-quality, cross-checks integration
-  boundaries against upstream Move dependencies, and emits strict-schema JSON
-  findings. The consolidator clusters, deduplicates, verifies high-severity claims
-  against the source code, and writes the final report.
+  evidence-backed self-contained HTML review of a Move pull request. Each reviewer
+  independently invokes /move-code-review and /move-code-quality, cross-checks
+  integration boundaries against upstream Move dependencies, and emits strict-schema
+  JSON findings. The consolidator clusters, deduplicates, verifies high-severity
+  claims against the source code, and writes the final HTML report.
 
   Use this skill whenever the user asks to "review this Move PR", "audit this Move
   pull request", "do a deep / multi-agent / team review of a Move package", "Move
@@ -27,7 +27,7 @@ description: |
 
 # Move PR Review (multi-agent)
 
-Orchestrate a 1-consolidator + 10-parallel-reviewer team of `sui-pilot-agent` subagents to deep-review a Move pull request. The output is a single Markdown file consolidating evidence-backed findings, ordered by severity and by reviewer agreement.
+Orchestrate a 1-consolidator + 10-parallel-reviewer team of `sui-pilot-agent` subagents to deep-review a Move pull request. The output is a single self-contained HTML file consolidating evidence-backed findings, ordered by severity and by reviewer agreement (semantic HTML5, inline CSS, severity-tagged `<article>` per finding).
 
 ## CRITICAL — Where this skill must run
 
@@ -186,8 +186,8 @@ Dispatch 1 `sui-pilot-agent` subagent (foreground, not background) with the cons
 2. For every cluster with `max_severity ∈ {critical, high}` OR `disputed_severity = true` OR `agreement_count = 1 AND max_severity ≥ high`, opens the cited file at the cited lines (±30 lines context) and adjudicates: **confirm** / **downgrade** / **reject** / **split** (mega-cluster).
 3. For confirmed critical/high findings, traces the call graph one hop up and one hop down to validate the impact claim.
 4. For integration-boundary findings, opens the cited upstream file and confirms the function signature / semantics claim.
-5. Writes `reviews/.raw/_verification_notes.md` documenting every adjudication.
-6. Writes the final Markdown review at `reviews/<TICKET-ID>-<feature>-review.md` (or `reviews/<branch>-review.md` if no ticket) following the structure in `references/final_report_template.md`.
+5. Writes `reviews/.raw/_verification_notes.md` documenting every adjudication (this is an internal scratch file — markdown is fine).
+6. Writes the final HTML review at `reviews/<TICKET-ID>-<feature>-review.html` (or `reviews/<branch>-review.html` if no ticket) as a single self-contained file. The structural sections (executive summary, severity-graded findings, test-coverage plan, build/ops, methodology) follow the breakdown in `references/final_report_template.md` — but rendered as semantic HTML per the "HTML Output Conventions" section at the bottom of this SKILL.md. **If `references/final_report_template.md` still shows markdown headings, treat it as a section-mapping reference, not a literal template** — the HTML conventions below take precedence on syntax.
 
 The consolidator MUST NOT trust reviewer-assigned severities for critical/high — re-derive them from the verification pass.
 
@@ -195,10 +195,10 @@ The consolidator MUST NOT trust reviewer-assigned severities for critical/high �
 
 After the consolidator returns, the orchestrator:
 
-1. Confirms the file exists and is non-empty.
+1. Confirms the `.html` file exists and is non-empty, and that it starts with `<!DOCTYPE html>`.
 2. Spot-checks 2 random findings — opens the cited file and verifies the evidence quote matches verbatim.
 3. Prints a short summary to the user: file path, severity counts, top-3 risks (lifted from the executive summary).
-4. Suggests next steps: commit the review file, post the executive summary as a PR comment via `gh pr comment`, open follow-up issues for the criticals/highs.
+4. Suggests next steps: open the `.html` in a browser to review, commit the review file, optionally post a brief GitHub-flavored markdown summary as a PR comment via `gh pr comment` linking to the full HTML report (GitHub strips `<style>`/`<script>` from comments, so the comment should be a short markdown TL;DR + link, not the full HTML), open follow-up issues for the criticals/highs.
 
 Do NOT auto-commit, auto-push, or auto-comment — leave those for the user.
 
@@ -271,3 +271,23 @@ Testing and dep-pin concerns are real and important, but they're infrastructure 
 - **Notion / Linear / WebFetch unavailable mid-run.** Phase 0 fetches once and caches into `_context.md`. If unavailable, note the gap in the methodology section — don't silently skip.
 - **Stale dep pins.** Capture the local `git rev-parse HEAD` of every Move dep at Phase 0.2 and embed in `_context.md`. The consolidator cites this hash in the methodology section.
 - **Reviewer over-budget.** Default budget is ~30–45 minutes per reviewer. If a reviewer hangs past 60 minutes, kill it and proceed with 9 reviewers; note the gap.
+
+---
+
+## HTML Output Conventions
+
+The final consolidated review is a single self-contained `.html` file. The section structure (executive summary → severity-graded findings → test & coverage plan → build/ops → methodology) stays as specified earlier in this SKILL; only the rendering switches from markdown to HTML.
+
+- **Doctype & shell**: `<!DOCTYPE html>`, `<html lang="en">`, `<head>` with `<meta charset="utf-8">`, viewport meta, descriptive `<title>` (e.g. `Move PR Review — <TICKET-ID> <feature>`), single inline `<style>` block. No external CSS/JS, no CDNs.
+- **Semantic tags**: `<header>` (title + PR / commit / dep-pin metadata as `<dl>`), `<nav>` (in-page anchor links to every section), `<main>`, one `<section id="…">` per section (`executive-summary`, `critical`, `high`, `medium`, `low`, `info`, `test-coverage-plan`, `build-ops`, `methodology`), and one `<article class="finding {severity}" id="finding-…">` per finding inside the severity sections.
+- **Per-finding structure**: `<article>` with a `<header>` containing the finding ID, title, severity badge, agreement count (`<span class="agreement">7/10</span>`), and category. Then a `<dl>` with `<dt>`/`<dd>` for File, Lines, Found (`<pre><code>…</code></pre>` with the cited snippet), Required, and Verified-by-consolidator status. A `<details><summary>Adversary path</summary>…</details>` carries the critical-finding adversary trace required by the quality gates.
+- **Severity classes**: `critical`, `high`, `medium`, `low`, `info` — drive inline-CSS tinting (muted, professional palette — no neon). Severity counts in the summary table use the same classes.
+- **Tables**: `<table>` with `<thead>`/`<tbody>` for the executive-summary severity counts, the coverage matrix (file × reviewer), and the dep-pin table in the methodology section.
+- **Code**: `<pre><code>` for multi-line; `<code>` inline. Escape `<`/`>` in cited code. No syntax-highlighter CDNs.
+- **Collapsibles**: `<details><summary>` for adversary paths, long evidence quotes, and the per-finding verification notes — keeps the severity sections scannable while drill-down stays one click away.
+- **CSS style**: small inline stylesheet — system-font stack, max-width ~80–90ch on prose, comfortable line-height, mobile-responsive via one `@media (max-width: 720px)` block. Avoid gradients, glass-morphism, emoji-decorated headers.
+- **No JavaScript**.
+
+The optional GitHub PR comment (mentioned in Phase 4 step 4) is the one place markdown is preferred — keep the PR comment short (≤ 20 lines of GitHub-flavored markdown) and link out to the full HTML report. GitHub strips `<style>`/`<script>`/`<!DOCTYPE>` from comments, so the rich HTML belongs only in the local file.
+
+When unsure how rich to go, lean on the examples at https://thariqs.github.io/html-effectiveness/.
