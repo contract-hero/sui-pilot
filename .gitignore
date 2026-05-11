@@ -1,6 +1,7 @@
 .gitignore
 .claude/
 .remember/
+.claude-pr-review/
 
 # Binary assets — useless for AI text consumption
 *.jpg
@@ -31,3 +32,10 @@ dist/
 docs/*
 !docs/VERSION.json
 !docs/.gitkeep
+
+# Eval run outputs — produced by evals/run-comparison.sh, not source-controlled.
+evals/results/
+
+# Sui Move build artifacts inside eval fixtures
+evals/fixtures/**/build/
+evals/fixtures/**/Move.lock
