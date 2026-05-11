@@ -84,19 +84,16 @@ The full set from the original `DESIGN_V2.md` brief — covering Move 2024 synta
 
 **Pass criteria are tightened past substring-match in comments.** Where a task could be falsely passed by a TODO comment that mentions the function name (the failure mode the first eval run exposed), the criterion includes parentheses or type parameters (e.g. `coin::create_currency<DEMO>(`) so the model has to actually write the call, not just reference it. The scorer also rejects substring matches that lie inside Move comments (`//` and `/* */`).
 
-## Three-way comparison (`bare`, `v1`, `v2`)
+## Two-way comparison (`v1`, `v2`)
 
-The runner supports three arms, controlled by `--versions`:
+The runner compares two arms, controlled by `--versions`:
 
 | Arm | What runs | How |
 |---|---|---|
-| `bare` | sui-pilot disabled, `@`-import masked, OAuth retained | Runner backs up `~/.claude/CLAUDE.md`, strips the `@~/.claude/sui-pilot/agents/sui-pilot-agent.md` line, calls `claude plugin disable sui-pilot`. Trap restores everything on exit. |
 | `v1` | sui-pilot at `--v1-ref` (default `main`) | `git checkout` + plain `claude -p`. |
 | `v2` | sui-pilot at `--v2-ref` (default `feat/v2-graph-port`) | `git checkout` + plain `claude -p`. |
 
-The `bare` arm intentionally leaves *other* installed plugins active — this is "no sui-pilot," not "no plugins." It answers the question "what does sui-pilot specifically buy me?"
-
-Note: `bare` does **not** use `claude --bare`. That flag refuses OAuth/keychain auth and requires `ANTHROPIC_API_KEY` (billed separately from Claude Max plans). The disable-and-mask approach keeps the user's normal OAuth working.
+A "no-plugin" control arm was considered and dropped — `claude --bare` requires `ANTHROPIC_API_KEY` (billed separately from Claude Max plans) and the disable-the-plugin alternative isn't worth the hassle relative to what it tells you. The plugin's value over no-plugin is qualitatively obvious; the interesting comparison is v1 (full pipe-delimited preamble + matcher) vs v2 (slim preamble, no matcher).
 
 ## Adding more tasks
 
@@ -142,11 +139,11 @@ Note: `bare` does **not** use `claude --bare`. That flag refuses OAuth/keychain 
 ## Customizing the comparison
 
 ```bash
-# Default: all three arms + auto-score
+# Default: both arms + auto-score
 bash evals/run-comparison.sh
 
-# Skip the bare arm (faster, no plugin-disable dance)
-bash evals/run-comparison.sh --versions v1,v2
+# Single-version dry-run
+bash evals/run-comparison.sh --versions v2 --no-score
 
 # Compare a specific tag against your working branch
 bash evals/run-comparison.sh --v1-ref v0.1.0 --v2-ref feat/my-improvement
@@ -154,8 +151,8 @@ bash evals/run-comparison.sh --v1-ref v0.1.0 --v2-ref feat/my-improvement
 # Run the suite without auto-scoring (e.g., to inspect raw diffs first)
 bash evals/run-comparison.sh --no-score
 
-# Backfill a new arm into an existing results directory
-bash evals/run-comparison.sh --resume evals/results/<TS> --versions bare
+# Resume a partial run (skips tasks whose .diff already exists)
+bash evals/run-comparison.sh --resume evals/results/<TS>
 
 # Use a non-default sui-pilot install location
 SUI_PILOT_DIR=/path/to/other/sui-pilot bash evals/run-comparison.sh
@@ -165,11 +162,10 @@ SUI_PILOT_DIR=/path/to/other/sui-pilot bash evals/run-comparison.sh
 
 ```
 evals/results/2026-04-29T18-42-15Z/
-├── bare.sha                            # SHA at time of bare run (working branch)
 ├── v1.sha                              # SHA of the v1 run
 ├── v2.sha                              # SHA of the v2 run
 ├── tokens.csv                          # per-task per-version token usage
-├── bare/
+├── v1/
 │   ├── task-01-module-syntax.out       # model text (extracted from JSON)
 │   ├── task-01-module-syntax.err       # model stderr
 │   ├── task-01-module-syntax.diff      # diff -ruN of fixture vs post-run state
@@ -178,7 +174,6 @@ evals/results/2026-04-29T18-42-15Z/
 │   ├── task-01-module-syntax.compile-exit  # only when compileAfter:true
 │   ├── task-01-module-syntax.build.{out,err}  # only when compile gate ran
 │   └── ...
-├── v1/ ... (same shape)
 ├── v2/ ... (same shape)
 └── score.html                          # the auto-scored self-contained HTML report
 ```
@@ -191,17 +186,16 @@ You only need to read `score.html`. The other files are kept for spot-checking w
 - **`diff` of fixture vs post-state** — what the model *did* matters more than what it *said*. The diff is the canonical evidence; `.out` is supporting context for the scorer.
 - **Auto-scoring via `claude -p`** — a separate Claude turn reads `tasks.json`, applies `passCriteria` literally, and produces the HTML delta report. Removes the user from the scoring loop entirely.
 - **One report file** — `results/<TS>/score.html` is the only thing you read after a run. Everything else is debug evidence.
-- **Branch + plugin restore on exit** — the trap restores your original branch *and* re-enables sui-pilot + restores your `CLAUDE.md` on `EXIT`, even if the runner crashes mid-task. You don't end up stranded on a feature branch with sui-pilot accidentally disabled.
+- **Branch restore on exit** — the trap restores your original branch on `EXIT`, even if the runner crashes mid-task. You don't end up stranded on a feature branch.
 
 ## Status
 
 The current suite ships:
-- Runner (`run-comparison.sh`) — supports `bare`, `v1`, `v2`; captures tokens; runs an optional compile-gate.
-- 15 tier-1 tasks + fixtures.
-- Scoring prompt (`compare-prompt.md`) — emits self-contained HTML.
+- Runner (`run-comparison.sh`) — 2-way `v1`/`v2`; captures tokens; runs an optional compile-gate.
+- 27 tasks across 5 categories (15 tier-1, 4 multi-file, 3 ambiguous, 4 stale-training, 1 token-pressure).
+- Scoring prompt (`compare-prompt.md`) — emits self-contained HTML, supports rubric grading for ambiguous tasks.
 - Two preserved baselines in `BASELINE.md`: 2026-04-30 (precut full v2) and 2026-05-11 (post-cut v2-minimal).
 
 Follow-up work, when ready to spend the API budget:
-- Author ~12-15 Tier-2 tasks (multi-file, ambiguous, stale-training) per the plan in `POSTMORTEM.md`.
-- Run the full 3-way × ~27-task suite (~$15-30, ~2-3h) and append a new Tier-2 baseline section.
+- Run the full 27-task suite (~1.5h wall clock, both versions) and append a Tier-2 baseline section to `BASELINE.md`.
 - Wire `score.html`'s aggregate pass-rate into CI as a regression gate (block merges where v2 pass-rate < current main).

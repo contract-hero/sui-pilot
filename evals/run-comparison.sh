@@ -1,24 +1,12 @@
 #!/usr/bin/env bash
-# evals/run-comparison.sh — run the eval suite against bare claude (sui-pilot
-# disabled + @-import masked, OAuth retained), v1 (main, full sui-pilot with
-# pipe-delimited preamble) and v2 (feat/v2-graph-port, slim sui-pilot), then
-# auto-invoke `claude -p` to score the delta and emit a self-contained HTML
-# report.
-#
-# Bare-arm mechanics: `claude --bare` rejects OAuth/keychain auth and demands
-# ANTHROPIC_API_KEY, which is billed separately from Claude Max plans. To stay
-# on the user's existing OAuth, the "bare" arm instead:
-#   1. Disables the sui-pilot plugin via `claude plugin disable sui-pilot`
-#   2. Backs up + masks the `@~/.claude/sui-pilot/agents/sui-pilot-agent.md`
-#      line in ~/.claude/CLAUDE.md
-#   3. Runs tasks via plain `claude -p --output-format json` (NOT --bare)
-#   4. Restores both via EXIT trap — even on Ctrl-C or crash
-# Other installed plugins remain active during the bare arm — this is "no
-# sui-pilot" not "no plugins", which is the actually-useful counterfactual.
+# evals/run-comparison.sh — run the eval suite against v1 (main, full
+# sui-pilot with pipe-delimited preamble) and v2 (feat/v2-graph-port, slim
+# sui-pilot), then auto-invoke `claude -p` to score the delta and emit a
+# self-contained HTML report.
 #
 # Usage:
-#   bash evals/run-comparison.sh                       # bare,v1,v2 + auto-score
-#   bash evals/run-comparison.sh --versions v1,v2      # skip bare
+#   bash evals/run-comparison.sh                       # v1,v2 + auto-score
+#   bash evals/run-comparison.sh --versions v2         # one version only
 #   bash evals/run-comparison.sh --no-score            # run, skip auto-score
 #   bash evals/run-comparison.sh --v1-ref X --v2-ref Y # custom refs
 #   bash evals/run-comparison.sh --resume DIR          # reuse DIR, skip captured tasks
@@ -45,7 +33,7 @@ V1_REF="main"
 V2_REF="feat/v2-graph-port"
 SCORE=true
 RESUME_DIR=""
-VERSIONS="bare,v1,v2"
+VERSIONS="v1,v2"
 
 usage() {
     cat <<'USAGE'
@@ -54,10 +42,9 @@ Usage: bash run-comparison.sh [options]
 Options:
   --v1-ref REF        git ref for v1 (default: main)
   --v2-ref REF        git ref for v2 (default: feat/v2-graph-port)
-  --versions LIST     comma-separated subset of {bare,v1,v2} (default: bare,v1,v2)
-                      "bare" = sui-pilot temporarily disabled + @-import masked
-                      "v1"   = claude -p with sui-pilot at V1_REF
-                      "v2"   = claude -p with sui-pilot at V2_REF
+  --versions LIST     comma-separated subset of {v1,v2} (default: v1,v2)
+                      "v1" = claude -p with sui-pilot at V1_REF
+                      "v2" = claude -p with sui-pilot at V2_REF
   --resume DIR        reuse DIR as the results directory; tasks whose .diff
                       already exists in DIR/<version>/ are skipped. Combined
                       with --versions lets you backfill new arms without
@@ -107,63 +94,7 @@ fi
 
 # Save the user's current branch so we can restore it on exit (success OR fail).
 ORIGINAL_BRANCH=$(git -C "$SUI_PILOT_DIR" rev-parse --abbrev-ref HEAD)
-
-# Bare-arm state: filled in by bare_setup, drained by bare_teardown.
-BARE_BACKUP_DIR=""
-BARE_PLUGIN_WAS_ENABLED="false"
-
-cleanup() {
-    local exit_code=$?
-    # Restore bare-arm mutations first (most fragile state — must always restore).
-    bare_teardown || true
-    # Restore git branch.
-    echo "Restoring $SUI_PILOT_DIR to $ORIGINAL_BRANCH"
-    git -C "$SUI_PILOT_DIR" checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true
-    return $exit_code
-}
-trap cleanup EXIT
-
-bare_setup() {
-    # Stop my-process from clobbering an in-progress restore: nest-guard.
-    if [[ -n "$BARE_BACKUP_DIR" ]]; then
-        echo "ERROR: bare_setup called twice without teardown" >&2
-        return 1
-    fi
-    BARE_BACKUP_DIR=$(mktemp -d -t sui-pilot-bare-backup.XXXXXX)
-    echo "=== [bare] disabling sui-pilot + masking @-import ==="
-    echo "      backup dir: $BARE_BACKUP_DIR"
-    # 1. Snapshot ~/.claude/CLAUDE.md and strip the sui-pilot @-import line.
-    if [[ -f "$HOME/.claude/CLAUDE.md" ]]; then
-        cp "$HOME/.claude/CLAUDE.md" "$BARE_BACKUP_DIR/CLAUDE.md.bak"
-        # Remove any line containing the literal @-import path. Use a portable
-        # sed invocation (BSD sed on macOS, GNU sed on Linux).
-        sed -i.tmp '/@~\/\.claude\/sui-pilot\/agents\/sui-pilot-agent\.md/d' \
-            "$HOME/.claude/CLAUDE.md"
-        rm -f "$HOME/.claude/CLAUDE.md.tmp"
-    fi
-    # 2. Disable sui-pilot. Capture the result so teardown only re-enables
-    #    what was originally on.
-    if claude plugins list 2>/dev/null | grep -qE 'sui-pilot.*enabled'; then
-        BARE_PLUGIN_WAS_ENABLED="true"
-        claude plugin disable sui-pilot >/dev/null 2>&1 || \
-            echo "WARN: claude plugin disable sui-pilot failed; continuing anyway" >&2
-    fi
-}
-
-bare_teardown() {
-    [[ -z "$BARE_BACKUP_DIR" ]] && return 0
-    echo "=== [bare] restoring CLAUDE.md + re-enabling sui-pilot ==="
-    if [[ -f "$BARE_BACKUP_DIR/CLAUDE.md.bak" ]]; then
-        cp "$BARE_BACKUP_DIR/CLAUDE.md.bak" "$HOME/.claude/CLAUDE.md"
-    fi
-    if [[ "$BARE_PLUGIN_WAS_ENABLED" == "true" ]]; then
-        claude plugin enable sui-pilot >/dev/null 2>&1 || \
-            echo "WARN: claude plugin enable sui-pilot failed; restore manually" >&2
-    fi
-    rm -rf "$BARE_BACKUP_DIR"
-    BARE_BACKUP_DIR=""
-    BARE_PLUGIN_WAS_ENABLED="false"
-}
+trap 'echo "Restoring $SUI_PILOT_DIR to $ORIGINAL_BRANCH"; git -C "$SUI_PILOT_DIR" checkout "$ORIGINAL_BRANCH" >/dev/null 2>&1 || true' EXIT
 
 mkdir -p "$RESULTS_DIR"
 echo "Results directory: $RESULTS_DIR"
@@ -181,8 +112,7 @@ FIXTURES_ROOT="$CACHE_DIR"
 # ---- Run one task (for any version) -------------------------------------
 # Extracts result text + usage from the claude -p JSON envelope, captures
 # the diff, and runs the compile gate when task.passCriteria.compileAfter
-# is true. Caller provides the claude_cmd array (e.g. "claude -p" or
-# "claude -p --bare").
+# is true. Caller provides the claude_cmd array (e.g. `claude -p`).
 run_one_task() {
     local version="$1"
     local id="$2"
@@ -247,28 +177,18 @@ run_one_task() {
 
 # ---- Run one version ----------------------------------------------------
 run_one_version() {
-    local version="$1"   # "bare" | "v1" | "v2"
-    local ref="${2:-}"   # optional; empty for "bare"
+    local version="$1"   # "v1" | "v2"
+    local ref="$2"       # git ref to checkout in $SUI_PILOT_DIR
 
     echo ""
-    if [[ "$version" == "bare" ]]; then
-        bare_setup
-        echo "=== [$version] Running with sui-pilot disabled ==="
-        # SHA reflects whatever the user was on when bare ran — sui-pilot is
-        # disabled, so the working tree is unchanged from $ORIGINAL_BRANCH.
-        git -C "$SUI_PILOT_DIR" rev-parse HEAD > "$RESULTS_DIR/$version.sha"
-    else
-        echo "=== [$version] Switching $SUI_PILOT_DIR to $ref ==="
-        git -C "$SUI_PILOT_DIR" fetch origin "$ref" 2>&1 | tail -2 || true
-        git -C "$SUI_PILOT_DIR" checkout "$ref" 2>&1 | tail -2
-        git -C "$SUI_PILOT_DIR" pull --ff-only origin "$ref" 2>&1 | tail -2 || true
-        git -C "$SUI_PILOT_DIR" rev-parse HEAD > "$RESULTS_DIR/$version.sha"
-    fi
+    echo "=== [$version] Switching $SUI_PILOT_DIR to $ref ==="
+    git -C "$SUI_PILOT_DIR" fetch origin "$ref" 2>&1 | tail -2 || true
+    git -C "$SUI_PILOT_DIR" checkout "$ref" 2>&1 | tail -2
+    git -C "$SUI_PILOT_DIR" pull --ff-only origin "$ref" 2>&1 | tail -2 || true
+    git -C "$SUI_PILOT_DIR" rev-parse HEAD > "$RESULTS_DIR/$version.sha"
 
     mkdir -p "$RESULTS_DIR/$version"
 
-    # All three arms use plain `claude -p` (the bare arm gets its
-    # "bare-ness" from the prior disable + @-import mask). Stay on OAuth.
     local claude_cmd=(claude -p)
 
     local n=$(jq 'length' "$TASKS_FILE")
@@ -288,18 +208,13 @@ run_one_version() {
     done < <(jq -c '.[]' "$TASKS_FILE")
 }
 
-# Run only the versions requested via --versions.
+# Run only the versions requested via --versions (default: both).
 IFS=',' read -ra REQUESTED_VERSIONS <<< "$VERSIONS"
 for v in "${REQUESTED_VERSIONS[@]}"; do
     case "$v" in
-        bare)
-            run_one_version "bare"
-            # Restore eagerly so v1/v2 see the normal plugin + CLAUDE.md state.
-            bare_teardown
-            ;;
-        v1)   run_one_version "v1" "$V1_REF" ;;
-        v2)   run_one_version "v2" "$V2_REF" ;;
-        *)    echo "ERROR: unknown version '$v' (must be bare, v1, or v2)" >&2; exit 1 ;;
+        v1) run_one_version "v1" "$V1_REF" ;;
+        v2) run_one_version "v2" "$V2_REF" ;;
+        *)  echo "ERROR: unknown version '$v' (must be v1 or v2)" >&2; exit 1 ;;
     esac
 done
 
