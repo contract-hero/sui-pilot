@@ -29,7 +29,7 @@
     "passCriteria": {
       "file": "sources/demo.move",
       "containsString": "struct DEMO has drop",
-      "alsoContainsString": "coin::create_currency(otw"
+      "alsoContainsRegex": "coin::create_currency(<[^>]+>)?\\(\\s*otw\\b"
     }
   },
   {

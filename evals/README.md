@@ -116,6 +116,7 @@ Note: `bare` does **not** use `claude --bare`. That flag refuses OAuth/keychain 
        "containsRegex": "<perl-compatible regex>",               // optional, supersedes containsString
        "doesNotContainString": "<substring that should be gone>",// optional
        "alsoContainsString": "<second positive check>",          // optional
+       "alsoContainsRegex": "<second positive check, regex form>", // optional, supersedes alsoContainsString
        "additionalFiles": [                                      // optional, for multi-file tasks
          { "file": "<path>", "containsString": "..." }
        ],
