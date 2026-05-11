@@ -82,39 +82,79 @@ The full set from the original `DESIGN_V2.md` brief — covering Move 2024 synta
 | `task-14-seal-policy-encrypt` | `@mysten/seal` capability-gated encryption | `fixtures/seal-policy-encrypt/` |
 | `task-15-enum-match` | Move 2024 `enum` + exhaustive `match` | `fixtures/enum-match/` |
 
-**Pass criteria are tightened past substring-match in comments.** Where a task could be falsely passed by a TODO comment that mentions the function name (the failure mode the first eval run exposed), the criterion includes parentheses or type parameters (e.g. `coin::create_currency<DEMO>(`) so the model has to actually write the call, not just reference it.
+**Pass criteria are tightened past substring-match in comments.** Where a task could be falsely passed by a TODO comment that mentions the function name (the failure mode the first eval run exposed), the criterion includes parentheses or type parameters (e.g. `coin::create_currency<DEMO>(`) so the model has to actually write the call, not just reference it. The scorer also rejects substring matches that lie inside Move comments (`//` and `/* */`).
+
+## Three-way comparison (`bare`, `v1`, `v2`)
+
+The runner supports three arms, controlled by `--versions`:
+
+| Arm | What runs | How |
+|---|---|---|
+| `bare` | sui-pilot disabled, `@`-import masked, OAuth retained | Runner backs up `~/.claude/CLAUDE.md`, strips the `@~/.claude/sui-pilot/agents/sui-pilot-agent.md` line, calls `claude plugin disable sui-pilot`. Trap restores everything on exit. |
+| `v1` | sui-pilot at `--v1-ref` (default `main`) | `git checkout` + plain `claude -p`. |
+| `v2` | sui-pilot at `--v2-ref` (default `feat/v2-graph-port`) | `git checkout` + plain `claude -p`. |
+
+The `bare` arm intentionally leaves *other* installed plugins active — this is "no sui-pilot," not "no plugins." It answers the question "what does sui-pilot specifically buy me?"
+
+Note: `bare` does **not** use `claude --bare`. That flag refuses OAuth/keychain auth and requires `ANTHROPIC_API_KEY` (billed separately from Claude Max plans). The disable-and-mask approach keeps the user's normal OAuth working.
 
 ## Adding more tasks
 
 1. Create `evals/fixtures/<your-task>/` with a starting state (whatever directory layout the model would see in a real project — `Move.toml` + `sources/`, or `package.json` + `src/`).
-2. Add an entry to `tasks.json`:
+2. Add an entry to `tasks.json`. The schema:
 
-   ```json
+   ```jsonc
    {
-     "id": "task-04-your-id",
+     "id": "task-NN-your-id",
      "title": "Short human description",
      "fixturePath": "fixtures/your-task",
      "prompt": "What you'd type to Claude Code in a fresh session in this fixture",
+     "category": "tier-1",  // optional: tier-1 | multi-file | ambiguous | stale-training | token-pressure
      "passCriteria": {
        "file": "<relative path inside fixture>",
-       "containsString": "<expected substring after fix>",
-       "doesNotContainString": "<substring that should be gone>"
+       "containsString": "<expected substring after fix>",       // optional
+       "containsRegex": "<perl-compatible regex>",               // optional, supersedes containsString
+       "doesNotContainString": "<substring that should be gone>",// optional
+       "alsoContainsString": "<second positive check>",          // optional
+       "additionalFiles": [                                      // optional, for multi-file tasks
+         { "file": "<path>", "containsString": "..." }
+       ],
+       "compileAfter": true                                      // optional, runs `sui move build`
+     },
+     "rubric": {                                                 // optional, for category=ambiguous
+       "criteria": [
+         "correctness — does the change implement the requested behaviour?",
+         "idiomaticity — Move 2024 conventions, method-call form, capability shape",
+         "safety — access control, arithmetic, shared-object hazards",
+         "brevity — minimal scope creep"
+       ],
+       "scale": "1-5",
+       "passThreshold": 16
      }
    }
    ```
 
-   Optional: `alsoContainsString` for a second positive check.
+   All new fields are optional; existing tier-1 substring-only tasks stay valid.
 
 3. Re-run `bash evals/run-comparison.sh`. No code changes, no fixture wiring.
 
 ## Customizing the comparison
 
 ```bash
+# Default: all three arms + auto-score
+bash evals/run-comparison.sh
+
+# Skip the bare arm (faster, no plugin-disable dance)
+bash evals/run-comparison.sh --versions v1,v2
+
 # Compare a specific tag against your working branch
 bash evals/run-comparison.sh --v1-ref v0.1.0 --v2-ref feat/my-improvement
 
 # Run the suite without auto-scoring (e.g., to inspect raw diffs first)
 bash evals/run-comparison.sh --no-score
+
+# Backfill a new arm into an existing results directory
+bash evals/run-comparison.sh --resume evals/results/<TS> --versions bare
 
 # Use a non-default sui-pilot install location
 SUI_PILOT_DIR=/path/to/other/sui-pilot bash evals/run-comparison.sh
@@ -124,37 +164,43 @@ SUI_PILOT_DIR=/path/to/other/sui-pilot bash evals/run-comparison.sh
 
 ```
 evals/results/2026-04-29T18-42-15Z/
-├── v1.sha                         # full SHA of the v1 run
-├── v2.sha                         # full SHA of the v2 run
-├── v1/
-│   ├── task-01-module-syntax.out  # claude -p stdout
-│   ├── task-01-module-syntax.err  # claude -p stderr
-│   ├── task-01-module-syntax.diff # diff -ruN of fixture vs post-run state
+├── bare.sha                            # SHA at time of bare run (working branch)
+├── v1.sha                              # SHA of the v1 run
+├── v2.sha                              # SHA of the v2 run
+├── tokens.csv                          # per-task per-version token usage
+├── bare/
+│   ├── task-01-module-syntax.out       # model text (extracted from JSON)
+│   ├── task-01-module-syntax.err       # model stderr
+│   ├── task-01-module-syntax.diff      # diff -ruN of fixture vs post-run state
+│   ├── task-01-module-syntax.tokens    # usage JSON block
+│   ├── task-01-module-syntax.raw.json  # full claude -p JSON envelope
+│   ├── task-01-module-syntax.compile-exit  # only when compileAfter:true
+│   ├── task-01-module-syntax.build.{out,err}  # only when compile gate ran
 │   └── ...
-├── v2/
-│   └── ... (same shape as v1/)
-└── score.md                       # the auto-scored Markdown report
+├── v1/ ... (same shape)
+├── v2/ ... (same shape)
+└── score.html                          # the auto-scored self-contained HTML report
 ```
 
-You only need to read `score.md`. The other files are kept for spot-checking when a result looks surprising.
+You only need to read `score.html`. The other files are kept for spot-checking when a result looks surprising.
 
 ## Why this design
 
 - **`claude -p` non-interactive** — every invocation is a fresh session, so SessionStart fires, hooks register, MCP servers spawn, dedup state starts clean. No "did the previous session contaminate this one?" risk.
 - **`diff` of fixture vs post-state** — what the model *did* matters more than what it *said*. The diff is the canonical evidence; `.out` is supporting context for the scorer.
-- **Auto-scoring via `claude -p`** — a separate Claude turn reads `tasks.json`, applies `passCriteria` literally, and produces the Markdown delta report. Removes the user from the scoring loop entirely.
-- **One report file** — `results/<TS>/score.md` is the only thing you read after a run. Everything else is debug evidence.
-- **Branch restore on exit** — the trap restores your original branch on `EXIT`, even if the runner crashes mid-task. You don't end up stranded on a feature branch.
+- **Auto-scoring via `claude -p`** — a separate Claude turn reads `tasks.json`, applies `passCriteria` literally, and produces the HTML delta report. Removes the user from the scoring loop entirely.
+- **One report file** — `results/<TS>/score.html` is the only thing you read after a run. Everything else is debug evidence.
+- **Branch + plugin restore on exit** — the trap restores your original branch *and* re-enables sui-pilot + restores your `CLAUDE.md` on `EXIT`, even if the runner crashes mid-task. You don't end up stranded on a feature branch with sui-pilot accidentally disabled.
 
 ## Status
 
-This PR ships:
-- Runner (`run-comparison.sh`)
-- 3 seed tasks + fixtures
-- Scoring prompt (`compare-prompt.md`)
-- This README
+The current suite ships:
+- Runner (`run-comparison.sh`) — supports `bare`, `v1`, `v2`; captures tokens; runs an optional compile-gate.
+- 15 tier-1 tasks + fixtures.
+- Scoring prompt (`compare-prompt.md`) — emits self-contained HTML.
+- Two preserved baselines in `BASELINE.md`: 2026-04-30 (precut full v2) and 2026-05-11 (post-cut v2-minimal).
 
-Follow-up work, when v2 is in main and you want a denser baseline:
-- Expand to 10–15 tasks (Move 2024 macros, transfer policies, dynamic-object fields, randomness, party objects, Walrus blob anchoring, Seal access policies, gRPC client, dapp-kit-react migration, etc.)
-- Wire `score.md`'s aggregate pass-rate into CI as a regression gate (block merges where v2 pass-rate < current main).
-- Add token-cost capture alongside pass-rate (`claude -p --json` gives usage; aggregate per-task and per-run averages).
+Follow-up work, when ready to spend the API budget:
+- Author ~12-15 Tier-2 tasks (multi-file, ambiguous, stale-training) per the plan in `POSTMORTEM.md`.
+- Run the full 3-way × ~27-task suite (~$15-30, ~2-3h) and append a new Tier-2 baseline section.
+- Wire `score.html`'s aggregate pass-rate into CI as a regression gate (block merges where v2 pass-rate < current main).
