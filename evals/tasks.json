@@ -165,5 +165,201 @@
       "alsoContainsString": "match (",
       "doesNotContainString": "u8"
     }
+  },
+  {
+    "id": "task-16-rename-cap-across-modules",
+    "title": "Rename AdminCap to OperatorCap across three modules",
+    "fixturePath": "fixtures/task-16-rename-cap",
+    "prompt": "Rename the capability struct `AdminCap` to `OperatorCap` everywhere it is referenced in this package: its definition in `sources/auth.move`, all uses in `sources/pool.move`, and the test in `tests/pool_tests.move`. Update every type annotation, every use-statement, and every constructor/destructor occurrence. The package must still compile after the rename.",
+    "category": "multi-file",
+    "passCriteria": {
+      "file": "sources/auth.move",
+      "containsString": "struct OperatorCap",
+      "doesNotContainString": "AdminCap",
+      "additionalFiles": [
+        { "file": "sources/pool.move", "containsString": "OperatorCap" },
+        { "file": "sources/pool.move", "containsString": "OperatorCap", "doesNotContainString": "AdminCap" },
+        { "file": "tests/pool_tests.move", "doesNotContainString": "AdminCap" }
+      ],
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-17-split-monolith",
+    "title": "Split a monolithic protocol module into state + entry",
+    "fixturePath": "fixtures/task-17-split-monolith",
+    "prompt": "Split `sources/protocol.move` into two files in the same package: `sources/state.move` (struct definitions + view functions) and `sources/entry.move` (the public mutators `new`, `share`, `deposit`, `withdraw`). Preserve the public API and types unchanged. Update use-statements as needed. The package must compile.",
+    "category": "multi-file",
+    "passCriteria": {
+      "file": "sources/state.move",
+      "containsString": "public struct Pool",
+      "additionalFiles": [
+        { "file": "sources/entry.move", "containsString": "public fun deposit" },
+        { "file": "sources/entry.move", "containsString": "public fun withdraw" }
+      ],
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-18-sdk-2-multifile",
+    "title": "Migrate a 3-file TS dApp from @mysten/sui 1.x to 2.0",
+    "fixturePath": "fixtures/task-18-sdk-2-multifile",
+    "prompt": "Migrate this dApp from the `@mysten/sui` 1.x API to the 2.0 API across all three files. Specifically: replace the 1.x `SuiClient` from `@mysten/sui/client` with the 2.0 `SuiJsonRpcClient` (from `@mysten/sui/jsonRpc`) including the required `network` parameter; replace `TransactionBlock` from `@mysten/sui/transactions` with the 2.0 `Transaction` type; update every call site. Read `.ts-sdk-docs/sui/migrations/sui-2.0/index.mdx` first.",
+    "category": "multi-file",
+    "passCriteria": {
+      "file": "src/client.ts",
+      "containsString": "@mysten/sui/jsonRpc",
+      "doesNotContainString": "@mysten/sui/client",
+      "additionalFiles": [
+        { "file": "src/transactions.ts", "containsString": "Transaction", "doesNotContainString": "TransactionBlock" },
+        { "file": "src/transactions.ts", "doesNotContainString": "@mysten/sui/transactions" }
+      ]
+    }
+  },
+  {
+    "id": "task-19-dof-accessor",
+    "title": "Attach a Treasury as a dynamic object field and expose a typed accessor",
+    "fixturePath": "fixtures/task-19-dof-accessor",
+    "prompt": "In `sources/pool.move`, implement the TODO: extend `new` (or add a separate entry function) that attaches a `Treasury` to a `Pool` as a dynamic object field keyed by `b\"treasury\"`. Add `treasury(&Pool): &Treasury` and `treasury_mut(&mut Pool): &mut Treasury` accessors. Then complete the corresponding test in `tests/pool_tests.move` so it asserts the Treasury balance via the accessor instead of aborting. The package must compile.",
+    "category": "multi-file",
+    "passCriteria": {
+      "file": "sources/pool.move",
+      "containsRegex": "(dynamic_object_field|dof)::add",
+      "alsoContainsRegex": "public fun treasury\\s*\\(",
+      "additionalFiles": [
+        { "file": "tests/pool_tests.move", "doesNotContainString": "abort 0" }
+      ],
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-20-pool-safety",
+    "title": "Improve the safety of a shared deposit/withdraw pool",
+    "fixturePath": "fixtures/task-20-pool-safety",
+    "prompt": "Audit `sources/pool.move` and add safety improvements. The current implementation has no access control on withdraw, no per-address accounting, no events, and no bounds checking. Make the contract substantially safer while keeping the deposit/withdraw API usable. You may add new structs, capabilities, events, or invariants — your call. Justify any non-obvious design choices in comments.",
+    "category": "ambiguous",
+    "passCriteria": {
+      "file": "sources/pool.move",
+      "compileAfter": true
+    },
+    "rubric": {
+      "criteria": [
+        "correctness — implementation compiles and the new safety mechanism is semantically sound",
+        "idiomaticity — Move 2024 conventions: method-call form, capability shape, event past-tense names, no public entry",
+        "safety — withdraw is no longer unrestricted; accounting/caps/events meaningfully reduce attack surface",
+        "brevity — changes are scoped; no unnecessary new modules or complexity"
+      ],
+      "scale": "1-5",
+      "passThreshold": 16
+    }
+  },
+  {
+    "id": "task-21-withdraw-fee",
+    "title": "Add a withdraw fee mechanism to the pool",
+    "fixturePath": "fixtures/task-21-withdraw-fee",
+    "prompt": "Add a withdraw fee mechanism to `sources/pool.move`. The fee rate, storage shape (per-pool vs global config, basis points vs flat fee), and who receives the fee (protocol treasury, LPs, burned) are up to you — pick a coherent design and implement it end to end. The withdraw entry function must collect the fee atomically with the withdrawal.",
+    "category": "ambiguous",
+    "passCriteria": {
+      "file": "sources/pool.move",
+      "containsRegex": "fee|FEE",
+      "compileAfter": true
+    },
+    "rubric": {
+      "criteria": [
+        "correctness — fee is collected on every withdraw, accounting is consistent",
+        "idiomaticity — Move 2024 conventions, no public entry, balances vs coins used correctly",
+        "safety — fee can't be bypassed; no overflow on small/large amounts; no precision loss favoring the user",
+        "brevity — solution is proportional to the task; no over-engineered config plumbing"
+      ],
+      "scale": "1-5",
+      "passThreshold": 16
+    }
+  },
+  {
+    "id": "task-22-naming-cleanup",
+    "title": "Apply Move Book naming conventions to a messy module",
+    "fixturePath": "fixtures/task-22-naming-cleanup",
+    "prompt": "Clean up `sources/messy.move` to follow the Move Book code-quality naming conventions: error constants in EPascalCase (no ALL_CAPS error consts), capability structs suffixed with `Cap`, accessors named after their field (drop `get_` prefixes), mutable accessors suffixed `_mut`, and `setX` non-idiomatic setters replaced with mutable accessors where it makes sense. Keep the public API minimally broken — favor renames over deletions.",
+    "category": "ambiguous",
+    "passCriteria": {
+      "file": "sources/messy.move",
+      "doesNotContainString": "INVALID_AMOUNT",
+      "alsoContainsRegex": "fun name\\s*\\(",
+      "compileAfter": true
+    },
+    "rubric": {
+      "criteria": [
+        "correctness — every renamed identifier is referenced consistently; the module still compiles",
+        "idiomaticity — error consts EPascalCase, caps suffixed Cap, no `get_` prefixes, mutable accessors named `_mut`",
+        "completeness — all five anti-patterns in the fixture are addressed, not just one or two",
+        "brevity — renames only; no scope creep into new features"
+      ],
+      "scale": "1-5",
+      "passThreshold": 16
+    }
+  },
+  {
+    "id": "task-23-derived-object",
+    "title": "Use sui::derived_object for a deterministic Entry under a Registry",
+    "fixturePath": "fixtures/task-23-derived-object",
+    "prompt": "Implement the TODO in `sources/lib.move`: add `public fun claim_entry(registry: &mut Registry, key: u64, payload: u64, ctx: &mut TxContext): Entry` that creates an `Entry` whose `UID` is deterministically derived from `(registry.id, key)` using the `sui::derived_object` module. Two callers passing the same `(registry, key)` must abort. Read `.sui-docs/develop/objects/derived-objects.mdx` before implementing — the API shape evolved past the model's training cutoff.",
+    "category": "stale-training",
+    "passCriteria": {
+      "file": "sources/lib.move",
+      "containsRegex": "derived_object::(claim|derive_address|new)",
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-24-graphql-client",
+    "title": "Migrate from JSON-RPC SuiClient to the @mysten/sui GraphQL client",
+    "fixturePath": "fixtures/task-24-graphql-client",
+    "prompt": "Migrate `src/index.ts` from the JSON-RPC `SuiClient` (`@mysten/sui/client`) to the GraphQL-backed client documented in `.ts-sdk-docs/sui/clients/graphql.mdx`. Replace the import, the constructor, and adapt the two query functions (`balanceOf`, `ownedObjects`) to the GraphQL API. The functions must keep the same signatures.",
+    "category": "stale-training",
+    "passCriteria": {
+      "file": "src/index.ts",
+      "containsRegex": "@mysten/sui/graphql",
+      "doesNotContainString": "@mysten/sui/client"
+    }
+  },
+  {
+    "id": "task-25-coin-registry",
+    "title": "Migrate a coin module from coin::create_currency to the Coin Registry",
+    "fixturePath": "fixtures/task-25-coin-registry",
+    "prompt": "Migrate `sources/demo.move` from the legacy `coin::create_currency` flow to the newer Coin Registry pattern. Read `.sui-docs/snippets/coin-standards-migrate.mdx` (and surrounding docs) for the exact API. Remove the legacy `coin::create_currency` call and any subsequent metadata freeze; emit the registry-based equivalent. The package must compile against the current Sui framework.",
+    "category": "stale-training",
+    "passCriteria": {
+      "file": "sources/demo.move",
+      "containsRegex": "coin_registry|coin::registry",
+      "doesNotContainString": "coin::create_currency",
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-26-nft-display",
+    "title": "Configure sui::display::Display for an NFT module",
+    "fixturePath": "fixtures/task-26-nft-display",
+    "prompt": "Implement the TODO in `sources/nft.move`: inside `init`, construct a `sui::display::Display<Hero>` using the claimed `Publisher`, add at least the `name`, `image_url`, and `description` keys mapped to the corresponding struct fields, call `update_version` on the Display, and transfer both the Display and the Publisher to the sender. Read `.sui-docs/develop/objects/display/using-display.mdx` for the current API. The package must compile.",
+    "category": "stale-training",
+    "passCriteria": {
+      "file": "sources/nft.move",
+      "containsRegex": "display::(new|add_multiple)",
+      "alsoContainsRegex": "update_version",
+      "compileAfter": true
+    }
+  },
+  {
+    "id": "task-27-long-prompt-spec",
+    "title": "Implement a feature from a long structured spec (token-pressure)",
+    "fixturePath": "fixtures/task-27-long-prompt-spec",
+    "prompt": "Extend `sources/vault.move` to add the following feature set. Spec:\n\n1. Capability: add a `VaultAdminCap` capability struct. Mint exactly one in a fresh `init(ctx)` function and transfer it to the sender. Only the cap holder may perform admin actions (pause toggle).\n\n2. Per-address deposit ledger: instead of pooling all deposits, the vault must remember, per depositor address, the amount they have deposited so far. Use a dynamic field keyed on `address` storing a `Balance<SUI>` (or a tracked u64 — your call, document it). A second deposit from the same sender accumulates; a withdraw consumes some-or-all of that ledger entry.\n\n3. Pause toggle: a boolean `paused: bool` field on `Vault`. `deposit` and `withdraw` abort with `EVaultPaused` if `paused == true`. Add `set_paused(&mut Vault, &VaultAdminCap, bool)` to flip the flag.\n\n4. Events: emit `Deposited { who: address, amount: u64 }` after a successful deposit, and `Withdrew { who: address, amount: u64 }` after a successful withdraw. Event structs must be `has copy, drop`, named in past tense (per Move Book convention).\n\n5. Edge cases:\n   - withdraw of more than the depositor's ledger amount aborts with `EInsufficientLedger` (do not silently cap).\n   - withdraw of zero aborts with `EZeroAmount`.\n   - deposit of zero is a no-op (don't emit an event for it).\n   - calling withdraw with an address that has no ledger entry aborts with `ENoEntry`.\n\n6. Idioms: use Move 2024 conventions throughout (method-call form, no `public entry`, `EPascalCase` error constants, events in past tense). Use the `sui::dynamic_field` module for the ledger.\n\nAcceptance: the package must compile (`sui move build`). Keep `deposit` and `withdraw` as the public entry points (signature may change). Do not introduce new modules.",
+    "category": "token-pressure",
+    "passCriteria": {
+      "file": "sources/vault.move",
+      "containsString": "VaultAdminCap",
+      "alsoContainsRegex": "(Deposited|Withdrew)",
+      "doesNotContainString": "ALL_CAPS_ERROR",
+      "compileAfter": true
+    }
   }
 ]

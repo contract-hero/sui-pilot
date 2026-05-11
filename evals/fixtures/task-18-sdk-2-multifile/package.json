@@ -1,0 +1,8 @@
+{
+  "name": "sdk-2-multifile-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@mysten/sui": "^2.0.0"
+  }
+}
