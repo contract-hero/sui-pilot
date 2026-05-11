@@ -128,7 +128,7 @@
     "prompt": "Implement a `draw_winner(raffle: &mut Raffle, r: &Random, ctx: &mut TxContext)` function that uses `sui::random::Random` to pick a random index in the participants vector. Use `random::new_generator(r, ctx)` and `random_generator::generate_u64_in_range`.",
     "passCriteria": {
       "file": "sources/raffle.move",
-      "containsString": "random::new_generator(",
+      "containsRegex": "(random::|\\b)new_generator\\s*\\(",
       "alsoContainsString": "generate_u64_in_range("
     }
   },
@@ -211,7 +211,7 @@
       "containsString": "@mysten/sui/jsonRpc",
       "doesNotContainString": "@mysten/sui/client",
       "additionalFiles": [
-        { "file": "src/transactions.ts", "containsString": "Transaction", "doesNotContainString": "TransactionBlock" },
+        { "file": "src/transactions.ts", "containsString": "new Transaction(", "doesNotContainRegex": "\\bTransactionBlock\\b" },
         { "file": "src/transactions.ts", "doesNotContainString": "@mysten/sui/transactions" }
       ]
     }

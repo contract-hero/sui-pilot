@@ -112,6 +112,7 @@ A "no-plugin" control arm was considered and dropped — `claude --bare` require
        "containsString": "<expected substring after fix>",       // optional
        "containsRegex": "<perl-compatible regex>",               // optional, supersedes containsString
        "doesNotContainString": "<substring that should be gone>",// optional
+       "doesNotContainRegex": "<perl regex variant>",            // optional, supersedes doesNotContainString
        "alsoContainsString": "<second positive check>",          // optional
        "alsoContainsRegex": "<second positive check, regex form>", // optional, supersedes alsoContainsString
        "additionalFiles": [                                      // optional, for multi-file tasks

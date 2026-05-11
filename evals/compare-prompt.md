@@ -27,10 +27,11 @@ For each task in the tasks file, for each arm that was actually run, decide PASS
 2. **Content criteria** on the target file's post-state (reconstructable from the right-hand side of the diff):
    - If `passCriteria.containsRegex` is present, the regex must match (Perl-compatible). Comments are fine — the regex is the source of truth.
    - Else, if `passCriteria.containsString` is present, it must appear as a substring. **BUT**: reject the match if the only occurrence is inside a Move comment (`//` or `/* */`) — comment-only mentions are not implementations.
-   - If `passCriteria.doesNotContainString` is present, that substring must NOT appear in the post-state (excluding comments).
+   - If `passCriteria.doesNotContainRegex` is present, the Perl-compatible regex must NOT match anywhere in the post-state (excluding comments). Supersedes `doesNotContainString` if both are set.
+   - Else, if `passCriteria.doesNotContainString` is present, that substring must NOT appear in the post-state (excluding comments).
    - If `passCriteria.alsoContainsRegex` is present, the Perl-compatible regex must match (supersedes `alsoContainsString` if both are set).
    - Else, if `passCriteria.alsoContainsString` is present, it must appear (same comment-exclusion rule).
-3. **`additionalFiles`** (multi-file tasks): each entry in the array must satisfy its own `containsString` / `containsRegex` (same comment-exclusion rule).
+3. **`additionalFiles`** (multi-file tasks): each entry in the array must satisfy its own `containsString` / `containsRegex` / `doesNotContainString` / `doesNotContainRegex` (same comment-exclusion + supersedence rules).
 4. **Compile gate** (`passCriteria.compileAfter: true`): the `<version>/<id>.compile-exit` file must contain `0`. A non-zero exit, missing file, or `skipped` value means: skipped → ignore (don't penalise — note in methodology); non-zero → FAIL with the first line of `<id>.build.err` as the reason.
 5. **Rubric** (only when task has a `rubric` block): score each criterion 1-5 on the model's post-state diff using the rubric description as the lens. Sum the scores. If `sum >= rubric.passThreshold`, PASS; else FAIL with `"rubric: <sum>/<max>"`.
 
@@ -95,3 +96,4 @@ Emit a single self-contained HTML document to stdout (semantic HTML5, inline `<s
 - The aggregate Pass rate row in **Headline** uses literal pass/fail from the scoring procedure above — no adjudication. If the rubric, compile gate, or comment-exclusion rule changes a verdict from the "literal substring" view, mention it in **Methodology notes** but trust the procedure.
 - Per-version columns appear only for arms that were actually run (per `VERSIONS_PLACEHOLDER`).
 - Write the HTML directly to stdout. Do NOT save to a file. Do NOT call any tool other than reading the inputs.
+- The very first character of your output MUST be `<` (start of `<!DOCTYPE html>` or `<html>`). Do NOT prepend any preamble text like "Here is the report" or "Now I have enough information to score". Do NOT wrap the output in triple-backtick code fences (` ```html ` … ` ``` `). Any non-HTML prefix breaks downstream consumers that pipe the file to a browser. If you feel an urge to narrate your reasoning before the `<`, suppress it — emit only the HTML document.

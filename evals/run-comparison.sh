@@ -156,10 +156,14 @@ run_one_task() {
         || echo '{}' > "$RESULTS_DIR/$version/$id.tokens"
 
     # Compile gate: optional, only when task asks for it AND sui is available.
+    # The `--build-env mainnet` flag is required — without it sui defaults to
+    # `localnet` and refuses to fetch implicit framework deps, failing every
+    # task uniformly (see the 2026-05-11T12-12-13Z run's env-wide compile
+    # failure for the case study).
     if [[ "$compile_after" == "true" ]]; then
         if [[ "$HAVE_SUI" == "true" ]]; then
             local build_exit=0
-            (cd "$tmpdir" && sui move build) \
+            (cd "$tmpdir" && sui move build --build-env mainnet) \
                 > "$RESULTS_DIR/$version/$id.build.out" \
                 2> "$RESULTS_DIR/$version/$id.build.err" || build_exit=$?
             echo "$build_exit" > "$RESULTS_DIR/$version/$id.compile-exit"
