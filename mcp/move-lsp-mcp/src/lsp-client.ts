@@ -211,9 +211,14 @@ function symbolKindToString(kind: SymbolKind): DocumentSymbolKind {
  * Map LSP InlayHintKind to our normalized strings
  */
 function inlayHintKindToString(kind?: InlayHintKind): 'type' | 'parameter' | undefined {
-  if (kind === InlayHintKind.Type) return 'type';
-  if (kind === InlayHintKind.Parameter) return 'parameter';
-  return undefined;
+  switch (kind) {
+    case InlayHintKind.Type:
+      return 'type';
+    case InlayHintKind.Parameter:
+      return 'parameter';
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -279,15 +284,12 @@ function flattenWorkspaceEdit(edit: WorkspaceEdit): WorkspaceEditEntry[] {
 
   if (edit.documentChanges) {
     for (const change of edit.documentChanges) {
-      if ('textDocument' in change && Array.isArray((change as { edits: unknown[] }).edits)) {
-        const docEdit = change as { textDocument: { uri: string }; edits: TextEdit[] };
-        for (const e of docEdit.edits) {
-          out.push({
-            filePath: uriToPath(docEdit.textDocument.uri),
-            range: rangeToResult(e.range),
-            newText: e.newText,
-          });
-        }
+      // Skip resource-ops (CreateFile / RenameFile / DeleteFile) — only
+      // TextDocumentEdit carries a `textDocument` field with `edits`.
+      if (!('textDocument' in change) || !Array.isArray(change.edits)) continue;
+      const uri = uriToPath(change.textDocument.uri);
+      for (const e of change.edits as TextEdit[]) {
+        out.push({ filePath: uri, range: rangeToResult(e.range), newText: e.newText });
       }
     }
   }
@@ -960,13 +962,12 @@ export class MoveLspClient {
       'textDocument/documentSymbol',
       params
     );
-    if (!result || result.length === 0) return [];
+    const first = result?.[0];
+    if (!first) return [];
 
-    // Detect hierarchical vs deprecated SymbolInformation by shape
-    const first = result[0]!;
-    const isHierarchical = 'selectionRange' in first;
-
-    if (isHierarchical) {
+    // Detect hierarchical DocumentSymbol vs deprecated SymbolInformation by shape:
+    // only DocumentSymbol carries `selectionRange`.
+    if ('selectionRange' in first) {
       return (result as DocumentSymbol[]).map(normalizeDocumentSymbol);
     }
     return (result as SymbolInformation[]).map(info => ({
@@ -1067,7 +1068,7 @@ export class MoveLspClient {
     return result.map(hint => {
       const label = typeof hint.label === 'string'
         ? hint.label
-        : (hint.label as InlayHintLabelPart[]).map(p => p.value).join('');
+        : hint.label.map((p: InlayHintLabelPart) => p.value).join('');
       const entry: InlayHintResult = {
         line: hint.position.line,
         character: hint.position.character,
@@ -1104,9 +1105,8 @@ export class MoveLspClient {
     >('textDocument/prepareRename', prepareParams);
 
     if (prepared === null) return null;
-    if (typeof prepared === 'object' && 'defaultBehavior' in prepared && !prepared.defaultBehavior) {
-      return null;
-    }
+    // `{ defaultBehavior: false }` means the server explicitly refused — bail.
+    if ('defaultBehavior' in prepared && !prepared.defaultBehavior) return null;
 
     const renameParams = {
       textDocument: { uri },

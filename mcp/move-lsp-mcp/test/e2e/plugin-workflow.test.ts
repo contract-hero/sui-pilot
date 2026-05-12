@@ -60,6 +60,20 @@ describeWithBinary('E2E: Plugin Workflow', () => {
       const id = ++messageId;
       const message = JSON.stringify({ jsonrpc: '2.0', id, method, params });
 
+      // Slightly longer than the LSP client's request timeout (default 10s)
+      // so that LSP-side timeouts surface as a structured LSP_TIMEOUT error
+      // rather than racing the wire-level wait here.
+      const timer = setTimeout(() => {
+        serverProcess?.stdout?.removeListener('data', onData);
+        reject(new Error(`Request timeout for ${method}`));
+      }, 13000);
+
+      const finish = (fn: () => void) => {
+        clearTimeout(timer);
+        serverProcess?.stdout?.removeListener('data', onData);
+        fn();
+      };
+
       let buffer = '';
       const onData = (data: Buffer) => {
         buffer += data.toString();
@@ -71,11 +85,10 @@ describeWithBinary('E2E: Plugin Workflow', () => {
             try {
               const response = JSON.parse(line);
               if (response.id === id) {
-                serverProcess?.stdout?.removeListener('data', onData);
                 if (response.error) {
-                  reject(new Error(response.error.message));
+                  finish(() => reject(new Error(response.error.message)));
                 } else {
-                  resolve(response.result);
+                  finish(() => resolve(response.result));
                 }
                 return;
               }
@@ -88,21 +101,6 @@ describeWithBinary('E2E: Plugin Workflow', () => {
       };
 
       serverProcess.stdout.on('data', onData);
-
-      // Slightly longer than the LSP client's request timeout (default 10s)
-      // so that LSP-side timeouts surface as a structured LSP_TIMEOUT error
-      // rather than racing the wire-level wait here.
-      const timer = setTimeout(() => {
-        serverProcess?.stdout?.removeListener('data', onData);
-        reject(new Error(`Request timeout for ${method}`));
-      }, 13000);
-
-      // Clear timer if we resolve early — wrap the promise's settled callbacks
-      const _resolve = resolve;
-      const _reject = reject;
-      resolve = (v) => { clearTimeout(timer); _resolve(v); };
-      reject = (e) => { clearTimeout(timer); _reject(e); };
-
       serverProcess.stdin.write(message + '\n');
     });
   };
