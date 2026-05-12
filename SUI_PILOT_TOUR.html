@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<!--
+  SUI_PILOT_TOUR.html — interactive tour of how sui-pilot injects context into Claude Code.
+  Generated from sui-pilot @ commit 2d09bf1 on 2026-05-12.
+  Snippets are verbatim from: agents/sui-pilot-agent.md, commands/sui-pilot.md,
+  skills/*/SKILL.md, .claude-plugin/plugin.json. When those files change,
+  re-extract and regenerate.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sui-pilot — How context reaches Claude</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #475569;
+    --line: #e2e8f0;
+    --bg: #fafaf9;
+    --panel: #ffffff;
+    --accent: #0a4a8a;
+    --accent-soft: #e6f0fa;
+    --accent-bg: #eaf2fb;
+    --pass: #16a34a;
+    --warn: #ca8a04;
+    --fail: #dc2626;
+    --code-bg: #f1f5f9;
+    --max: 920px;
+    --radius: 8px;
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+    --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 1.5rem 4rem;
+  }
+  .skip {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--accent); color: white; padding: 0.5rem 1rem;
+    border-radius: 0 0 var(--radius) 0; z-index: 100;
+  }
+  .skip:focus { left: 0; }
+  main { max-width: var(--max); margin: 0 auto; padding-top: 2.5rem; }
+  header.site {
+    max-width: var(--max); margin: 0 auto; padding-top: 2rem;
+    border-bottom: 1px solid var(--line); padding-bottom: 1rem; margin-bottom: 1.5rem;
+  }
+  h1 {
+    font-size: 2.1rem; line-height: 1.15; margin: 0 0 0.4rem;
+    letter-spacing: -0.015em; font-weight: 700;
+  }
+  h2 {
+    font-size: 1.45rem; margin-top: 3.5rem; margin-bottom: 0.5rem;
+    padding-bottom: 0.35rem; letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 0.55rem;
+  }
+  h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.7rem; height: 1.7rem; border-radius: 50%;
+    background: var(--accent); color: white;
+    font-size: 0.85rem; font-weight: 700;
+    flex-shrink: 0;
+  }
+  h3 { font-size: 1.05rem; margin-top: 1.5rem; margin-bottom: 0.3rem; }
+  h4 { font-size: 0.85rem; margin-top: 1.5rem; margin-bottom: 0.4rem;
+       color: var(--muted); font-weight: 600;
+       text-transform: uppercase; letter-spacing: 0.06em; }
+  p { margin: 0.5rem 0 1rem; }
+  ul, ol { margin: 0.5rem 0 1rem; padding-left: 1.5rem; }
+  li { margin: 0.25rem 0; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.15s; }
+  a:hover, a:focus-visible { border-bottom-color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  .lede {
+    font-size: 1.1rem; line-height: 1.55; color: var(--muted);
+    margin: 0.25rem 0 1rem; max-width: 720px;
+  }
+  .meta {
+    font-size: 0.83rem; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: var(--accent-soft); color: var(--accent);
+    padding: 0.15rem 0.6rem; border-radius: 999px;
+    font-size: 0.78rem; font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .chip.muted { background: #f1f5f9; color: var(--muted); }
+  .chip.pass { background: #dcfce7; color: var(--pass); }
+  .chip.warn { background: #fef9c3; color: #854d0e; }
+  .chip.inferred { background: #fef3c7; color: #92400e; cursor: help; }
+  code {
+    background: var(--code-bg); padding: 0.05em 0.35em;
+    border-radius: 3px; font-size: 0.88em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--code-bg); padding: 0.85rem 1rem; border-radius: var(--radius);
+    overflow-x: auto; font-size: 0.82rem; line-height: 1.5;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    border: 1px solid var(--line); margin: 0.5rem 0 1rem;
+  }
+  pre code { background: none; padding: 0; font-size: 1em; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-bg);
+    margin: 1rem 0; padding: 0.75rem 1rem;
+    color: var(--ink); border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+  table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--line); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: #f4f4f4; font-weight: 600; }
+  .icon { width: 1em; height: 1em; vertical-align: -0.15em; flex-shrink: 0; }
+  .icon-lg { width: 1.4em; height: 1.4em; vertical-align: -0.3em; }
+
+  /* ───── TOC ───── */
+  nav.toc {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg); padding: 0.65rem 0;
+    border-bottom: 1px solid var(--line);
+    margin: 0 -1.5rem 1.5rem;
+    padding-left: 1.5rem; padding-right: 1.5rem;
+  }
+  nav.toc ol {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-wrap: wrap; gap: 0.35rem 0.75rem;
+    font-size: 0.83rem;
+  }
+  nav.toc li { margin: 0; }
+  nav.toc a {
+    color: var(--muted); border-bottom: 1px solid transparent;
+    padding: 0.15rem 0;
+  }
+  nav.toc a[aria-current="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  nav.toc a:hover { color: var(--accent); }
+
+  /* ───── Widget 1: Layered context window ───── */
+  .layered-widget {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; margin: 1.25rem 0 2rem; box-shadow: var(--shadow-sm);
+  }
+  .mode-bar {
+    display: flex; flex-wrap: wrap; gap: 0.35rem;
+    margin: 0 0 1rem; padding: 0 0 0.85rem; border: 0; border-bottom: 1px solid var(--line);
+  }
+  .mode-bar > legend {
+    font-size: 0.78rem; color: var(--muted); padding: 0;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+    width: 100%; margin-bottom: 0.5rem;
+  }
+  .mode-btn {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    padding: 0.3rem 0.7rem; border-radius: 999px; cursor: pointer;
+    font-size: 0.82rem; font-family: inherit;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+  }
+  .mode-btn:hover { color: var(--ink); border-color: var(--muted); }
+  .mode-btn[aria-pressed="true"] {
+    background: var(--accent); color: white; border-color: var(--accent);
+  }
+  .layer-stack { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+  .layer {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    background: #f8fafc; opacity: 0.35;
+    transition: opacity 0.3s, border-color 0.3s, background 0.3s;
+  }
+  .layer.active { opacity: 1; background: var(--panel); border-color: var(--accent); }
+  .layer.always { border-left: 3px solid var(--accent); }
+  .layer-head {
+    display: flex; align-items: center; gap: 0.6rem; width: 100%;
+    background: transparent; border: 0; padding: 0.65rem 0.85rem;
+    cursor: pointer; text-align: left; font-family: inherit; color: inherit;
+    font-size: 0.92rem;
+  }
+  .layer-head .num-dot {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.5rem; height: 1.5rem; border-radius: 50%;
+    background: var(--code-bg); color: var(--muted);
+    font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+  }
+  .layer.active .layer-head .num-dot { background: var(--accent); color: white; }
+  .layer-head .label { flex-grow: 1; font-weight: 600; }
+  .layer-head .meta-small { font-size: 0.78rem; color: var(--muted); font-weight: 400; }
+  .layer-head::after {
+    content: "▸"; color: var(--muted); transition: transform 0.2s;
+    font-size: 0.8rem; flex-shrink: 0;
+  }
+  .layer-head[aria-expanded="true"]::after { transform: rotate(90deg); }
+  .layer-body {
+    border-top: 1px solid var(--line); padding: 0.75rem 0.85rem;
+    background: #fdfdfb;
+  }
+  .layer-body[hidden] { display: none; }
+  .layer-body pre {
+    margin: 0.4rem 0 0.5rem; font-size: 0.78rem;
+    background: var(--code-bg); border: 0; padding: 0.75rem;
+    max-height: 240px;
+  }
+  .layer-body .src { font-size: 0.76rem; color: var(--muted); }
+  .badge-now {
+    display: inline-block; background: var(--pass); color: white;
+    padding: 0.05rem 0.45rem; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; margin-left: 0.35rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    animation: pulseGlow 1.4s ease-out;
+  }
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 0 0 0 rgba(22,163,74,0.6); }
+    70% { box-shadow: 0 0 0 8px rgba(22,163,74,0); }
+    100% { box-shadow: 0 0 0 0 rgba(22,163,74,0); }
+  }
+
+  /* ───── Widget 2: Skill simulator ───── */
+  .sim {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; margin: 1.25rem 0 2rem; box-shadow: var(--shadow-sm);
+  }
+  .sim-tabs {
+    display: flex; flex-wrap: wrap; gap: 0.35rem;
+    margin-bottom: 1rem;
+  }
+  .sim-tab {
+    background: transparent; border: 1px solid var(--line); color: var(--muted);
+    padding: 0.35rem 0.75rem; border-radius: 999px;
+    font-size: 0.85rem; font-family: ui-monospace, Menlo, monospace; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sim-tab:hover { color: var(--ink); border-color: var(--muted); }
+  .sim-tab[aria-selected="true"] {
+    background: var(--ink); color: white; border-color: var(--ink);
+  }
+  .sim-grid { display: grid; grid-template-columns: 1fr 220px; gap: 1rem; }
+  @media (max-width: 640px) { .sim-grid { grid-template-columns: 1fr; } }
+  .sim-pane {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.75rem; min-height: 240px;
+  }
+  .sim-pane h4 { margin-top: 0; }
+  .sim-pane pre {
+    background: var(--panel); border: 1px solid var(--line);
+    margin: 0; max-height: 280px; font-size: 0.78rem;
+  }
+  .corpus-rail { display: flex; flex-direction: column; gap: 0.4rem; }
+  .corpus-rail h4 { margin: 0 0 0.25rem; }
+  .corpus-pill {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: #f8fafc; border: 1px solid var(--line);
+    padding: 0.4rem 0.6rem; border-radius: var(--radius);
+    font-size: 0.82rem; color: var(--muted);
+    opacity: 0.45; transition: all 0.2s;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .corpus-pill.lit { opacity: 1; background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .corpus-pill svg { color: var(--muted); }
+  .corpus-pill.lit svg { color: var(--accent); }
+
+  /* ───── Widget 3: MCP tool tray ───── */
+  .tray {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; margin: 1.25rem 0 2rem; box-shadow: var(--shadow-sm);
+  }
+  .tray-pills {
+    display: flex; flex-wrap: wrap; gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .tool-btn {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 0.3rem 0.7rem; border-radius: 999px;
+    font-size: 0.8rem; cursor: pointer; font-family: ui-monospace, Menlo, monospace;
+    color: var(--accent); transition: all 0.15s;
+  }
+  .tool-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+  .tool-btn[aria-pressed="true"] {
+    background: var(--accent); color: white; border-color: var(--accent);
+  }
+  .tool-result {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.85rem 1rem; position: relative; min-height: 90px;
+    transition: border-color 0.3s;
+  }
+  .tool-result.fresh { border-color: var(--pass); }
+  .tool-result h4 { margin: 0 0 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
+  .tool-result pre { margin: 0.25rem 0 0; font-size: 0.78rem; background: var(--panel); }
+  .tool-result .placeholder { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+
+  /* ───── Widget 4: Fan-out ───── */
+  .fanout {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 1rem; margin: 1.25rem 0 2rem; box-shadow: var(--shadow-sm);
+  }
+  .fanout-controls {
+    display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap;
+  }
+  .play-btn {
+    background: var(--accent); color: white; border: 0;
+    padding: 0.4rem 0.9rem; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    transition: background 0.15s;
+  }
+  .play-btn:hover { background: #083b6f; }
+  .play-btn[aria-pressed="true"] { background: var(--ink); }
+  .fanout-svg {
+    width: 100%; height: 260px; background: #f8fafc;
+    border: 1px solid var(--line); border-radius: var(--radius);
+    display: block;
+  }
+  .fan-node { transition: opacity 0.5s; cursor: pointer; }
+  .fan-node:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .fan-node circle { transition: fill 0.2s, stroke 0.2s; }
+  .fan-node.selected circle { fill: var(--accent); stroke: var(--accent); }
+  .fan-node.selected text { fill: white; }
+  .fan-line { stroke-dasharray: 4; stroke: var(--muted); fill: none; opacity: 0; transition: opacity 0.4s; }
+  .fan-line.drawn { opacity: 1; }
+  .fan-pulse { animation: orchestratorPulse 2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+  @keyframes orchestratorPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  .fan-bubble { opacity: 0; animation: bubbleIn 0.4s forwards; }
+  .fan-bubble.r0 { animation-delay: 0.05s; } .fan-bubble.r1 { animation-delay: 0.13s; }
+  .fan-bubble.r2 { animation-delay: 0.21s; } .fan-bubble.r3 { animation-delay: 0.29s; }
+  .fan-bubble.r4 { animation-delay: 0.37s; } .fan-bubble.r5 { animation-delay: 0.45s; }
+  .fan-bubble.r6 { animation-delay: 0.53s; } .fan-bubble.r7 { animation-delay: 0.61s; }
+  .fan-bubble.r8 { animation-delay: 0.69s; } .fan-bubble.r9 { animation-delay: 0.77s; }
+  .fan-bubble.cons { animation-delay: 0.9s; }
+  @keyframes bubbleIn { from { opacity: 0; transform: scale(0.5); transform-origin: center; transform-box: fill-box; } to { opacity: 1; transform: scale(1); } }
+  .fan-info {
+    margin-top: 0.75rem; background: var(--code-bg); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 0.75rem 1rem; min-height: 70px;
+  }
+  .fan-info h4 { margin: 0 0 0.3rem; }
+  .fan-info ul { margin: 0; padding-left: 1.1rem; font-size: 0.88rem; }
+
+  /* ───── Section helpers ───── */
+  .with-without {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    margin: 1rem 0 1.5rem;
+  }
+  @media (max-width: 640px) { .with-without { grid-template-columns: 1fr; } }
+  .ww-card {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.75rem 0.9rem; background: var(--panel);
+  }
+  .ww-card.bad { border-top: 3px solid var(--fail); }
+  .ww-card.good { border-top: 3px solid var(--pass); }
+  .ww-card h4 { margin-top: 0; color: var(--ink); }
+  .ww-card pre { font-size: 0.78rem; padding: 0.5rem; }
+  .verify-table th:first-child, .verify-table td:first-child { white-space: nowrap; }
+  .verify-table code { font-size: 0.82em; }
+
+  footer.site {
+    max-width: var(--max); margin: 3.5rem auto 0;
+    padding-top: 1.25rem; border-top: 1px solid var(--line);
+    color: var(--muted); font-size: 0.82rem;
+    display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; align-items: center;
+  }
+
+  /* ───── Reduced motion ───── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001s !important; animation-delay: 0s !important; transition-duration: 0.001s !important; }
+    html { scroll-behavior: auto; }
+    .fan-bubble { opacity: 1; animation: none; }
+    .fan-pulse { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- Inline icon symbol library -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+      <path d="M12 2.5c-3 4-7 8-7 12a7 7 0 0 0 14 0c0-4-4-8-7-12z"/>
+    </symbol>
+    <symbol id="i-at" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="4"/>
+      <path d="M16 8v5a2 2 0 0 0 4 0v-1A8 8 0 1 0 16.5 19"/>
+    </symbol>
+    <symbol id="i-slash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+      <path d="M16 4 8 20"/>
+    </symbol>
+    <symbol id="i-fork" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="12" cy="19" r="2"/>
+      <path d="M6 7v3a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7M12 13v4"/>
+    </symbol>
+    <symbol id="i-brain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 3a3 3 0 0 0-3 3v1a3 3 0 0 0-3 3 3 3 0 0 0 1.5 2.6A3 3 0 0 0 3 15a3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3z"/>
+      <path d="M15 3a3 3 0 0 1 3 3v1a3 3 0 0 1 3 3 3 3 0 0 1-1.5 2.6A3 3 0 0 1 21 15a3 3 0 0 1-3 3 3 3 0 0 1-3 3 3 3 0 0 1-3-3"/>
+    </symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1.1z"/>
+    </symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+      <path d="M19 18a3 3 0 0 1-3 3H6a3 3 0 0 0 3-3V4h7a3 3 0 0 1 3 3z"/>
+      <path d="M9 7h6M9 11h6M9 15h3"/>
+      <path d="M5 21a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3h2"/>
+    </symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  </defs>
+</svg>
+
+<header class="site">
+  <h1>How context reaches Claude in <code>sui-pilot</code></h1>
+  <p class="lede">An interactive tour of the six mechanisms the plugin uses to inject Sui, Move, Walrus, Seal, and TypeScript&nbsp;SDK knowledge into a Claude Code session — from the always-on doc-first preamble to the multi-agent PR&#8209;review fan&#8209;out.</p>
+  <div class="meta">
+    <span class="chip"><svg class="icon" aria-hidden="true"><use href="#i-droplet"/></svg>&nbsp;sui-pilot</span>
+    <span class="chip muted">Verified 2026-05-12</span>
+    <span class="chip muted">commit&nbsp;<code>2d09bf1</code></span>
+    <span class="chip muted">~5&nbsp;min read</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <ol>
+    <li><a href="#hero" data-toc="hero" aria-current="true">TL;DR</a></li>
+    <li><a href="#m1" data-toc="m1">1 · @-import</a></li>
+    <li><a href="#m2" data-toc="m2">2 · /sui-pilot</a></li>
+    <li><a href="#m3" data-toc="m3">3 · Subagent</a></li>
+    <li><a href="#m4" data-toc="m4">4 · Skills</a></li>
+    <li><a href="#m5" data-toc="m5">5 · MCP</a></li>
+    <li><a href="#m6" data-toc="m6">6 · Doc corpora</a></li>
+    <li><a href="#m7" data-toc="m7">7 · Fan-out</a></li>
+    <li><a href="#verify" data-toc="verify">Verify</a></li>
+  </ol>
+</nav>
+
+<main id="main">
+
+<section id="hero" aria-labelledby="hero-h">
+  <h2 id="hero-h"><span class="num" aria-hidden="true">0</span>TL;DR — context arrives in layers</h2>
+  <p>Claude's "knowledge" inside a sui-pilot session isn't a single payload — it's a <strong>stack of conditional layers</strong>, each loaded at a different moment and from a different source. Some are always present from the first keystroke; others only appear when you type a slash command, dispatch a subagent, or call an LSP tool. Use the toggles below to see which layers are active in different scenarios.</p>
+
+  <p><strong>What it shows.</strong> Six injection mechanisms, ordered top&#8209;to&#8209;bottom by how "eagerly" they load. Click any card to see the actual text pulled from this repo. <span class="chip inferred" title="Plugin docs confirm @-imports go to the system prompt and slash commands go to the conversation; the precise top-to-bottom ordering shown here is a useful mental model, not a literal claim about Claude Code internals.">inferred ordering</span></p>
+
+  <div class="layered-widget" id="ctx-widget" role="region" aria-label="Layered context window">
+    <fieldset class="mode-bar">
+      <legend>Scenario</legend>
+      <button class="mode-btn" type="button" aria-pressed="true" data-mode="idle">Idle session</button>
+      <button class="mode-btn" type="button" aria-pressed="false" data-mode="slash">After <code>/sui-pilot</code></button>
+      <button class="mode-btn" type="button" aria-pressed="false" data-mode="skill">After <code>/move-code-review</code></button>
+      <button class="mode-btn" type="button" aria-pressed="false" data-mode="prreview">Mid <code>/move-pr-review</code></button>
+    </fieldset>
+
+    <ol class="layer-stack" data-mode="idle">
+      <li class="layer always" data-layers="idle slash skill prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-1">
+          <span class="num-dot">1</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-at"/></svg>&nbsp;Always-on <code>@</code>-import</span>
+          <span class="meta-small">every session</span>
+        </button>
+        <div class="layer-body" id="lay-1" hidden>
+          <p>User's global <code>~/.claude/CLAUDE.md</code> contains <code>@~/.claude/sui-pilot/agents/sui-pilot-agent.md</code> — Claude Code resolves and inlines that file into the system prompt at session start, whether or not the user ever interacts with the plugin.</p>
+<pre><code>STOP. What you remember about Sui, Move, Walrus, Seal,
+and the `@mysten/*` TypeScript SDK is likely stale or
+wrong. Read the bundled docs before writing or reviewing
+code.
+
+Route by topic — the search root is
+`${CLAUDE_PLUGIN_ROOT}/.&lt;source&gt;-docs/`:
+
+| Move language        | `.move-book-docs/` |
+| Sui runtime          | `.sui-docs/`       |
+| Walrus storage       | `.walrus-docs/`    |
+| Seal secrets         | `.seal-docs/`      |
+| TypeScript SDK       | `.ts-sdk-docs/`    |</code></pre>
+          <p class="src">Source: <code>agents/sui-pilot-agent.md:27&#8209;46</code></p>
+        </div>
+      </li>
+
+      <li class="layer" data-layers="slash skill prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-2">
+          <span class="num-dot">2</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-slash"/></svg>&nbsp;Slash-command body (<code>/sui-pilot</code>)</span>
+          <span class="meta-small">on invocation</span>
+        </button>
+        <div class="layer-body" id="lay-2" hidden>
+          <p>When the user types <code>/sui-pilot</code>, the markdown body of <code>commands/sui-pilot.md</code> is appended to the conversation — a routing prologue that hands the work to the specialized subagent.</p>
+<pre><code>You are being routed to the specialized sui-pilot-agent
+for comprehensive Sui Move development support.
+
+The sui-pilot-agent provides:
+- Doc-grounded guidance using bundled Sui, Walrus, Seal,
+  and TypeScript SDK documentation
+- Move diagnostics via move-analyzer LSP integration
+- Best practices enforcement following Move 2024 edition</code></pre>
+          <p class="src">Source: <code>commands/sui-pilot.md:9&#8209;15</code></p>
+        </div>
+      </li>
+
+      <li class="layer" data-layers="prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-3">
+          <span class="num-dot">3</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-fork"/></svg>&nbsp;Subagent system prompt</span>
+          <span class="meta-small">on dispatch</span>
+        </button>
+        <div class="layer-body" id="lay-3" hidden>
+          <p>The Agent tool can dispatch the <code>sui-pilot-agent</code> with <code>subagent_type: "sui-pilot:sui-pilot-agent"</code>. The subagent runs in a <strong>fresh context</strong>: it does not inherit the main session's conversation. Its system prompt is the same file body imported in (1), so the doc-first rule applies there too — but the subagent starts blank otherwise. Used heavily by <code>/move-pr-review</code> for 10 parallel reviewers + 1 consolidator.</p>
+          <p class="src">Source: <code>agents/sui-pilot-agent.md:1&#8209;72</code> · used at <code>skills/move-pr-review/SKILL.md:42&#8209;50</code></p>
+        </div>
+      </li>
+
+      <li class="layer" data-layers="skill prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-4">
+          <span class="num-dot">4</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-brain"/></svg>&nbsp;Skill body (<code>SKILL.md</code>)</span>
+          <span class="meta-small">on slash command</span>
+        </button>
+        <div class="layer-body" id="lay-4" hidden>
+          <p>Each of the five skills — <code>/move-code-review</code>, <code>/move-code-quality</code>, <code>/move-tests</code>, <code>/oz-math</code>, <code>/move-pr-review</code> — ships a <code>SKILL.md</code> whose body is loaded on invocation. Bodies include a Doc&#8209;First Requirement, finding registries with pre&#8209;assigned severities, and explicit workflows.</p>
+<pre><code>&gt; Doc-First Requirement: Before flagging security issues
+&gt; or recommending patterns, verify current best practices
+&gt; against the sui-pilot documentation (`.move-book-docs/`,
+&gt; `.sui-docs/`, `.walrus-docs/`, `.seal-docs/`,
+&gt; `.ts-sdk-docs/`). Use `Glob`/`Grep` against
+&gt; `${CLAUDE_PLUGIN_ROOT}/.&lt;source&gt;-docs/`. Sui Move
+&gt; security patterns evolve—what was vulnerable may now
+&gt; be safe (or vice versa).</code></pre>
+          <p class="src">Source: <code>skills/move-code-review/SKILL.md:8</code> (each skill has a similar doc-first block)</p>
+        </div>
+      </li>
+
+      <li class="layer" data-layers="prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-5">
+          <span class="num-dot">5</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-gear"/></svg>&nbsp;MCP tool result (<code>move-lsp</code>)</span>
+          <span class="meta-small">per tool call</span>
+        </button>
+        <div class="layer-body" id="lay-5" hidden>
+          <p>The plugin's <code>move-lsp</code> MCP server exposes 10 tools backed by <code>move-analyzer</code>. Each call injects a fresh slice of runtime context — compiler diagnostics, hover types, references, code actions — that the doc corpora cannot provide.</p>
+<pre><code>"mcpServers": {
+  "move-lsp": {
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp/dist/index.js"],
+    "env": {}
+  }
+}</code></pre>
+          <p class="src">Source: <code>.claude-plugin/plugin.json:15&#8209;21</code> · tool list at <code>agents/sui-pilot-agent.md:13&#8209;22</code></p>
+        </div>
+      </li>
+
+      <li class="layer" data-layers="skill prreview">
+        <button class="layer-head" type="button" aria-expanded="false" aria-controls="lay-6">
+          <span class="num-dot">6</span>
+          <span class="label"><svg class="icon" aria-hidden="true"><use href="#i-scroll"/></svg>&nbsp;Doc-corpus snippet (Glob/Grep)</span>
+          <span class="meta-small">on demand</span>
+        </button>
+        <div class="layer-body" id="lay-6" hidden>
+          <p>Five bundled corpora — <code>.sui-docs/</code>, <code>.move-book-docs/</code>, <code>.walrus-docs/</code>, <code>.seal-docs/</code>, <code>.ts-sdk-docs/</code> — totaling 695 docs. None are auto-loaded; the agent uses <code>Glob</code>/<code>Grep</code>/<code>Read</code> to pull in only the snippets it needs, routed by the topic table from layer 1.</p>
+          <p class="src">Source: <code>agents/sui-pilot-agent.md:33&#8209;41</code> (routing table) · <code>README.md:17&#8209;25</code> (file counts)</p>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section id="m1" aria-labelledby="m1-h">
+  <h2 id="m1-h"><span class="num">1</span>Always-on <code>@</code>-import</h2>
+  <p>This is the <em>only</em> sui-pilot mechanism that runs without your asking. The user's global <code>~/.claude/CLAUDE.md</code> contains a single line:</p>
+<pre><code>@~/.claude/sui-pilot/agents/sui-pilot-agent.md</code></pre>
+  <p>When Claude Code starts a session — <strong>any</strong> session, in <strong>any</strong> directory — it resolves that <code>@</code>-import and pastes the 71-line agent file into the system prompt. The doc-first rule, the topic→corpus routing table, the Move 2024 upgrade checklist, the SDK 2.0 migration watch, the post-implementation quality flow: all of it is already in context before you type your first character.</p>
+
+  <h3>Why this matters</h3>
+  <p>Most context-injection mechanisms are <em>opt-in</em> — you trigger them by typing a slash command or by Claude dispatching a subagent. The <code>@</code>-import is <em>opt-out</em>: it bends every interaction toward the bundled docs, even one-off questions like "how do I push into a vector in Move?"</p>
+
+  <div class="with-without">
+    <div class="ww-card bad">
+      <h4>Without the <code>@</code>-import</h4>
+<pre><code>module x::y {
+  public fun push(v: &mut vector&lt;u64&gt;, n: u64) {
+    vector::push_back(v, n);
+  }
+}</code></pre>
+      <p style="font-size:0.85rem;margin:0;color:var(--muted);">Module-block syntax + free function call style. Pre-Move 2024 idiom.</p>
+    </div>
+    <div class="ww-card good">
+      <h4>With the <code>@</code>-import</h4>
+<pre><code>module x::y;
+
+public fun push(v: &mut vector&lt;u64&gt;, n: u64) {
+    v.push_back(n);
+}</code></pre>
+      <p style="font-size:0.85rem;margin:0;color:var(--muted);">Module-label syntax + method style. Move 2024. The agent file explicitly flags the rewrite at lines 50&#8209;54.</p>
+    </div>
+  </div>
+</section>
+
+<section id="m2" aria-labelledby="m2-h">
+  <h2 id="m2-h"><span class="num">2</span>Slash command <code>/sui-pilot</code></h2>
+  <p>The plugin registers six slash commands under <code>commands/</code>. Five of them are skills (covered in §4); the sixth, <code>/sui-pilot</code>, is a <strong>routing command</strong>. Typing it adds the body of <code>commands/sui-pilot.md</code> to the conversation — a short prologue that tells Claude to hand off to the specialized agent and lists the LSP tools available.</p>
+
+  <h3>The injected body</h3>
+<pre><code># Sui Pilot - Development Assistant
+
+You are being routed to the specialized sui-pilot-agent
+for comprehensive Sui Move development support.
+
+The sui-pilot-agent provides:
+- Doc-grounded guidance using bundled Sui, Walrus, Seal,
+  and TypeScript SDK documentation
+- Move diagnostics via move-analyzer LSP integration
+- Best practices enforcement following Move 2024
+  edition conventions
+
+## Available Tools
+- Real-time Move diagnostics (move_diagnostics)
+- Hover information for types and functions (move_hover)
+- Code completions (move_completions)
+- Go to definition navigation (move_goto_definition)
+- Find every call site / usage (move_find_references)
+- Document outline (move_document_symbols)
+- Jump to a value's type declaration (move_type_definition)
+- Compiler-offered quick fixes (move_code_actions)
+- Inlay hints (move_inlay_hints)
+- Refactor-safe rename (move_rename)</code></pre>
+  <p style="font-size:0.85rem;color:var(--muted);">Source: <code>commands/sui-pilot.md:7&#8209;26</code> (lightly condensed for display).</p>
+
+  <p><strong>What's distinctive.</strong> Unlike the always-on <code>@</code>-import, the command body is conversation context, not system prompt. It enters the visible transcript and is subject to context-window pressure as the chat grows. This is the lightest, most ephemeral injection mechanism the plugin uses.</p>
+</section>
+
+<section id="m3" aria-labelledby="m3-h">
+  <h2 id="m3-h"><span class="num">3</span>The <code>sui-pilot-agent</code> subagent</h2>
+  <p>The most surprising part of the architecture: <strong>the same file</strong> that gets <code>@</code>-imported into the global system prompt (layer 1) also doubles as a dispatchable subagent system prompt. Its frontmatter declares 10 MCP tools, model <code>opus</code>, and the standard editor/shell toolset:</p>
+
+<pre><code>---
+name: sui-pilot-agent
+description: Sui Move specialist with doc-grounded guidance
+             and LSP integration
+tools:
+  - Glob
+  - Grep
+  - LS
+  - Read
+  - Edit
+  - MultiEdit
+  - Write
+  - Bash
+  - mcp__move-lsp__move_diagnostics
+  - mcp__move-lsp__move_hover
+  - mcp__move-lsp__move_completions
+  - mcp__move-lsp__move_goto_definition
+  - mcp__move-lsp__move_find_references
+  - mcp__move-lsp__move_document_symbols
+  - mcp__move-lsp__move_type_definition
+  - mcp__move-lsp__move_code_actions
+  - mcp__move-lsp__move_inlay_hints
+  - mcp__move-lsp__move_rename
+model: opus
+color: blue
+---</code></pre>
+  <p style="font-size:0.85rem;color:var(--muted);">Source: <code>agents/sui-pilot-agent.md:1&#8209;25</code>.</p>
+
+  <h3>Two roles, one file</h3>
+  <ul>
+    <li><strong>As an <code>@</code>-import</strong> (§1): the file body is loaded into the <em>main</em> session's system prompt. The frontmatter (tool list, model) is ignored — that's metadata for subagent dispatch only.</li>
+    <li><strong>As a subagent</strong>: the file is the system prompt of a <em>fresh</em> subagent context with no memory of the main conversation. The frontmatter selects which tools and model that subagent is given. This is how <code>/move-pr-review</code> spawns 10 independent reviewers and 1 consolidator (see §7).</li>
+  </ul>
+  <p>Sharing the file means the doc-first rule is enforced identically in both worlds — but the <em>state</em> differs sharply: the main session accumulates conversation; each subagent starts blank.</p>
+</section>
+
+<section id="m4" aria-labelledby="m4-h">
+  <h2 id="m4-h"><span class="num">4</span>Five skills · skill simulator</h2>
+  <p>Five skills live under <code>skills/</code>. Each ships a <code>SKILL.md</code> whose body becomes context when you invoke the matching slash command. Click a chip below to load that skill's opening preamble into the simulated context window on the right; the side rail lights up the doc corpora that skill's Doc&#8209;First Requirement points to.</p>
+
+  <div class="sim" id="sim-widget" role="region" aria-label="Skill simulator">
+    <div class="sim-tabs" role="tablist" aria-label="Skills">
+      <button class="sim-tab" role="tab" aria-selected="true" aria-controls="sim-pane-content" data-skill="move-code-review">/move-code-review</button>
+      <button class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-pane-content" data-skill="move-code-quality">/move-code-quality</button>
+      <button class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-pane-content" data-skill="move-tests">/move-tests</button>
+      <button class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-pane-content" data-skill="oz-math">/oz-math</button>
+      <button class="sim-tab" role="tab" aria-selected="false" aria-controls="sim-pane-content" data-skill="move-pr-review">/move-pr-review</button>
+    </div>
+    <div class="sim-grid">
+      <div class="sim-pane" id="sim-pane-content" role="tabpanel">
+        <h4>Loaded into context</h4>
+        <pre id="sim-content"><code></code></pre>
+        <p style="font-size:0.78rem;color:var(--muted);margin:0.5rem 0 0;" id="sim-src"></p>
+      </div>
+      <div class="corpus-rail" aria-label="Doc corpora this skill consults">
+        <h4>Doc corpora consulted</h4>
+        <div class="corpus-pill" data-corpus="move-book"><svg class="icon" aria-hidden="true"><use href="#i-scroll"/></svg><span>.move-book-docs</span></div>
+        <div class="corpus-pill" data-corpus="sui"><svg class="icon" aria-hidden="true"><use href="#i-droplet"/></svg><span>.sui-docs</span></div>
+        <div class="corpus-pill" data-corpus="walrus"><svg class="icon" aria-hidden="true"><use href="#i-scroll"/></svg><span>.walrus-docs</span></div>
+        <div class="corpus-pill" data-corpus="seal"><svg class="icon" aria-hidden="true"><use href="#i-scroll"/></svg><span>.seal-docs</span></div>
+        <div class="corpus-pill" data-corpus="ts-sdk"><svg class="icon" aria-hidden="true"><use href="#i-scroll"/></svg><span>.ts-sdk-docs</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p><strong>What's distinctive.</strong> Skills are inert until you invoke them. The plugin doesn't auto-load 5×30 KB of finding registries into every conversation — you only pay the context cost of the one you call. The corpora work the same way: declared in layer 1's routing table, pulled in only when needed.</p>
+</section>
+
+<section id="m5" aria-labelledby="m5-h">
+  <h2 id="m5-h"><span class="num">5</span><code>move-lsp</code> MCP — runtime ground truth</h2>
+  <p>Mechanisms 1&#8211;4 inject <em>static</em> content from files. The fifth mechanism is different: a Model Context Protocol server that wraps <code>move-analyzer</code> and exposes 10 tools whose output is <strong>computed at call time</strong> from the user's current code. The server is declared in <code>.claude-plugin/plugin.json</code> and launches automatically when the plugin loads:</p>
+
+<pre><code>"mcpServers": {
+  "move-lsp": {
+    "command": "node",
+    "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp/dist/index.js"],
+    "env": {}
+  }
+}</code></pre>
+  <p style="font-size:0.85rem;color:var(--muted);">Source: <code>.claude-plugin/plugin.json:15&#8209;21</code>.</p>
+
+  <h3>The tool tray</h3>
+  <p>Click a tool to see a representative response. The green "just injected" badge marks the moment that response would enter Claude's context window in a real session.</p>
+
+  <div class="tray" id="tray-widget" role="region" aria-label="MCP tool tray">
+    <div class="tray-pills" role="toolbar" aria-label="Move-LSP tools">
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_diagnostics">move_diagnostics</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_hover">move_hover</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_completions">move_completions</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_goto_definition">move_goto_definition</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_find_references">move_find_references</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_document_symbols">move_document_symbols</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_type_definition">move_type_definition</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_code_actions">move_code_actions</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_inlay_hints">move_inlay_hints</button>
+      <button class="tool-btn" type="button" aria-pressed="false" data-tool="move_rename">move_rename</button>
+    </div>
+    <div class="tool-result" id="tool-result" aria-live="polite">
+      <h4 id="tool-result-title"><svg class="icon" aria-hidden="true"><use href="#i-zap"/></svg>&nbsp;Click a tool</h4>
+      <p class="placeholder">Each tool runs against a real Move file under the cursor. The response is JSON, structured by tool: diagnostics return spans + messages, hover returns markdown, completions return labels + edits, and so on.</p>
+    </div>
+  </div>
+
+  <p><strong>Static vs runtime.</strong> Without the LSP tools, Claude reasons from docs. With them, Claude reasons from <em>your compiler's actual output</em> on <em>your file</em>. This is the only injection mechanism whose payload is impossible to predict at design time.</p>
+</section>
+
+<section id="m6" aria-labelledby="m6-h">
+  <h2 id="m6-h"><span class="num">6</span>Doc corpora — on-demand depth</h2>
+  <p>695 documentation files ship with the plugin, split across five Mysten Labs sources. None are auto-loaded; the agent reaches for <code>Glob</code> or <code>Grep</code> over the right corpus when it needs primary-source confirmation. The routing table is the lookup key:</p>
+
+  <table>
+    <thead>
+      <tr><th>Topic</th><th>Corpus</th><th>Files</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Move language: syntax, types, abilities, generics, modules, idioms</td><td><code>.move-book-docs/</code></td><td>143</td></tr>
+      <tr><td>Sui runtime: objects, transactions, framework, on-chain finance</td><td><code>.sui-docs/</code></td><td>339</td></tr>
+      <tr><td>Walrus storage: blobs, Sites, operators, HTTP API</td><td><code>.walrus-docs/</code></td><td>84</td></tr>
+      <tr><td>Seal secrets: encryption, key servers, access policies</td><td><code>.seal-docs/</code></td><td>14</td></tr>
+      <tr><td>TypeScript SDK: clients, dapp-kit, kiosk, payment-kit, SDK 2.0</td><td><code>.ts-sdk-docs/</code></td><td>115</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:0.85rem;color:var(--muted);">Source: <code>agents/sui-pilot-agent.md:33&#8209;41</code> (routing table); <code>README.md:17&#8209;25</code> (file counts).</p>
+
+  <blockquote>
+    <p><strong>Why no index?</strong> The plugin deliberately ships <em>no precomputed index</em>. Earlier iterations tried it; the eval suite found a hook-based matcher pipeline didn't help for a plugin with only five explicitly-named skills. The agent uses Claude's existing search tools (<code>Glob</code>/<code>Grep</code>) over a flat directory of markdown.</p>
+  </blockquote>
+
+  <h3>Cross-corpus answers</h3>
+  <p>Some questions span layers. Walrus stores blobs on Sui, so a Walrus question may need <code>.sui-docs/</code> for object semantics. Seal stores secrets governed by Move access policies, so a Seal question may need <code>.move-book-docs/</code>. The agent file explicitly tells the model to cross-reference: <em>"Walrus and Seal build on Sui, so cross-reference <code>.sui-docs/</code> when an answer spans layers."</em></p>
+</section>
+
+<section id="m7" aria-labelledby="m7-h">
+  <h2 id="m7-h"><span class="num">7</span>Putting it together — <code>/move-pr-review</code> fan-out</h2>
+  <p>The most complex flow combines all six mechanisms. <code>/move-pr-review</code> dispatches <strong>11 fresh subagents</strong> — 10 parallel reviewers + 1 consolidator — each typed as <code>sui-pilot:sui-pilot-agent</code>. Every one of them starts with an empty context, immediately loaded with the agent-file body (mechanisms 1+3), each reviewer's own task prompt (a variant of mechanism 4), the 10 MCP tools (mechanism 5), and access to the five corpora (mechanism 6).</p>
+
+  <div class="fanout" id="fanout-widget" role="region" aria-label="Subagent fan-out animation">
+    <div class="fanout-controls">
+      <button class="play-btn" type="button" aria-pressed="false" id="fan-play">
+        <svg class="icon" aria-hidden="true"><use href="#i-play"/></svg>
+        <span id="fan-play-label">Play</span>
+      </button>
+      <span style="color:var(--muted);font-size:0.85rem;">Click any reviewer or consolidator bubble to inspect its initial context.</span>
+    </div>
+
+    <svg class="fanout-svg" viewBox="0 0 800 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Orchestrator at left, 10 reviewer bubbles in two columns, consolidator at right">
+      <g id="fan-lines"></g>
+
+      <g class="fan-node fan-pulse" data-role="orchestrator" tabindex="0" role="button" aria-label="Orchestrator">
+        <circle cx="60" cy="130" r="34" fill="#fff" stroke="var(--accent)" stroke-width="2.5"/>
+        <text x="60" y="128" text-anchor="middle" font-size="10" font-weight="600" fill="var(--accent)">orchestrator</text>
+        <text x="60" y="142" text-anchor="middle" font-size="9" fill="var(--muted)">/move-pr-review</text>
+      </g>
+
+      <g id="fan-reviewers"></g>
+
+      <g class="fan-node fan-bubble cons" data-role="consolidator" tabindex="0" role="button" aria-label="Consolidator subagent">
+        <circle cx="740" cy="130" r="30" fill="#fff" stroke="var(--accent)" stroke-width="2"/>
+        <text x="740" y="128" text-anchor="middle" font-size="10" font-weight="600" fill="var(--accent)">consolidator</text>
+        <text x="740" y="141" text-anchor="middle" font-size="9" fill="var(--muted)">verifies + writes HTML</text>
+      </g>
+    </svg>
+
+    <div class="fan-info" id="fan-info" aria-live="polite">
+      <h4>What's in each subagent's context?</h4>
+      <ul>
+        <li>System prompt seeded with <code>agents/sui-pilot-agent.md</code> body (doc-first rule, 10 MCP tools)</li>
+        <li>Task-specific reviewer prompt from <code>skills/move-pr-review/references/reviewer_prompt.md</code></li>
+        <li>The PR scope bundle (changed files, dependency graph)</li>
+        <li>Empty conversation history — no awareness of other reviewers or the main session</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Why independent contexts</h3>
+  <p>If all 10 reviewers shared one window, they'd see each other's reasoning and converge — a single reasoner's blind spots would replicate across all "lenses." The skill enforces fresh contexts so that singleton findings (caught by only one reviewer) survive into the consolidator. The consolidator then re-derives every critical/high claim against the source code, downgrading or rejecting unverified ones. The final output is a single self-contained HTML report.</p>
+  <p style="font-size:0.85rem;color:var(--muted);">Source for orchestration spec: <code>skills/move-pr-review/SKILL.md:28&#8209;60</code>.</p>
+</section>
+
+<section id="verify" aria-labelledby="verify-h">
+  <h2 id="verify-h"><span class="num">8</span>Verify each claim</h2>
+  <p>Every mechanism described above is grounded in a file in this repository. The table below maps each claim to the source so you can confirm — or contradict — what the artifact shows. <span class="chip inferred" title="An 'inferred' row means the mechanism exists but its exact runtime ordering or scope is not literally specified in the source files; treat it as a useful mental model rather than a contract.">inferred</span> rows are marked.</p>
+
+  <table class="verify-table">
+    <thead>
+      <tr><th>#</th><th>Mechanism</th><th>Backing file</th><th>Evidence</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>Always-on <code>@</code>-import</td>
+        <td><code>agents/sui-pilot-agent.md</code><br><code>~/.claude/CLAUDE.md</code> (user-side)</td>
+        <td>code</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>Slash command <code>/sui-pilot</code></td>
+        <td><code>commands/sui-pilot.md</code></td>
+        <td>code</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><code>sui-pilot-agent</code> subagent</td>
+        <td><code>agents/sui-pilot-agent.md:1&#8209;25</code> (frontmatter)<br><code>skills/move-pr-review/SKILL.md:42&#8209;50</code> (dispatch)</td>
+        <td>code</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>Five skills</td>
+        <td><code>skills/{move-code-review,move-code-quality,move-tests,move-pr-review,oz-math}/SKILL.md</code></td>
+        <td>code</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><code>move-lsp</code> MCP server</td>
+        <td><code>.claude-plugin/plugin.json:15&#8209;21</code><br>tool list at <code>agents/sui-pilot-agent.md:13&#8209;22</code></td>
+        <td>code</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>Five doc corpora</td>
+        <td>routing table at <code>agents/sui-pilot-agent.md:33&#8209;41</code></td>
+        <td>code <span class="chip inferred" title="Corpora are not present in this worktree (.gitignored); verified via the agent file's routing table and README.md file counts, not the filesystem.">corpora not in worktree</span></td>
+      </tr>
+      <tr>
+        <td>0</td>
+        <td>Stacking <em>order</em> of layers</td>
+        <td>—</td>
+        <td><span class="chip inferred" title="Plugin docs confirm @-imports go to the system prompt and slash commands go to the conversation, but the exact end-to-end stacking is a useful model, not a literal specification.">inferred</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Maintenance</h3>
+  <p>This artifact is a <strong>snapshot</strong>. When any of these files change, the snippets shown above can drift. The header comment at the top of this HTML records the commit SHA at generation time. To refresh:</p>
+  <ol>
+    <li>Re-read each source file listed above.</li>
+    <li>Replace the verbatim snippets in §0 and §§1&#8211;7.</li>
+    <li>Update the <code>commit</code> and <code>Verified</code> chips in the header and footer.</li>
+  </ol>
+</section>
+
+</main>
+
+<footer class="site">
+  <span>Generated from <code>sui-pilot</code> @ commit <code>2d09bf1</code> · 2026-05-12</span>
+  <span><a href="README.md">README</a> · <a href="EVAL_FRAMEWORK.html">Eval framework</a></span>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (children) for (var i = 0; i < children.length; i++) {
+      var c = children[i];
+      if (c == null) continue;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return e;
+  }
+  function svg(tag, attrs, children) {
+    var e = document.createElementNS(NS, tag);
+    if (attrs) for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (children) for (var i = 0; i < children.length; i++) {
+      var c = children[i];
+      if (c == null) continue;
+      e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return e;
+  }
+  function icon(symbolId) {
+    return svg('svg', { class: 'icon', 'aria-hidden': 'true' }, [
+      svg('use', { href: symbolId })
+    ]);
+  }
+  function clear(node) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+  }
+  // Render an inline mini-format: array of strings and {code:'x'} or {strong:'x'} markers
+  function renderInline(parent, parts) {
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (typeof p === 'string') parent.appendChild(document.createTextNode(p));
+      else if (p && p.code != null) parent.appendChild(el('code', null, [p.code]));
+      else if (p && p.strong != null) parent.appendChild(el('strong', null, [p.strong]));
+    }
+  }
+
+  // ───── Widget 1: layered context window ─────
+  (function layeredWidget(){
+    var root = document.getElementById('ctx-widget');
+    if (!root) return;
+    var stack = root.querySelector('.layer-stack');
+    var layers = root.querySelectorAll('.layer');
+    var buttons = root.querySelectorAll('.mode-btn');
+
+    function applyMode(mode){
+      stack.setAttribute('data-mode', mode);
+      for (var i = 0; i < layers.length; i++) {
+        var list = (layers[i].getAttribute('data-layers') || '').split(/\s+/);
+        if (list.indexOf(mode) !== -1) layers[i].classList.add('active');
+        else layers[i].classList.remove('active');
+      }
+      for (var j = 0; j < buttons.length; j++) {
+        buttons[j].setAttribute('aria-pressed', String(buttons[j].getAttribute('data-mode') === mode));
+      }
+    }
+    for (var i = 0; i < buttons.length; i++) {
+      (function(b){
+        b.addEventListener('click', function(){ applyMode(b.getAttribute('data-mode')); });
+      })(buttons[i]);
+    }
+    applyMode('idle');
+
+    var heads = root.querySelectorAll('.layer-head');
+    for (var k = 0; k < heads.length; k++) {
+      (function(h){
+        h.addEventListener('click', function(){
+          var body = document.getElementById(h.getAttribute('aria-controls'));
+          var open = h.getAttribute('aria-expanded') === 'true';
+          h.setAttribute('aria-expanded', String(!open));
+          if (open) body.setAttribute('hidden', '');
+          else body.removeAttribute('hidden');
+        });
+      })(heads[k]);
+    }
+  })();
+
+  // ───── Widget 2: skill simulator ─────
+  (function skillSim(){
+    var root = document.getElementById('sim-widget');
+    if (!root) return;
+    var tabs = root.querySelectorAll('.sim-tab');
+    var content = document.getElementById('sim-content');
+    var src = document.getElementById('sim-src');
+    var pills = root.querySelectorAll('.corpus-pill');
+
+    var data = {
+      'move-code-review': {
+        text: '# Move Code Review\n\n> Doc-First Requirement: Before flagging security\n> issues or recommending patterns, verify current best\n> practices against the sui-pilot documentation\n> (.move-book-docs/, .sui-docs/, .walrus-docs/,\n> .seal-docs/, .ts-sdk-docs/). Use Glob/Grep against\n> ${CLAUDE_PLUGIN_ROOT}/.<source>-docs/. Sui Move\n> security patterns evolve — what was vulnerable may\n> now be safe (or vice versa).\n\nYou are an expert Sui Move security and architecture\nreviewer. Your job is to find security vulnerabilities,\ndesign anti-patterns, and architecture issues that\ncould cause financial loss, denial of service,\nincorrect behavior, or maintainability problems.',
+        src: 'skills/move-code-review/SKILL.md:6‑10',
+        corpora: ['move-book','sui','walrus','seal','ts-sdk']
+      },
+      'move-code-quality': {
+        text: '# Move Code Quality Checker\n\n> Doc-First Requirement: Before generating\n> recommendations or code fixes, verify current\n> patterns against the sui-pilot documentation\n> (.move-book-docs/, .sui-docs/, .walrus-docs/,\n> .seal-docs/, .ts-sdk-docs/). Use Glob/Grep against\n> ${CLAUDE_PLUGIN_ROOT}/.<source>-docs/. Sui Move\n> evolves rapidly — embedded knowledge may be outdated.\n\nYou are an expert Move language code reviewer with\ndeep knowledge of the Move Book Code Quality Checklist.\nYour role is to analyze Move packages and provide\nspecific, actionable feedback based on modern Move\n2024 Edition best practices.',
+        src: 'skills/move-code-quality/SKILL.md:6‑10',
+        corpora: ['move-book']
+      },
+      'move-tests': {
+        text: '# Move Tests\n\n> Doc-First Requirement: Before generating test code,\n> verify current testing patterns against the sui-pilot\n> documentation (.move-book-docs/, .sui-docs/,\n> .walrus-docs/, .seal-docs/, .ts-sdk-docs/). Use\n> Glob/Grep against ${CLAUDE_PLUGIN_ROOT}/.<source>-docs/.\n> Test utilities and conventions evolve — test_scenario,\n> tx_context::dummy(), and assertion helpers may have\n> changed. When using specific test APIs, reference\n> the doc file path.\n\n## File Organization\n\nTests live in the tests/ directory at the package root,\nnot in sources/. Name test files after the module or\ndomain they cover.',
+        src: 'skills/move-tests/SKILL.md:6‑12',
+        corpora: ['move-book','sui']
+      },
+      'oz-math': {
+        text: '# OpenZeppelin Math Analyzer\n\nYou are an expert Move code analyzer specializing in\nidentifying arithmetic patterns that could benefit from\nOpenZeppelin\'s math libraries. Your role is to find\nmanual arithmetic implementations and recommend safer,\nmore robust alternatives using openzeppelin_math and\nopenzeppelin_fp_math.\n\n## When to Use This Skill\n\nActivate this skill when:\n- User asks to "check math safety", "analyze arithmetic",\n  "find overflow risks"\n- User mentions OpenZeppelin math, mul_div, safe math,\n  or fixed-point\n- Working with DeFi Move code (pools, oracles, AMMs,\n  staking contracts)',
+        src: 'skills/oz-math/SKILL.md:6‑16',
+        corpora: ['move-book']
+      },
+      'move-pr-review': {
+        text: '# Move PR Review (multi-agent)\n\nOrchestrate a 1-consolidator + 10-parallel-reviewer team\nof sui-pilot-agent subagents to deep-review a Move pull\nrequest. The output is a single self-contained HTML file\nconsolidating evidence-backed findings, ordered by\nseverity and by reviewer agreement.\n\n## CRITICAL — Where this skill must run\n\nRun this skill from the main Claude Code session.\nDo NOT run it from within a spawned subagent. Spawned\nsubagents routinely lack the Task tool, which means they\ncannot dispatch the 11 sub-subagents this skill depends on.',
+        src: 'skills/move-pr-review/SKILL.md:28‑34',
+        corpora: ['move-book','sui','walrus','seal','ts-sdk']
+      }
+    };
+
+    function select(skillId){
+      var d = data[skillId];
+      if (!d) return;
+      // content is a <pre><code></code></pre>; set textContent on the code child
+      clear(content);
+      var codeEl = el('code', null, [d.text]);
+      content.appendChild(codeEl);
+      src.textContent = 'Source: ' + d.src;
+      for (var i = 0; i < tabs.length; i++) {
+        tabs[i].setAttribute('aria-selected', String(tabs[i].getAttribute('data-skill') === skillId));
+      }
+      for (var j = 0; j < pills.length; j++) {
+        var name = pills[j].getAttribute('data-corpus');
+        if (d.corpora.indexOf(name) !== -1) pills[j].classList.add('lit');
+        else pills[j].classList.remove('lit');
+      }
+    }
+    for (var t = 0; t < tabs.length; t++) {
+      (function(tab){
+        tab.addEventListener('click', function(){ select(tab.getAttribute('data-skill')); });
+      })(tabs[t]);
+    }
+    select('move-code-review');
+  })();
+
+  // ───── Widget 3: MCP tool tray ─────
+  (function toolTray(){
+    var root = document.getElementById('tray-widget');
+    if (!root) return;
+    var pills = root.querySelectorAll('.tool-btn');
+    var result = document.getElementById('tool-result');
+
+    var responses = {
+      move_diagnostics: {
+        title: 'move_diagnostics  ·  3 findings',
+        body: '[\n  { "severity": "error",\n    "range": { "start": {"line": 12, "character": 4},\n               "end":   {"line": 12, "character": 38} },\n    "message": "expected `;` after this expression",\n    "source": "move-analyzer" },\n  { "severity": "warning",\n    "range": { "start": {"line": 28, "character": 8} },\n    "message": "unused local `prev_balance`" },\n  { "severity": "warning",\n    "range": { "start": {"line": 41, "character": 8} },\n    "message": "type `u128` may overflow on multiply" }\n]'
+      },
+      move_hover: {
+        title: 'move_hover  ·  pool.move:30:18',
+        body: '```move\n public fun deposit<Asset>(\n   pool: &mut Pool<Asset>,\n   coin: Coin<Asset>,\n   ctx: &mut TxContext,\n ): u64\n```\n\nIncreases pool reserves by the coin’s value and mints\nreceipt tokens proportional to current LP supply.\nReturns the number of LP tokens minted.'
+      },
+      move_completions: {
+        title: 'move_completions  ·  3 suggestions',
+        body: '[\n  { "label": "push_back", "kind": "method",\n    "detail": "fun vector::push_back<T>(v: &mut vector<T>, x: T)" },\n  { "label": "pop_back",  "kind": "method",\n    "detail": "fun vector::pop_back<T>(v: &mut vector<T>): T" },\n  { "label": "length",    "kind": "method",\n    "detail": "fun vector::length<T>(v: &vector<T>): u64" }\n]'
+      },
+      move_goto_definition: {
+        title: 'move_goto_definition  ·  Pool',
+        body: '{\n  "uri":   "file:///pkg/sources/pool.move",\n  "range": { "start": {"line": 8, "character": 8},\n             "end":   {"line": 8, "character": 12} },\n  "preview": "public struct Pool<phantom Asset> has key, store {"\n}'
+      },
+      move_find_references: {
+        title: 'move_find_references  ·  Pool  ·  7 matches',
+        body: '[\n  { "uri": "file:///pkg/sources/pool.move",       "line": 8  },\n  { "uri": "file:///pkg/sources/pool.move",       "line": 30 },\n  { "uri": "file:///pkg/sources/pool.move",       "line": 41 },\n  { "uri": "file:///pkg/sources/router.move",     "line": 12 },\n  { "uri": "file:///pkg/sources/router.move",     "line": 28 },\n  { "uri": "file:///pkg/tests/pool_tests.move",   "line": 19 },\n  { "uri": "file:///pkg/tests/router_tests.move", "line": 44 }\n]'
+      },
+      move_document_symbols: {
+        title: 'move_document_symbols  ·  pool.move',
+        body: 'module my_pkg::pool\n  struct  Pool<Asset>            (line 8)\n  struct  LPToken<Asset>         (line 18)\n  const   FEE_BPS: u64           (line 26)\n  fun     init                   (line 28)\n  public fun deposit             (line 30)\n  public fun withdraw            (line 52)\n  public fun price               (line 71)'
+      },
+      move_type_definition: {
+        title: 'move_type_definition  ·  receipt',
+        body: '{\n  "uri":   "file:///pkg/sources/pool.move",\n  "range": { "start": {"line": 18, "character": 11},\n             "end":   {"line": 18, "character": 18} },\n  "preview": "public struct LPToken<phantom Asset> has store {"\n}'
+      },
+      move_code_actions: {
+        title: 'move_code_actions  ·  2 quick fixes',
+        body: '[\n  { "title":  "Use method-call syntax: `v.push_back(x)`",\n    "kind":   "refactor.rewrite",\n    "isPreferred": true },\n  { "title":  "Add explicit type annotation",\n    "kind":   "quickfix" }\n]'
+      },
+      move_inlay_hints: {
+        title: 'move_inlay_hints  ·  5 hints',
+        body: '[\n  { "label": ": u64",      "position": {"line": 24, "character": 18} },\n  { "label": ": Coin<SUI>",  "position": {"line": 30, "character": 22} },\n  { "label": " (x: )",      "position": {"line": 33, "character": 12} },\n  { "label": ": LPToken<SUI>", "position": {"line": 37, "character": 14} },\n  { "label": ": u64",      "position": {"line": 41, "character": 12} }\n]'
+      },
+      move_rename: {
+        title: 'move_rename  ·  pool → vault  ·  7 edits proposed',
+        body: '{\n  "changes": {\n    "file:///pkg/sources/pool.move":     [3 edits],\n    "file:///pkg/sources/router.move":   [2 edits],\n    "file:///pkg/tests/pool_tests.move": [2 edits]\n  },\n  "note": "No files written; pass edits back to apply."\n}'
+      }
+    };
+
+    function show(tool){
+      var r = responses[tool];
+      if (!r) return;
+      clear(result);
+      var newTitle = el('h4', null);
+      newTitle.appendChild(icon('#i-zap'));
+      newTitle.appendChild(document.createTextNode(' ' + r.title));
+      var badge = el('span', { class: 'badge-now' }, ['just injected']);
+      newTitle.appendChild(badge);
+      result.appendChild(newTitle);
+      var pre = el('pre', null);
+      pre.appendChild(el('code', null, [r.body]));
+      result.appendChild(pre);
+      result.classList.add('fresh');
+      if (!reduce) setTimeout(function(){ result.classList.remove('fresh'); }, 2200);
+      for (var i = 0; i < pills.length; i++) {
+        pills[i].setAttribute('aria-pressed', String(pills[i].getAttribute('data-tool') === tool));
+      }
+    }
+    for (var p = 0; p < pills.length; p++) {
+      (function(pill){
+        pill.addEventListener('click', function(){ show(pill.getAttribute('data-tool')); });
+      })(pills[p]);
+    }
+  })();
+
+  // ───── Widget 4: fan-out animation ─────
+  (function fanOut(){
+    var root = document.getElementById('fanout-widget');
+    if (!root) return;
+    var svgEl = root.querySelector('svg');
+    var gReviewers = document.getElementById('fan-reviewers');
+    var gLines = document.getElementById('fan-lines');
+    var playBtn = document.getElementById('fan-play');
+    var playLabel = document.getElementById('fan-play-label');
+    var info = document.getElementById('fan-info');
+
+    var cols = [
+      { x: 350, ys: [40, 90, 140, 190, 240] },
+      { x: 540, ys: [40, 90, 140, 190, 240] }
+    ];
+
+    // Build reviewer nodes
+    var idx = 0;
+    for (var ci = 0; ci < cols.length; ci++) {
+      var c = cols[ci];
+      for (var yi = 0; yi < c.ys.length; yi++) {
+        var y = c.ys[yi];
+        var g = svg('g', {
+          class: 'fan-node fan-bubble r' + idx,
+          'data-role': 'reviewer',
+          'data-idx': String(idx + 1),
+          tabindex: '0',
+          role: 'button',
+          'aria-label': 'Reviewer ' + (idx + 1) + ' of 10'
+        }, [
+          svg('circle', { cx: String(c.x), cy: String(y), r: '18', fill: '#fff', stroke: 'var(--muted)', 'stroke-width': '1.5' }),
+          svg('text', { x: String(c.x), y: String(y + 4), 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '600', fill: 'var(--ink)' }, ['R' + (idx + 1)])
+        ]);
+        gReviewers.appendChild(g);
+        idx++;
+      }
+    }
+
+    // Build lines
+    function drawLines(){
+      clear(gLines);
+      var i = 0;
+      for (var ci = 0; ci < cols.length; ci++) {
+        var c = cols[ci];
+        for (var yi = 0; yi < c.ys.length; yi++) {
+          var y = c.ys[yi];
+          var l1 = svg('path', {
+            d: 'M94 130 Q ' + ((94 + c.x) / 2) + ' ' + ((130 + y) / 2 - 20) + ' ' + (c.x - 18) + ' ' + y,
+            class: 'fan-line'
+          });
+          l1.style.transitionDelay = (0.05 + i * 0.08) + 's';
+          gLines.appendChild(l1);
+
+          var l2 = svg('path', {
+            d: 'M ' + (c.x + 18) + ' ' + y + ' Q ' + ((c.x + 740) / 2) + ' ' + ((y + 130) / 2 + 20) + ' 710 130',
+            class: 'fan-line'
+          });
+          l2.style.transitionDelay = (0.85 + i * 0.04) + 's';
+          gLines.appendChild(l2);
+          i++;
+        }
+      }
+    }
+    drawLines();
+
+    function play(){
+      playBtn.setAttribute('aria-pressed', 'true');
+      playLabel.textContent = 'Replay';
+      var bubbles = gReviewers.querySelectorAll('.fan-bubble');
+      for (var i = 0; i < bubbles.length; i++) {
+        bubbles[i].style.animation = 'none';
+        void bubbles[i].offsetWidth;
+        bubbles[i].style.animation = '';
+      }
+      var lines = svgEl.querySelectorAll('.fan-line');
+      for (var j = 0; j < lines.length; j++) lines[j].classList.remove('drawn');
+      setTimeout(function(){
+        var lines = svgEl.querySelectorAll('.fan-line');
+        for (var j = 0; j < lines.length; j++) lines[j].classList.add('drawn');
+      }, reduce ? 0 : 50);
+    }
+
+    if (reduce) {
+      var bubbles = svgEl.querySelectorAll('.fan-bubble');
+      for (var i = 0; i < bubbles.length; i++) {
+        bubbles[i].style.opacity = 1;
+        bubbles[i].style.animation = 'none';
+      }
+      var lines = svgEl.querySelectorAll('.fan-line');
+      for (var j = 0; j < lines.length; j++) lines[j].classList.add('drawn');
+      playLabel.textContent = 'Replay';
+    } else {
+      var initLines = svgEl.querySelectorAll('.fan-line');
+      for (var k = 0; k < initLines.length; k++) initLines[k].classList.add('drawn');
+    }
+    playBtn.addEventListener('click', play);
+
+    var stacks = {
+      orchestrator: {
+        title: 'Orchestrator (main session)',
+        bullets: [
+          ['Always-on ', { code: '@' }, '-import: ', { code: 'agents/sui-pilot-agent.md' }, ' body'],
+          ['Skill body: ', { code: 'skills/move-pr-review/SKILL.md' }],
+          ['Conversation history with the user, including the PR scope and any clarifications'],
+          ['Tools: ', { code: 'Task' }, ' (to dispatch subagents), ', { code: 'Bash' }, ', ', { code: 'Read' }, ', ', { code: 'Write' }, ', ', { code: 'Glob' }, ', ', { code: 'Grep' }]
+        ]
+      },
+      reviewer: {
+        title: 'Reviewer N (one of 10 fresh subagents)',
+        bullets: [
+          ['System prompt seeded with ', { code: 'agents/sui-pilot-agent.md' }, ' (doc-first rule + 10 MCP tools)'],
+          ['Reviewer task prompt from ', { code: 'skills/move-pr-review/references/reviewer_prompt.md' }],
+          ['PR scope bundle: changed files, dependency graph'],
+          [{ strong: 'No' }, ' awareness of other reviewers or the main session — fresh context, fresh reasoning']
+        ]
+      },
+      consolidator: {
+        title: 'Consolidator (one fresh subagent, runs after reviewers)',
+        bullets: [
+          ['System prompt seeded with ', { code: 'agents/sui-pilot-agent.md' }],
+          ['Consolidator task prompt from ', { code: 'skills/move-pr-review/references/consolidator_prompt.md' }],
+          ['All 10 reviewers’ strict-schema JSON findings'],
+          ['Verifies every critical/high claim against the source code; downgrades or drops unverified ones; emits self-contained HTML']
+        ]
+      }
+    };
+
+    function selectNode(node){
+      var allNodes = svgEl.querySelectorAll('.fan-node');
+      for (var i = 0; i < allNodes.length; i++) allNodes[i].classList.remove('selected');
+      node.classList.add('selected');
+      var role = node.getAttribute('data-role');
+      var idx = node.getAttribute('data-idx');
+      var s = stacks[role];
+      var heading = role === 'reviewer' ? s.title.replace('Reviewer N', 'Reviewer ' + idx) : s.title;
+      clear(info);
+      info.appendChild(el('h4', null, [heading]));
+      var ul = el('ul', null);
+      for (var b = 0; b < s.bullets.length; b++) {
+        var li = el('li', null);
+        renderInline(li, s.bullets[b]);
+        ul.appendChild(li);
+      }
+      info.appendChild(ul);
+    }
+
+    var nodes = svgEl.querySelectorAll('.fan-node');
+    for (var n = 0; n < nodes.length; n++) {
+      (function(node){
+        node.addEventListener('click', function(){ selectNode(node); });
+        node.addEventListener('keydown', function(e){
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNode(node); }
+        });
+      })(nodes[n]);
+    }
+  })();
+
+  // ───── TOC scroll-spy ─────
+  (function scrollSpy(){
+    var links = document.querySelectorAll('nav.toc a[data-toc]');
+    if (!links.length) return;
+    var map = new Map();
+    for (var i = 0; i < links.length; i++) {
+      var id = links[i].getAttribute('data-toc');
+      var target = document.getElementById(id);
+      if (target) map.set(target, links[i]);
+    }
+    var io = new IntersectionObserver(function(entries){
+      for (var e = 0; e < entries.length; e++) {
+        if (entries[e].isIntersecting) {
+          for (var j = 0; j < links.length; j++) links[j].removeAttribute('aria-current');
+          var link = map.get(entries[e].target);
+          if (link) link.setAttribute('aria-current', 'true');
+        }
+      }
+    }, { rootMargin: '-30% 0px -60% 0px', threshold: 0 });
+    map.forEach(function(_, target){ io.observe(target); });
+  })();
+})();
+</script>
+</body>
+</html>
