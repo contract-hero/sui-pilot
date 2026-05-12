@@ -105,7 +105,7 @@ describe('LSP tools integration', () => {
       expect(response).toHaveProperty('isError', true);
 
       const result = JSON.parse(response.content[0].text);
-      expect(result.error.code).toBe('INVALID_FILE_PATH');
+      expect(result.error.code).toBe('INVALID_ARGUMENT');
     });
   });
 
@@ -338,7 +338,7 @@ module lsp_test_package::test {
       const response = await callToolHandler!(mockRequest as any);
       expect(response).toHaveProperty('isError', true);
       const result = JSON.parse(response.content[0].text);
-      expect(result.error.code).toBe('INVALID_FILE_PATH');
+      expect(result.error.code).toBe('INVALID_ARGUMENT');
     });
   });
 
@@ -450,7 +450,7 @@ module lsp_test_package::test {
       const response = await callToolHandler!(mockRequest as any);
       expect(response).toHaveProperty('isError', true);
       const result = JSON.parse(response.content[0].text);
-      expect(result.error.code).toBe('INVALID_FILE_PATH');
+      expect(result.error.code).toBe('INVALID_ARGUMENT');
     });
   });
 
@@ -497,7 +497,7 @@ module lsp_test_package::test {
       const response = await callToolHandler!(mockRequest as any);
       expect(response).toHaveProperty('isError', true);
       const result = JSON.parse(response.content[0].text);
-      expect(result.error.code).toBe('INVALID_FILE_PATH');
+      expect(result.error.code).toBe('INVALID_ARGUMENT');
     });
   });
 
@@ -550,7 +550,7 @@ module lsp_test_package::test {
       const response = await callToolHandler!(mockRequest as any);
       expect(response).toHaveProperty('isError', true);
       const result = JSON.parse(response.content[0].text);
-      expect(result.error.code).toBe('INVALID_FILE_PATH');
+      expect(result.error.code).toBe('INVALID_ARGUMENT');
     });
   });
 

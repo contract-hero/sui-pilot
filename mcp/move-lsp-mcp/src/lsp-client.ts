@@ -3,6 +3,7 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
+import { fileURLToPath } from 'url';
 import {
   InitializeParams,
   InitializeResult,
@@ -234,10 +235,18 @@ function rangeToResult(range: Range): RangeResult {
 }
 
 /**
- * Convert a file:// URI to a plain filesystem path
+ * Convert a file:// URI to a plain filesystem path. Uses Node's `fileURLToPath`
+ * so paths containing spaces or non-ASCII characters are properly percent-decoded
+ * (e.g. `file:///%20a%20b/main.move` → `/ a b/main.move`).
  */
 function uriToPath(uri: string): string {
-  return uri.replace(/^file:\/\//, '');
+  if (!uri.startsWith('file://')) return uri;
+  try {
+    return fileURLToPath(uri);
+  } catch {
+    // Fall back to a naive strip if Node can't parse the URI for any reason.
+    return uri.replace(/^file:\/\//, '');
+  }
 }
 
 /**
@@ -267,20 +276,15 @@ function normalizeDocumentSymbol(sym: DocumentSymbol): DocumentSymbolResult {
 }
 
 /**
- * Flatten a WorkspaceEdit (either `.changes` or `.documentChanges`) into a flat
- * list of typed edits the bridge returns to MCP. Skips entries that are not
- * `TextDocumentEdit` (e.g. CreateFile / RenameFile / DeleteFile resource-ops).
+ * Flatten a WorkspaceEdit into a flat list of typed edits.
+ *
+ * Per LSP spec, when both `documentChanges` and `changes` are populated the
+ * client MUST prefer `documentChanges` and ignore `changes` — emitting both
+ * would duplicate every edit. Skips entries that are not `TextDocumentEdit`
+ * (e.g. CreateFile / RenameFile / DeleteFile resource-ops).
  */
 function flattenWorkspaceEdit(edit: WorkspaceEdit): WorkspaceEditEntry[] {
   const out: WorkspaceEditEntry[] = [];
-
-  if (edit.changes) {
-    for (const [uri, edits] of Object.entries(edit.changes)) {
-      for (const e of edits as TextEdit[]) {
-        out.push({ filePath: uriToPath(uri), range: rangeToResult(e.range), newText: e.newText });
-      }
-    }
-  }
 
   if (edit.documentChanges) {
     for (const change of edit.documentChanges) {
@@ -290,6 +294,16 @@ function flattenWorkspaceEdit(edit: WorkspaceEdit): WorkspaceEditEntry[] {
       const uri = uriToPath(change.textDocument.uri);
       for (const e of change.edits as TextEdit[]) {
         out.push({ filePath: uri, range: rangeToResult(e.range), newText: e.newText });
+      }
+    }
+    return out;
+  }
+
+  if (edit.changes) {
+    for (const [uri, edits] of Object.entries(edit.changes)) {
+      const filePath = uriToPath(uri);
+      for (const e of edits as TextEdit[]) {
+        out.push({ filePath, range: rangeToResult(e.range), newText: e.newText });
       }
     }
   }
@@ -1114,7 +1128,10 @@ export class MoveLspClient {
       newName,
     };
     const edit = await this.sendRequest<WorkspaceEdit | null>('textDocument/rename', renameParams);
-    if (!edit) return [];
+    // Distinct from `[]`: `null` here means the server declined the rename
+    // outright, which should surface as RENAME_NOT_AVAILABLE rather than a
+    // successful no-op.
+    if (edit === null) return null;
 
     return flattenWorkspaceEdit(edit);
   }

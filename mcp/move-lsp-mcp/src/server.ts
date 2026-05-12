@@ -23,6 +23,7 @@ import {
   SymbolNotFoundError,
   LspStartFailedError,
   INVALID_FILE_PATH,
+  INVALID_ARGUMENT,
   FILE_NOT_FOUND,
   NO_WORKSPACE,
   SCOPE_NOT_IMPLEMENTED,
@@ -642,11 +643,11 @@ export function createServer(): Server {
     if (!filePath || typeof filePath !== 'string') {
       throw new MoveLspError('filePath is required and must be a string', INVALID_FILE_PATH);
     }
-    if (typeof line !== 'number' || line < 0) {
-      throw new MoveLspError('line is required and must be a non-negative number', INVALID_FILE_PATH);
+    if (typeof line !== 'number' || !Number.isFinite(line) || line < 0) {
+      throw new MoveLspError('line is required and must be a non-negative finite number', INVALID_ARGUMENT);
     }
-    if (typeof character !== 'number' || character < 0) {
-      throw new MoveLspError('character is required and must be a non-negative number', INVALID_FILE_PATH);
+    if (typeof character !== 'number' || !Number.isFinite(character) || character < 0) {
+      throw new MoveLspError('character is required and must be a non-negative finite number', INVALID_ARGUMENT);
     }
 
     return { filePath, line, character, content };
@@ -673,12 +674,12 @@ export function createServer(): Server {
       ['startLine', startLine], ['startCharacter', startCharacter],
       ['endLine', endLine], ['endCharacter', endCharacter],
     ] as const) {
-      if (typeof val !== 'number' || val < 0) {
-        throw new MoveLspError(`${name} is required and must be a non-negative number`, INVALID_FILE_PATH);
+      if (typeof val !== 'number' || !Number.isFinite(val) || val < 0) {
+        throw new MoveLspError(`${name} is required and must be a non-negative finite number`, INVALID_ARGUMENT);
       }
     }
     if (endLine < startLine || (endLine === startLine && endCharacter < startCharacter)) {
-      throw new MoveLspError('range end must not precede range start', INVALID_FILE_PATH);
+      throw new MoveLspError('range end must not precede range start', INVALID_ARGUMENT);
     }
 
     return { filePath, startLine, startCharacter, endLine, endCharacter, content };
@@ -818,8 +819,14 @@ export function createServer(): Server {
     const endLine = typeof args?.endLine === 'number' ? args.endLine : line;
     const endCharacter = typeof args?.endCharacter === 'number' ? args.endCharacter : character;
 
+    if (!Number.isFinite(endLine) || endLine < 0) {
+      throw new MoveLspError('endLine must be a non-negative finite number', INVALID_ARGUMENT);
+    }
+    if (!Number.isFinite(endCharacter) || endCharacter < 0) {
+      throw new MoveLspError('endCharacter must be a non-negative finite number', INVALID_ARGUMENT);
+    }
     if (endLine < line || (endLine === line && endCharacter < character)) {
-      throw new MoveLspError('range end must not precede range start', INVALID_FILE_PATH);
+      throw new MoveLspError('range end must not precede range start', INVALID_ARGUMENT);
     }
 
     const resolvedPath = resolve(filePath);
@@ -864,7 +871,7 @@ export function createServer(): Server {
     const { filePath, line, character, content } = validatePositionArgs(args);
     const newName = args?.newName;
     if (typeof newName !== 'string' || newName.trim().length === 0) {
-      throw new MoveLspError('newName is required and must be a non-empty string', INVALID_FILE_PATH);
+      throw new MoveLspError('newName is required and must be a non-empty string', INVALID_ARGUMENT);
     }
 
     const resolvedPath = resolve(filePath);
