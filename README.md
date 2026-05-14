@@ -62,16 +62,24 @@ Real-time feedback from `move-analyzer`:
 
 ### Slash commands
 
-| Command               | Purpose                                                        |
-| --------------------- | -------------------------------------------------------------- |
-| `/sui-pilot`          | Doc-first entry point; routes to the sui-pilot agent           |
-| `/move-code-quality`  | Move Book Code Quality Checklist compliance                    |
-| `/move-code-review`   | Security and architecture review                               |
-| `/move-tests`         | Test generation best practices                                 |
-| `/move-pr-review`     | Multi-agent deep PR review (10 reviewers + consolidator)       |
-| `/oz-math`            | OpenZeppelin math library recommendations                      |
+| Command               | Purpose                                                                       |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `/sui-pilot`          | Doc-first entry point; routes to the sui-pilot agent                          |
+| `/move-code-quality`  | Move Book Code Quality Checklist compliance                                   |
+| `/move-code-review`   | Security and architecture review                                              |
+| `/move-tests`         | Test generation best practices                                                |
+| `/move-pr-review`     | Multi-agent deep PR review (10 reviewers + consolidator)                      |
+| `/oz-math`            | OpenZeppelin math library recommendations                                     |
+| `/specify`            | Author `#[spec(prove)]` formal specs + verify via `sui-prover` (interactive)  |
 
 Each command routes to a bundled skill of the same name; skills live under `skills/` and hold the actual behavior.
+
+### MCP servers
+
+| Server          | What it wraps                                                            |
+| --------------- | ------------------------------------------------------------------------ |
+| `move-lsp`      | The `move-analyzer` LSP — diagnostics, hover, references, document symbols, rename, etc. |
+| `sui-prover`    | The `sui-prover` formal-verification binary — `prove_package`, `list_specs`, `prover_capabilities` |
 
 ### Specialized Agent
 

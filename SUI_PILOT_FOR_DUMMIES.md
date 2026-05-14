@@ -136,6 +136,10 @@ cd ~/projects/my-defi-pool
 
 # Math-heavy DeFi code? Audit it for safer arithmetic.
 > /oz-math
+
+# Want prover-backed formal specs for your public/entry functions?
+# Interactive — walks function by function via AskUserQuestion.
+> /specify
 ```
 
 The slash commands are the entry points. The doc-first preamble is what keeps the agent reading current docs instead of generating from stale training memory.
@@ -144,14 +148,14 @@ The slash commands are the entry points. The doc-first preamble is what keeps th
 
 ## 7. Updating Bundled Docs
 
-The bundled `.{sui,move-book,walrus,seal,ts-sdk}-docs/` corpora are snapshots of the upstream Mysten Labs repositories at sync time. They go stale; refresh them periodically (monthly is typical, or before starting a major project):
+The bundled `.{sui,move-book,walrus,seal,ts-sdk,sui-prover}-docs/` corpora are snapshots of the upstream repositories at sync time. They go stale; refresh them periodically (monthly is typical, or before starting a major project):
 
 ```bash
 cd /path/to/sui-pilot   # or wherever the plugin is installed
 ./sync-docs.sh
 ```
 
-Behind the scenes, the script downloads tarballs from `MystenLabs/{sui,walrus,seal,ts-sdks,move-book}` via `gh api`, extracts the prose subtrees, strips binaries (PNG/JPEG/SVG — useless for AI text consumption), and replaces the `.<source>-docs/` directories. It writes a fresh `.last-sync` JSON file with timestamps and file counts.
+Behind the scenes, the script downloads tarballs via `gh api` from `MystenLabs/{sui,walrus,seal,ts-sdks,move-book}` and from `asymptotic-code/{sui-prover,sui-kit}` (prover guide, construct sources, worked examples), extracts the prose subtrees, strips binaries (PNG/JPEG/SVG — useless for AI text consumption), and replaces the `.<source>-docs/` directories. It writes a fresh `.last-sync` JSON file with timestamps and file counts.
 
 If you maintain this repo yourself, a scheduled GitHub Actions workflow at `.github/workflows/refresh-docs.yml` runs the same pipeline weekly and opens a chore PR when upstream docs change.
 
@@ -194,6 +198,7 @@ They must match. Fix with `suiup update sui && suiup update move-analyzer`.
 | `/move-tests`         | Generate or improve `test_scenario`-style unit tests for a Move package         |
 | `/move-pr-review`     | Multi-agent deep PR review — 10 parallel reviewers + 1 consolidator             |
 | `/oz-math`            | Audit arithmetic and recommend OpenZeppelin math contracts where helpful        |
+| `/specify`            | Author `#[spec(prove)]` formal specs for `public`/`entry` functions and verify them with `sui-prover` (interactive, per-function `AskUserQuestion`-driven) |
 
 Each command routes to a bundled skill of the same name. Skills hold the actual procedural behavior; commands are thin wrappers that invoke the right skill.
 
