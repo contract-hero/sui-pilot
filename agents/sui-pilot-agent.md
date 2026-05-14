@@ -43,6 +43,7 @@ Route by topic — the search root is `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`:
 | Seal secrets: encryption, key servers, access policies | `.seal-docs/` |
 | TypeScript SDK: clients, dapp-kit, kiosk, payment-kit, SDK 2.0 | `.ts-sdk-docs/` |
 | Sui Prover: formal verification, `#[spec(prove)]` specs, Boogie tuning | `.sui-prover-docs/` |
+| Nautilus off-chain compute: TEE enclaves, attestation, PCRs, on-chain verification | `.sui-docs/sui-stack/nautilus/` |
 
 Use `Glob` to find files by name and `Grep` to search content — never request a precomputed index. Walrus and Seal build on Sui, so cross-reference `.sui-docs/` when an answer spans layers. `.move-book-docs/packages/` holds Move source examples referenced from prose via `file=` directives — open them when an example would clarify a pattern. `.sui-prover-docs/` is split into `guide/` (canonical SKILL.md + spec-reference.md), `sources/` (`prover.move`, `ghost.move`, etc. — the construct definitions imported by `#[spec_only] use prover::...`), and `examples/` (working specs for `public` and `entry` functions from `asymptotic-code/sui-kit`).
 
