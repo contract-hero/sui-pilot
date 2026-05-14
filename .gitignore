@@ -19,10 +19,12 @@ dist/
 *.log
 .pnpm-debug.log*
 
-# Ship the prebuilt move-lsp MCP bundle so marketplace installs work
-# without a post-install build step.
+# Ship the prebuilt MCP bundles so marketplace installs work without a
+# post-install build step. One un-ignore line per packaged MCP.
 !mcp/move-lsp-mcp/dist/
 !mcp/move-lsp-mcp/dist/**
+!mcp/sui-prover-mcp/dist/
+!mcp/sui-prover-mcp/dist/**
 
 # Build artifacts
 *.tsbuildinfo
@@ -39,6 +41,11 @@ evals/results/
 # GitHub Pages staging directory — assembled by the pages.yml workflow.
 _site/
 
-# Sui Move build artifacts inside eval fixtures
+# Sui Move build artifacts inside eval and MCP test fixtures
 evals/fixtures/**/build/
 evals/fixtures/**/Move.lock
+mcp/sui-prover-mcp/test/fixtures/**/build/
+mcp/sui-prover-mcp/test/fixtures/**/Move.lock
+
+# Stray sui-prover debug logs that the binary drops in cwd
+sui-prover.log.*
