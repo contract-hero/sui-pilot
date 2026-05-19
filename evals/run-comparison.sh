@@ -34,6 +34,8 @@ V2_REF="feat/v2-graph-port"
 SCORE=true
 RESUME_DIR=""
 VERSIONS="v1,v2"
+TASKS_FILE_OVERRIDE=""
+TASK_IDS_FILTER=""
 
 usage() {
     cat <<'USAGE'
@@ -49,18 +51,23 @@ Options:
                       already exists in DIR/<version>/ are skipped. Combined
                       with --versions lets you backfill new arms without
                       re-spending API credits on already-captured ones.
+  --tasks-file PATH   override the default tasks.json (e.g. tasks-nft.json)
+  --task-ids REGEX    only run tasks whose id matches the extended regex
+                      (e.g. '^task-nft-' for the NFT-app-only subset)
   --no-score          skip the auto-scoring claude -p turn at the end
 USAGE
 }
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --v1-ref)    V1_REF="$2"; shift 2 ;;
-        --v2-ref)    V2_REF="$2"; shift 2 ;;
-        --versions)  VERSIONS="$2"; shift 2 ;;
-        --resume)    RESUME_DIR="$2"; shift 2 ;;
-        --no-score)  SCORE=false; shift ;;
-        -h|--help)   usage; exit 0 ;;
+        --v1-ref)     V1_REF="$2"; shift 2 ;;
+        --v2-ref)     V2_REF="$2"; shift 2 ;;
+        --versions)   VERSIONS="$2"; shift 2 ;;
+        --resume)     RESUME_DIR="$2"; shift 2 ;;
+        --tasks-file) TASKS_FILE_OVERRIDE="$2"; shift 2 ;;
+        --task-ids)   TASK_IDS_FILTER="$2"; shift 2 ;;
+        --no-score)   SCORE=false; shift ;;
+        -h|--help)    usage; exit 0 ;;
         *) echo "Unknown arg: $1" >&2; usage >&2; exit 1 ;;
     esac
 done
@@ -89,6 +96,9 @@ else
     echo "NOTE: 'sui' not on PATH; tasks with passCriteria.compileAfter will skip the compile gate." >&2
 fi
 
+if [[ -n "$TASKS_FILE_OVERRIDE" ]]; then
+    TASKS_FILE="$TASKS_FILE_OVERRIDE"
+fi
 [[ -f "$TASKS_FILE" ]]    || { echo "ERROR: $TASKS_FILE missing" >&2; exit 1; }
 [[ -d "$SUI_PILOT_DIR" ]] || { echo "ERROR: \$SUI_PILOT_DIR=$SUI_PILOT_DIR not a directory" >&2; exit 1; }
 
@@ -119,7 +129,9 @@ run_one_task() {
     local fixture="$3"
     local prompt="$4"
     local compile_after="$5"   # "true" or "false"
-    shift 5
+    local ts_build_after="$6"  # "true" or "false"
+    local ts_build_subdir="$7" # subdir under tmpdir to run pnpm in; "" if none
+    shift 7
     local claude_cmd=("$@")
 
     # Skip if already captured (supports --resume).
@@ -172,6 +184,37 @@ run_one_task() {
         fi
     fi
 
+    # TypeScript build gate: optional, only when task asks for it AND pnpm is
+    # available. Runs `pnpm install --offline && pnpm tsc --noEmit && pnpm build`
+    # in the configured subdir. Each step's exit code is captured separately so
+    # the grader can distinguish "won't install" from "won't typecheck".
+    if [[ "$ts_build_after" == "true" ]]; then
+        local ts_target="$tmpdir"
+        [[ -n "$ts_build_subdir" ]] && ts_target="$tmpdir/$ts_build_subdir"
+        if [[ -d "$ts_target" ]] && command -v pnpm >/dev/null 2>&1; then
+            local install_exit=0 tsc_exit=0 build_exit=0
+            (cd "$ts_target" && pnpm install --offline --prefer-offline) \
+                > "$RESULTS_DIR/$version/$id.ts-install.out" \
+                2> "$RESULTS_DIR/$version/$id.ts-install.err" || install_exit=$?
+            if [[ "$install_exit" == "0" ]]; then
+                (cd "$ts_target" && pnpm tsc --noEmit) \
+                    > "$RESULTS_DIR/$version/$id.ts-typecheck.out" \
+                    2> "$RESULTS_DIR/$version/$id.ts-typecheck.err" || tsc_exit=$?
+                (cd "$ts_target" && pnpm build) \
+                    > "$RESULTS_DIR/$version/$id.ts-build.out" \
+                    2> "$RESULTS_DIR/$version/$id.ts-build.err" || build_exit=$?
+            else
+                tsc_exit="skipped-install-failed"
+                build_exit="skipped-install-failed"
+            fi
+            printf 'install=%s\ntypecheck=%s\nbuild=%s\n' \
+                "$install_exit" "$tsc_exit" "$build_exit" \
+                > "$RESULTS_DIR/$version/$id.ts-exit"
+        else
+            echo "skipped" > "$RESULTS_DIR/$version/$id.ts-exit"
+        fi
+    fi
+
     # Diff post-state vs initial fixture.
     diff -ruN "$FIXTURES_ROOT/$fixture" "$tmpdir" \
         > "$RESULTS_DIR/$version/$id.diff" 2>/dev/null || true
@@ -200,15 +243,26 @@ run_one_version() {
     while IFS= read -r task; do
         i=$((i+1))
         local id=$(echo "$task" | jq -r .id)
+
+        # Optional id-filter (extended regex). Skip non-matching tasks but
+        # still advance the counter so the [i/n] index reflects the full file.
+        if [[ -n "$TASK_IDS_FILTER" ]] && ! [[ "$id" =~ $TASK_IDS_FILTER ]]; then
+            continue
+        fi
+
         local fixture=$(echo "$task" | jq -r .fixturePath)
         local prompt=$(echo "$task" | jq -r .prompt)
         local compile_after=$(echo "$task" | jq -r '.passCriteria.compileAfter // false')
+        local ts_build_after=$(echo "$task" | jq -r '.passCriteria.tsBuildAfter // false')
+        local ts_build_subdir=$(echo "$task" | jq -r '.passCriteria.tsBuildSubdir // ""')
 
         echo "[$version] [$i/$n] $id"
         echo "[$version/$id] start $(date -u +%H:%M:%S) prompt=\"${prompt:0:80}...\"" \
             >> "$RESULTS_DIR/run.log"
 
-        run_one_task "$version" "$id" "$fixture" "$prompt" "$compile_after" "${claude_cmd[@]}"
+        run_one_task "$version" "$id" "$fixture" "$prompt" \
+            "$compile_after" "$ts_build_after" "$ts_build_subdir" \
+            "${claude_cmd[@]}"
     done < <(jq -c '.[]' "$TASKS_FILE")
 }
 

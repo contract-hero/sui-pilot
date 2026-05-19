@@ -381,5 +381,122 @@
         {"file": ".specify-progress.json", "doesNotContainString": "test_fn"}
       ]
     }
+  },
+  {
+    "id": "task-nft-01-move-package",
+    "title": "NFT minting: complete Hero/Weapon Move package with tests",
+    "fixturePath": "fixtures/nft-app/move-empty",
+    "prompt": "Implement a Sui Move package for a simple NFT minting game. The fixture has Move.toml (edition 2024, name `hero`) with empty `sources/` and `tests/`. Create `sources/hero.move` and `tests/hero_tests.move`. Requirements:\n\n- Define three structs: `Hero` (key + store, fields: id UID, name String, stamina u64, weapon Option<Weapon>), `Weapon` (key + store, fields: id UID, name String, attack u64), and `HeroRegistry` (key, fields: id UID, ids vector<ID>, counter u64).\n- `init(ctx)` creates an empty `HeroRegistry` and shares it via `transfer::share_object`.\n- `new_hero(name: String, stamina: u64, registry: &mut HeroRegistry, ctx: &mut TxContext): Hero` mints a hero (weapon = `option::none()`), pushes its ID into the registry, increments the counter, and returns the hero.\n- `new_weapon(name: String, attack: u64, ctx: &mut TxContext): Weapon` returns a new weapon.\n- `equip_weapon(hero: &mut Hero, weapon: Weapon)` asserts `hero.weapon.is_none()` (abort `EAlreadyEquipedWeapon`) and calls `option::fill`.\n- `unequip_weapon(hero: &mut Hero): Weapon` asserts `hero.weapon.is_some()` (abort `ENotEquipedWeapon`) and returns `option::extract`.\n- Use Move 2024 idioms throughout (file-level `module hero::hero;`, method-call form, `EPascalCase` errors). Do NOT mark the functions `entry` if not needed — `new_hero`/`new_weapon` return values and should NOT be `entry`; `equip_weapon`/`unequip_weapon` may be either.\n- Add unit tests covering: registry init, minting a hero, equipping a weapon, double-equip aborts (`#[expected_failure(abort_code = ...)]`), unequipping, and unequip-empty aborts. All tests must pass.\n\nAcceptance: `sui move build` and `sui move test` both pass.",
+    "category": "nft-app",
+    "passCriteria": {
+      "file": "sources/hero.move",
+      "containsString": "module hero::hero;",
+      "alsoContainsRegex": "struct\\s+Hero\\s+has\\s+key,?\\s*store",
+      "doesNotContainString": "module hero::hero {",
+      "compileAfter": true,
+      "additionalFiles": [
+        {"file": "sources/hero.move", "containsString": "struct Weapon"},
+        {"file": "sources/hero.move", "containsString": "struct HeroRegistry"},
+        {"file": "sources/hero.move", "containsString": "transfer::share_object"},
+        {"file": "sources/hero.move", "containsRegex": "fun\\s+init\\s*\\("},
+        {"file": "sources/hero.move", "containsRegex": "fun\\s+new_hero\\s*\\("},
+        {"file": "sources/hero.move", "containsRegex": "fun\\s+new_weapon\\s*\\("},
+        {"file": "sources/hero.move", "containsRegex": "fun\\s+equip_weapon\\s*\\("},
+        {"file": "sources/hero.move", "containsRegex": "fun\\s+unequip_weapon\\s*\\("},
+        {"file": "tests/hero_tests.move", "containsString": "#[test]"},
+        {"file": "tests/hero_tests.move", "containsString": "#[expected_failure"}
+      ]
+    }
+  },
+  {
+    "id": "task-nft-02-dapp-kit-setup",
+    "title": "NFT minting: wire @mysten/dapp-kit-react provider with gRPC client",
+    "fixturePath": "fixtures/nft-app/ts-empty",
+    "prompt": "Wire up `@mysten/dapp-kit-react` in this Vite + React 19 + TypeScript app so the rest of the app can use dApp Kit hooks. The fixture has an empty `src/main.tsx`, an `.env.example` with `VITE_PACKAGE_ID` and `VITE_HEROES_REGISTRY_ID`, and a `package.json` with React but no dApp Kit deps.\n\nRequirements:\n- Add `@mysten/dapp-kit-react`, `@mysten/sui`, and `@tanstack/react-query` to `package.json` dependencies (you do not need to run `pnpm install`).\n- Create `src/dApp-kit.ts` exporting a `DAppKit` instance configured via `createDAppKit({ networks: ['mainnet','testnet','devnet'], defaultNetwork: 'testnet', enableBurnerWallet: import.meta.env.DEV, createClient(network) { return new SuiGrpcClient({ network, baseUrl: <map> }); } })`. Use the gRPC client, NOT the JSON-RPC one.\n- Update `src/main.tsx` to wrap the app in `<QueryClientProvider>` and `<DAppKitProvider>` and render `<ConnectButton />` in the app shell.\n- Use the modern SDK 2.0 API surface. Do NOT import the legacy 1.x `SuiClient` from `@mysten/sui/client`.\n\nAcceptance (static, no install/build required): the resulting code uses the right imports and function names.",
+    "category": "nft-app",
+    "passCriteria": {
+      "file": "src/main.tsx",
+      "containsString": "DAppKitProvider",
+      "alsoContainsString": "QueryClientProvider",
+      "additionalFiles": [
+        {"file": "src/main.tsx", "containsString": "ConnectButton"},
+        {"file": "src/dApp-kit.ts", "containsString": "createDAppKit"},
+        {"file": "src/dApp-kit.ts", "containsString": "SuiGrpcClient"},
+        {"file": "src/dApp-kit.ts", "containsString": "defaultNetwork"},
+        {"file": "src/dApp-kit.ts", "containsString": "enableBurnerWallet"},
+        {"file": "src/dApp-kit.ts", "doesNotContainString": "@mysten/sui/client"},
+        {"file": "src/dApp-kit.ts", "doesNotContainString": "SuiHTTPTransport"},
+        {"file": "package.json", "containsString": "@mysten/dapp-kit-react"},
+        {"file": "package.json", "containsString": "@mysten/sui"},
+        {"file": "package.json", "containsString": "@tanstack/react-query"}
+      ]
+    }
+  },
+  {
+    "id": "task-nft-03-mint-and-list-components",
+    "title": "NFT minting: mint+equip PTB component and shared-registry list component",
+    "fixturePath": "fixtures/nft-app/ts-empty",
+    "prompt": "Build the two key React components of the NFT minting dapp:\n\n1. `src/components/CreateHeroForm.tsx` — a form that builds a programmable transaction block doing four moveCalls in one PTB: (a) `${VITE_PACKAGE_ID}::hero::new_hero(name, stamina, &mut registry)`, (b) `${VITE_PACKAGE_ID}::hero::new_weapon(name, attack)`, (c) `${VITE_PACKAGE_ID}::hero::equip_weapon(hero, weapon)`, and (d) `tx.transferObjects([hero], account.address)`. Use dApp Kit hooks (`useCurrentAccount`, `useCurrentClient`, and `useDAppKit().signAndExecuteTransaction` or equivalent). Build the PTB with `new Transaction()` from `@mysten/sui/transactions`, use `tx.pure.string`, `tx.pure.u64`, `tx.object` for args, and pass the hero object reference returned by `new_hero` directly into `equip_weapon` and `transferObjects`. After execution call `useQueryClient().invalidateQueries` for the registry and owned-objects queries.\n\n2. `src/components/HeroesList.tsx` — reads the shared `HeroRegistry` via `useCurrentClient().getObject({ id: import.meta.env.VITE_HEROES_REGISTRY_ID, include: { json: true } })` wrapped in `useQuery({ queryKey: ['getObject', VITE_HEROES_REGISTRY_ID] })`, then renders each `id` in the registry's `ids` vector as a link to `https://testnet.suivision.xyz/object/<id>`.\n\nAssume the dApp Kit provider is already wired in `main.tsx` (don't modify it). You may add the imports to `package.json` if needed. Static-only acceptance — no install/build required.",
+    "category": "nft-app",
+    "passCriteria": {
+      "file": "src/components/CreateHeroForm.tsx",
+      "containsString": "new Transaction()",
+      "alsoContainsString": "tx.moveCall",
+      "additionalFiles": [
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "::hero::new_hero"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "::hero::new_weapon"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "::hero::equip_weapon"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "tx.transferObjects"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "signAndExecuteTransaction"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "useQueryClient"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "tx.pure.string"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "tx.pure.u64"},
+        {"file": "src/components/CreateHeroForm.tsx", "containsString": "tx.object"},
+        {"file": "src/components/HeroesList.tsx", "containsString": "useCurrentClient"},
+        {"file": "src/components/HeroesList.tsx", "containsString": "getObject"},
+        {"file": "src/components/HeroesList.tsx", "containsString": "include: { json: true }"},
+        {"file": "src/components/HeroesList.tsx", "containsRegex": "useQuery\\s*\\("},
+        {"file": "src/components/HeroesList.tsx", "containsString": "suivision.xyz/object/"},
+        {"file": "src/components/HeroesList.tsx", "doesNotContainString": "getOwnedObjects"}
+      ]
+    }
+  },
+  {
+    "id": "task-nft-04-full-stack-smoke",
+    "title": "NFT minting: end-to-end full-stack build",
+    "fixturePath": "fixtures/nft-app/full-stack",
+    "prompt": "Complete the full NFT minting dapp end-to-end. The fixture has both halves scaffolded but empty:\n- `move/hero/` has `Move.toml` (edition 2024, name `hero`) with empty `sources/` and `tests/`.\n- `app/my-first-sui-dapp/` is a Vite + React 19 + TS scaffold with empty `src/main.tsx` and an `.env.example` declaring `VITE_PACKAGE_ID` and `VITE_HEROES_REGISTRY_ID`.\n\nBuild the complete app so that:\n1. The Move package compiles with `sui move build` (run from `move/hero/`) and all unit tests pass with `sui move test`. Mirror the Hero/Weapon/HeroRegistry contract described above — three structs, an `init` that shares the registry, `new_hero`/`new_weapon`/`equip_weapon`/`unequip_weapon` functions, idiomatic Move 2024 throughout.\n2. The React app installs (`pnpm install`), type-checks (`pnpm tsc --noEmit` from `app/my-first-sui-dapp/`), and builds (`pnpm build`). It uses `@mysten/dapp-kit-react` + `SuiGrpcClient`, includes a `CreateHeroForm` component that fires the four-call PTB (`new_hero` → `new_weapon` → `equip_weapon` → `transferObjects`), and includes a `HeroesList` component that reads the shared registry and renders the ids as links to `https://testnet.suivision.xyz/object/<id>`.\n\nThis is the end-to-end smoke test; quality, idiom adherence, and end-to-end coherence will be rubric-scored in addition to the literal pass criteria.",
+    "category": "nft-app",
+    "passCriteria": {
+      "file": "move/hero/sources/hero.move",
+      "containsString": "module hero::hero;",
+      "alsoContainsRegex": "struct\\s+Hero\\s+has\\s+key,?\\s*store",
+      "compileAfter": true,
+      "tsBuildAfter": true,
+      "tsBuildSubdir": "app/my-first-sui-dapp",
+      "additionalFiles": [
+        {"file": "move/hero/sources/hero.move", "containsString": "transfer::share_object"},
+        {"file": "move/hero/sources/hero.move", "containsRegex": "fun\\s+init\\s*\\("},
+        {"file": "move/hero/sources/hero.move", "containsRegex": "fun\\s+new_hero\\s*\\("},
+        {"file": "move/hero/sources/hero.move", "containsRegex": "fun\\s+equip_weapon\\s*\\("},
+        {"file": "move/hero/tests/hero_tests.move", "containsString": "#[test]"},
+        {"file": "app/my-first-sui-dapp/src/main.tsx", "containsString": "DAppKitProvider"},
+        {"file": "app/my-first-sui-dapp/src/dApp-kit.ts", "containsString": "SuiGrpcClient"},
+        {"file": "app/my-first-sui-dapp/src/components/CreateHeroForm.tsx", "containsString": "tx.moveCall"},
+        {"file": "app/my-first-sui-dapp/src/components/CreateHeroForm.tsx", "containsString": "::hero::new_hero"},
+        {"file": "app/my-first-sui-dapp/src/components/HeroesList.tsx", "containsString": "getObject"},
+        {"file": "app/my-first-sui-dapp/package.json", "containsString": "@mysten/dapp-kit-react"}
+      ],
+      "rubric": {
+        "criteria": [
+          "correctness: Move package compiles, tests pass, TS build succeeds",
+          "faithfulness: PTB shape matches a reference NFT mint pattern (4 moveCalls in one tx, hero ref threaded through, transferObjects at the end)",
+          "doc-usage-evidence: the model issued Glob/Grep/Read against bundled .sui-docs/ or .ts-sdk-docs/ paths during the run (post-hoc transcript scan)",
+          "code-quality: Move 2024 idioms (method-call form, EPascalCase errors, file-level module syntax); SDK 2.0 idioms on the TS side (no @mysten/sui/client imports, gRPC client used)"
+        ],
+        "scale": "1-3 per criterion",
+        "passThreshold": 9
+      }
+    }
   }
 ]

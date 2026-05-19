@@ -33,6 +33,7 @@ For each task in the tasks file, for each arm that was actually run, decide PASS
    - Else, if `passCriteria.alsoContainsString` is present, it must appear (same comment-exclusion rule).
 3. **`additionalFiles`** (multi-file tasks): each entry in the array must satisfy its own `containsString` / `containsRegex` / `doesNotContainString` / `doesNotContainRegex` (same comment-exclusion + supersedence rules).
 4. **Compile gate** (`passCriteria.compileAfter: true`): the `<version>/<id>.compile-exit` file must contain `0`. A non-zero exit, missing file, or `skipped` value means: skipped → ignore (don't penalise — note in methodology); non-zero → FAIL with the first line of `<id>.build.err` as the reason.
+4b. **TS build gate** (`passCriteria.tsBuildAfter: true`): the `<version>/<id>.ts-exit` file must report `install=0`, `typecheck=0`, AND `build=0` on three separate lines. Any non-zero step → FAIL with that step's name and the first line of the matching `<id>.ts-{install,typecheck,build}.err` as the reason. The literal value `skipped` (no pnpm available or subdir missing) means: skipped → ignore (don't penalise — note in methodology).
 5. **Rubric** (only when task has a `rubric` block): score each criterion 1-5 on the model's post-state diff using the rubric description as the lens. Sum the scores. If `sum >= rubric.passThreshold`, PASS; else FAIL with `"rubric: <sum>/<max>"`.
 
 If multiple criteria fail, report the *first* failing one — that's the proximate cause.

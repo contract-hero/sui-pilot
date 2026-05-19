@@ -1,0 +1,3 @@
+[package]
+name = "hero"
+edition = "2024"
