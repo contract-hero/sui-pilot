@@ -266,14 +266,17 @@
         <span class="step-kind">Chapter 1 — does the borrowed machinery earn its keep?</span>
         <h3>Pipe-delimited index vs. the full plugin copycat</h3>
         <p>
-          sui-pilot started by cloning a heavyweight approach: a Vercel-style plugin with a borrowed
-          matcher pipeline and a fat <em>pipe-delimited doc index</em> baked into the preamble. The first
-          eval A/B'd that machinery against leaner shapes across a 27-task suite &mdash; Move 2024 syntax,
-          one-time-witness, SDK 2.0, stale-training traps, multi-file refactors, ambiguous specs &mdash;
-          scored on literal pass/fail, an LLM rubric, token economics and an optional compile gate. After a
-          few baseline runs the answer settled: none of the borrowed machinery beat a slim
-          <em class="em">table that just points at the docs</em>. We deleted ~17&nbsp;K LOC and kept the
-          pointer &mdash; plus the eval harness, which became the instrument chapter&nbsp;2 runs on.
+          sui-pilot's preamble used to carry a fat <em>pipe-delimited index</em> of every bundled doc, and
+          an earlier branch went heavier still &mdash; cloning a Vercel-style plugin pattern (a hook-based
+          matcher, a manifest and a doctor, plus a chunk-injected version of the ecosystem map). The first
+          eval pitted these heavier shapes against leaner ones across a 27-task suite &mdash; multi-file
+          refactors, ambiguous specs (LLM-rubric graded), stale-training traps and token-pressure prompts
+          &mdash; scored on literal pass/fail, that rubric, per-task token economics and an optional
+          <code>sui&nbsp;move&nbsp;build</code> gate. The borrowed Vercel machinery didn't transfer (with
+          five explicitly-named slash skills there's nothing to disambiguate), and the fat index bought no
+          measurable quality or cost edge over a slim routing table. So we rolled back ~17&nbsp;K LOC and
+          kept a slim <em class="em">table that just points at the docs</em> &mdash; plus the eval harness,
+          the instrument chapter&nbsp;2 runs on.
         </p>
         <a class="read" href="EVAL_FRAMEWORK.html">Read the methodology &rarr;</a>
         <p class="source">Source: <code>EVAL_FRAMEWORK.html</code></p>
@@ -284,14 +287,15 @@
         <span class="step-kind">Chapter 2 — point at the docs, or map them?</span>
         <h3>Pointing vs. docs-section mapping</h3>
         <p>
-          Chapter&nbsp;1 left us pointing at the docs. Chapter&nbsp;2 tests the one piece of the old plugin
-          that might still earn its place: a <em class="em">mapping of the docs' sections</em> &mdash; a
-          445-line relational ecosystem graph (abilities, object model, auth patterns and how they connect)
-          loaded straight into the prompt. So the axis is: a bare <em class="em">pointer</em> (the 7-row
-          routing table, searched on demand) versus that <em class="em">map</em> always present. Same
-          harness as chapter&nbsp;1, a fresh 4-task NFT-dapp fixture, byte-identical everything except that
-          one file. The two shapes performed differently &mdash; and where the measurement got murky turned
-          out to be the most useful part.
+          Chapter&nbsp;1 left us pointing at the docs. Chapter&nbsp;2 brings back the one piece of that
+          rolled-back machinery that might still earn its place: the <em class="em">docs-section map</em>
+          itself &mdash; rebuilt as a 445-line relational ecosystem graph (abilities, object model, auth
+          patterns and how they connect). Where the old plugin chunk-injected it through hooks, here it's
+          simply <em class="em">always loaded</em> into the prompt. So the axis is: a bare
+          <em class="em">pointer</em> (the 7-row routing table, searched on demand) versus that
+          <em class="em">map</em> ever-present. Same harness as chapter&nbsp;1, a fresh 4-task NFT-dapp
+          fixture, byte-identical everything except that one file. The two shapes performed differently
+          &mdash; and where the measurement got murky turned out to be the most useful part.
         </p>
         <a class="read" href="POINT_VS_INDEX.html">Read what we found &rarr;</a>
         <p class="source">Source: <code>POINT_VS_INDEX.html</code> · raw lab notes: <code>docs-fetching-investigation.html</code></p>
