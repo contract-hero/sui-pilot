@@ -23,7 +23,7 @@ A spec is a claim of the form *"this code, at this state, against these deps, sa
 
 ## Flags
 
-- `--strict` — **refuse-on-drift, CI posture.** Any staleness, context drift, coverage gap, or spec failure makes `/verify` exit non-zero. This is exactly what the `prover.yml` stub `/specify --audit` emits runs. Default (no flag) is **warn-and-run**: report everything, exit zero unless a spec hard-fails.
+- `--strict` — **refuse-on-drift, CI posture.** Any staleness, context drift, coverage gap, or spec failure makes `/verify` exit non-zero. This is exactly what the `prover.yml` stub that `/specify --audit` emits runs. Default (no flag) is **warn-and-run**: report everything, exit zero unless a spec hard-fails.
 - `--report <path>` — where to write the HTML report (default `.verify-report.html` at the package root).
 - `--package <name>` — verify only one spec package (e.g. `<pkg>_specs_bv`); default verifies all packages in the manifest.
 
@@ -41,6 +41,7 @@ Same hard gate as `/specify` Phase 0 — do not duplicate the logic, follow it:
 2. Parse the manifest: `production_package.source_hashes` (per `<mod>::<fn>`), `hash_method`, `spec_packages[]` (name + `flags`), `deps[]` (name + rev + `pinned_to_branch`), `toolchain`.
 3. Resolve each spec package directory on disk. If a manifest-listed spec package is missing, that is itself drift — record it and (in `--strict`) fail.
 4. `mcp__sui-prover__list_specs` on each spec package → the live set of `#[spec(...)]` twins and their `target =` mappings. Cross-check against the manifest's specified set (feeds Phase 2b).
+5. **No specs at all → nothing to verify.** If `list_specs` returns no `#[spec(prove)]` twins across all packages *and* the manifest (or degraded discovery) records none, report "no specs to verify" and exit cleanly — **zero exit even under `--strict`** (absence of specs is not drift). The exception is a manifest that *claims* specs which are now missing — that is caught as a missing-package (step 3) or orphaned spec (Phase 2b) and does fail under `--strict`.
 
 ## Phase 2 — Detect drift
 
@@ -50,7 +51,7 @@ Three independent drift axes. Collect all; don't short-circuit.
 
 For each `<mod>::<fn>` with a bound hash in the manifest:
 
-1. Recompute the current hash **using the manifest's `hash_method`** (bytecode hash if it says `bytecode`, else normalized-source hash — strip comments/whitespace over the function span). Mirroring the method is essential; a different method produces false drift.
+1. Recompute the current hash **using the exact recipe `/specify` Phase 5.1 defines** for the manifest's `hash_method` (the recipe — hash function, byte source, normalization — is specified there so author and verifier produce identical digests). Mirroring it byte-for-byte is essential; any deviation manufactures false drift.
 2. Compare to the bound hash. Equal → **fresh**. Different → **stale** (the production function changed since the spec was proved).
 
 Staleness is structural, not heuristic: a stale spec's pass/fail verdict (Phase 3) no longer describes the code the user is shipping.
@@ -67,7 +68,7 @@ Re-run `/specify`'s Phase 1 discovery (the visibility regex in `specify/referenc
 Compare current environment to the manifest:
 
 - **Toolchain**: `binary.version` and the Sui/Boogie/Z3 versions from Phase 0 vs `toolchain`. A prover-version change can flip a proof — warn.
-- **Deps**: each `git_dependencies` rev vs the manifest's `deps[].rev`. A moved dep changes what called functions do; mid-flight upstream drift silently invalidates proofs (design doc Q4). Warn per changed dep; a dep `pinned_to_branch` is a standing warning regardless.
+- **Deps**: each `git_dependencies` entry's rev vs the manifest `deps[]` entry of the same `name`. A moved dep changes what called functions do; mid-flight upstream drift silently invalidates proofs (design doc Q4). Warn per changed dep; a dep `pinned_to_branch` is a standing warning regardless.
 
 ## Phase 3 — Re-prove
 

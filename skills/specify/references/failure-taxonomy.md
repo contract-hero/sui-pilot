@@ -88,7 +88,7 @@ Findings always carry `raw_stdout` / `raw_stderr` as the escape hatch — if a k
 **Remediation.** In escalation order:
 
 1. **Increase `timeout_seconds`** — start at 60s, try 120s, then 300s.
-2. **Add `--split-paths=N`** via `extra_args` (start at 4, try 8). The workshop example uses `--split-paths=4`.
+2. **Add `--split-paths=N`** via `extra_args` (start at 4, try 8). The workshop example uses `--split-paths=4`. Always use the `=`-joined form (one array element); `extra_args` splits each token on `=`, so a space-separated `"--split-paths", "4"` would drop the value (`prove.ts`).
 3. **Per-spec `boogie_opt` tuning.** See §4.9 of spec-patterns. Start with `vcsMaxKeepGoingSplits:2`. Keep tokens verbatim across retries.
 4. **Narrow the spec.** If three escalations don't help, the spec might be asking the prover to discharge too much in one go. Split into multiple smaller specs (e.g. one for the abort path, one for the functional postcondition).
 5. **Bit-level semantics → second spec package.** If the timeout is on bitwise/shift/wrapping reasoning (the integer encoding can't model it efficiently), move that one spec to a `<pkg>_specs_bv/` package proved with `extra_args: ["--no-bv-int-encoding"]`. See spec-patterns §8; record the flag in `.specify-progress.json` `prover_flags` for the manifest.

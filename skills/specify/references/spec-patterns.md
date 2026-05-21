@@ -88,7 +88,7 @@ public fun <fn>_spec(<params>): <return_type> {
 }
 ```
 
-- `target = <fn>` binds the spec to the imported production function; the body must call it.
+- `target = <fn>` binds the spec to the production function brought into scope by the `use <pkg>::<mod>::{<fn>}` import; the body must call it. The bare (unqualified) `target = <fn>` is the proven idiom in the `integer-library` reference (e.g. `#[spec(prove, target = add)]` with `use integer_library::i128::{add}`) — it resolves *because* the function is imported. If the target isn't imported, qualify it: `target = <pkg>::<mod>::<fn>` (the form the bundled prover docs show). Either resolves; bare depends on the `use`.
 - Production functions/types use a plain `use <pkg>::<mod>::{...}`; only `prover::*` imports get `#[spec_only]`.
 - A function needing a non-default prover invocation goes in a *second* package — see §8.
 
@@ -412,11 +412,18 @@ A single production package can need **more than one spec package**, each proved
 
 - Create `<pkg>_specs_bv/` **lazily** — only when a spec fails/times out and the diagnosis points at bit-level reasoning (Phase 4.6).
 - Record each function's package + flag set in `.specify-progress.json` `prover_flags` and surface it in the report — *which encoding a function needed is itself audit signal* (it tells you the property is bit-level).
-- In the bv package the proof sometimes needs a `native fun` bound to a Boogie procedure (e.g. `ashr`) plus a custom prelude — see below.
+- In the bv package the proof sometimes needs a `native fun` bound to a Boogie procedure (e.g. `ashr`) plus a custom `extra_bpl` file — see below.
 
-### 8.1 `prelude_extra.bpl` — hand-written axioms (TRUSTED, NOT PROVED)
+### 8.1 Extra-Boogie axioms via `extra_bpl` (TRUSTED, NOT PROVED)
 
-When Boogie can't derive a fact, the engagement adds it as an axiom in a `prelude_extra.bpl` shipped beside the spec package's `Move.toml`. integer-library's prelude teaches Boogie things like:
+When Boogie can't derive a fact, you add it as an axiom in a hand-written `.bpl` file. **The prover does not auto-load any file by name** — you wire the file in explicitly with the `extra_bpl` attribute, placing the `.bpl` in the **same directory as the spec module** (per `.sui-prover-docs/guide/SKILL.md` §"extra_bpl" and `spec-reference.md`):
+
+```move
+#[spec_only(extra_bpl = b"mymodule_prelude.bpl")]
+module <pkg>_specs::<mod>_specs;
+```
+
+(integer-library ships such files; in its build they happen to be named `prelude_extra.bpl`, but the load is driven by the attribute, not the filename.) The `.bpl` teaches Boogie facts like:
 
 ```
 axiom (forall x: int :: {$xorInt'u128'(x, $MAX_U128)} $xorInt'u128'(x, $MAX_U128) == $MAX_U128 - x);
@@ -426,8 +433,9 @@ axiom (forall x: int :: {$shr(x, 127)} $shr(x, 127) == x div $TWO_POW_127);
 
 …and the bv prelude binds a native `ashr` to `$AShr'BvN'`.
 
-**Every line in `prelude_extra.bpl` is a hole in the verification.** An axiom is assumed true, never checked — if it's wrong, every proof that relies on it is vacuous. Therefore:
+**Every line in an `extra_bpl` axiom file is a hole in the verification.** An axiom is assumed true, never checked — if it's wrong, every proof that relies on it is vacuous. Therefore:
 
-- Treat the prelude as an **escape hatch of last resort**, after `requires`-strengthening, `no_opaque`, `--split-paths`, and `boogie_opt` (failure-taxonomy `timeout` / `ensures_failed`) have failed.
+- Treat extra-Boogie axioms as an **escape hatch of last resort**, after `requires`-strengthening, `no_opaque`, `--split-paths`, and `boogie_opt` (failure-taxonomy `timeout` / `ensures_failed`) have failed.
+- **`/specify` does not auto-author these.** Writing trusted axioms is a human judgment call (each one weakens the proof). When a spec genuinely needs one, `/specify` creates the `.bpl` in the spec module's directory, wires it via the `extra_bpl` attribute, and **surfaces it to the user for confirmation** rather than inventing axioms silently. Phase 4.6 escalation routes here only as the final step.
 - **Every axiom must be disclosed** in the report's "Trusted axioms — not proved" section (Phase 5, L6): the axiom, the file+line, and a prose justification of why it's sound. This is the single most audit-critical content in the deliverable.
 - Prefer the narrowest axiom that unblocks the proof (a single masking identity), never a broad one.

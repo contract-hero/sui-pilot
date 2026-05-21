@@ -80,10 +80,12 @@ Per the plan, the target set is `public` (non-package) + `entry`. Use the regex 
    - **Exclude** the immediately-preceding `#[test_only]`, `#[test]`, or `#[allow(...)]` attribute lines from the classifier window (lookback ≤ 1 attribute block, not 200 chars).
 3. Build the target list: every `public` (excluding `public(package)`) + every `entry` (including those that are also `public`).
 4. Call `mcp__sui-prover__list_specs` with the package root.
-5. Mark each target as `verified` (already has a `#[spec(prove)]`), `pending` (no spec yet), or `partial` (has a `#[spec(skip)]` or `#[spec(focus)]` — needs upgrade).
+5. Mark each target as `verified` (carries `#[spec(prove)]` — a `focus` selector *alongside* `prove`, i.e. `#[spec(prove, focus)]`, is still `verified`; `focus` is an orthogonal debugging selector, not a partial state, though it should be stripped before commit) or `pending` (no spec yet). Mark as `partial` only a `#[spec(skip)]` (opaque axiom needing a real spec) or a **lone `#[spec(focus)]` without `prove`**.
 6. Write `.specify-progress.json` at the package root with the initial state. **Add it to `.gitignore` proactively if it's not already excluded** — the file is per-run state, not source.
 
 Report a one-line summary: "N externally-reachable functions: M verified, K pending, P partial".
+
+**Empty target set.** If the target list is empty (no `public`/`entry` functions — everything is private or `public(package)`), there is no external API to specify: write `.specify-progress.json` with `functions: {}`, emit a short report noting "no externally-reachable functions to specify", and exit cleanly — skip Phases 1.5–5's per-function work.
 
 ## Phase 1.5 — Scope decision + callee-quality probe
 
@@ -153,6 +155,17 @@ The default deliverable is a **separate sibling spec package**, not inline specs
 
    [addresses]
    <pkg>_specs = "0x0"
+   ```
+
+   **Addresses resolve through the dep — declare only the spec package's own.** The `[addresses]` block above declares *only* `<pkg>_specs`. The production package's named address (`<pkg>`) is supplied by the `local` dependency; do **not** redeclare it here (a second concrete value for `<pkg>` triggers `dep_address_conflict`). If the production package publishes its address (`published-at` / a fixed `<pkg> = "0x…"`), the dep carries that automatically. If it leaves `<pkg> = "0x0"` (unpublished), that's fine — the prover assigns it at build. A first-prove `unresolved_named_address` (failure-taxonomy) means the dep path is wrong, not that you should add `<pkg>` to the spec package's `[addresses]`. Worked shape:
+
+   ```toml
+   # production pkg's own Move.toml has:  [addresses]\n  <pkg> = "0x0"
+   # spec pkg declares ONLY its own address; <pkg> flows in via the local dep:
+   [dependencies]
+   <Pkg> = { local = "../<pkg>" }
+   [addresses]
+   <pkg>_specs = "0x0"     # NOT <pkg>
    ```
 
 2. **Announce, don't silently create.** Creating the sibling package is the documented default, so it does **not** need a per-run AskUserQuestion gate — but announce it in plain text: *"Scaffolding spec package `<pkg>_specs/` (production source stays untouched)."* In **non-interactive mode**, proceed without prompting. The production package is never modified in the default flow.
@@ -333,8 +346,8 @@ Update `.specify-progress.json` after each iteration. Schema:
     { "target": "fixed::mul_down", "file": "<pkg>_specs/sources/specify_axioms.move", "assumption": "unconstrained — no postcondition" }
   ],
   "functions": {
-    "function_id": {
-      "status": "pending" | "drafted" | "verified" | "skipped" | "needs_human" | "failed",
+    "<mod>::<fn>": {
+      "status": "pending" | "drafted" | "verified" | "skipped" | "needs_human" | "failed" | "discovery_only",
       "attempts": N,
       "last_error": "...",
       "spec_package": "<pkg>_specs",
@@ -345,7 +358,7 @@ Update `.specify-progress.json` after each iteration. Schema:
   }
 }
 ```
-`layout`, `spec_packages`, and per-function `prover_flags` / `spec_package` make resume deterministic and feed Phase 5's manifest. `trusted_axioms` accumulates every `#[spec(skip, target = …)]` for the report's disclosure section.
+Each function is keyed by its **`function_id` = `<mod>::<fn>`** — the same key form as the manifest's `source_hashes` (Phase 5.1), so progress and manifest align and resume matches reliably. `layout`, `spec_packages`, and per-function `prover_flags` / `spec_package` make resume deterministic and feed Phase 5's manifest. `trusted_axioms` accumulates every `#[spec(skip, target = …)]` for the report's disclosure section. `discovery_only` is the status set in Phase 0 step 4 when the prover binary is absent (discovery ran, no proving).
 
 ## Phase 5 — Hand off (deliverable)
 
@@ -359,17 +372,22 @@ Write `spec-context.json` next to the report. It binds the proof to the state it
 {
   "generated_at": "<ISO8601>",
   "hash_method": "bytecode" | "normalized_source",
-  "production_package": { "name": "<pkg>", "source_hashes": { "<mod>::<fn>": "<8-char>" } },
+  "production_package": { "name": "<pkg>", "source_hashes": { "<mod>::<fn>": "<16-hex>" } },
   "spec_packages": [
-    { "package": "<pkg>_specs",    "flags": [] },
-    { "package": "<pkg>_specs_bv", "flags": ["--no-bv-int-encoding"] }
+    { "name": "<pkg>_specs",    "flags": [] },
+    { "name": "<pkg>_specs_bv", "flags": ["--no-bv-int-encoding"] }
   ],
   "deps": [ { "name": "...", "rev": "...", "pinned_to_branch": false } ],
   "toolchain": { "sui_prover": "...", "sui_cli": "...", "boogie": "...", "z3": "..." }
 }
 ```
 
-Source hashes are **per-function** (minimize false-positive staleness) over compiled bytecode where available, else normalized source. Reuse `dep-pins-capture` logic for the `deps` block rather than duplicating it. Toolchain versions come from the Phase 0 `prover_capabilities` probe. **v1 is manifest-only** — capture, no preflight clone, no drift enforcement (those are roadmap v2/v3; design doc Q4).
+**Hash recipe (exact — `/verify` Phase 2a mirrors this byte-for-byte).** Hashes are **per-function**, keyed `<mod>::<fn>` (the same key form as `.specify-progress.json` `functions`). `hash_method` defaults to `normalized_source` in v1:
+
+- `normalized_source` (default): take the function's full source span — from its first attribute/`fun` line through the matching closing brace — strip line (`//`) and block (`/* */`) comments, then collapse every run of whitespace (including newlines) to a single space and trim. Hash the resulting bytes with `sha2_256` and record the **first 16 hex chars**. Comment/format reflows therefore do not register as drift; any token change does.
+- `bytecode` (opt-in, requires a build): hash the function's compiled bytecode slice from `build/<pkg>/bytecode_modules/<mod>.mv`. Closer to what the prover sees, but needs a successful `sui move build`; prefer `normalized_source` unless the user asks for bytecode binding.
+
+Reuse `dep-pins-capture` logic for the `deps` block rather than duplicating it. Toolchain versions come from the Phase 0 `prover_capabilities` probe. **v1 is manifest-only** — capture, no preflight clone, no drift enforcement (those are roadmap v2/v3; design doc Q4).
 
 ### 5.2 The report — invariant-driven, hybrid granularity (Q5 / Q1)
 
@@ -392,7 +410,7 @@ On regen, replace only content between `auto:` markers; never touch `human:` zon
 
 Invariants are named human-readable + stable slug (`INV-supply-conservation`); the source→invariant link is an explicit `// invariant: supply-conservation` marker above the `#[spec(prove)]` in the spec module (survives report regen).
 
-**Limitations section must enumerate trusted axioms (L6).** Under a "Trusted axioms — not proved" heading, list every `#[spec(skip, target = …)]` from `.specify-progress.json` `trusted_axioms[]` (target + file + the assumption in prose) **and** every hand-written `prelude_extra.bpl` axiom if one was used. These are holes in the verification — a wrong axiom makes the proof vacuous, so they're the auditor's first read.
+**Limitations section must enumerate trusted axioms (L6).** Under a "Trusted axioms — not proved" heading, list every `#[spec(skip, target = …)]` from `.specify-progress.json` `trusted_axioms[]` (target + file + the assumption in prose) **and** every hand-written Boogie axiom from any `extra_bpl` file used (wired via the `#[spec_only(extra_bpl = b"…")]` attribute — see `references/spec-patterns.md` §8.1). These are holes in the verification — a wrong axiom makes the proof vacuous, so they're the auditor's first read.
 
 **Package `index.html`:** package overview + top-level claim; cross-module invariants with proof-obligation mapping (which spec in which module discharges which obligation); coverage matrix (module × invariant, every externally-reachable fn marked specified / deliberately-skipped / known-gap *with a reason* — negative space is first-class, L9); per-module summaries with links; the manifest's toolchain + dep pins.
 
@@ -417,7 +435,7 @@ Any run starts at Phase 0 → Phase 1, then loads `.specify-progress.json` and s
 
 - **Never modify the production package in the default flow.** No `#[spec_only]`, no prover dependency, no marker blocks in the production source; no edits to the production `Move.toml`. Specs go in the sibling `<pkg>_specs/` package, which the skill owns and may create/edit freely. The only exception is the explicit `--inline` opt-out, which writes marker blocks into the production source.
 - **Never auto-edit the user's production `Move.toml`.** Surface setup issues (explicit `Sui`/`MoveStdlib` deps, edition) and let the user fix them. The skill *does* author the spec package's own `Move.toml` (Phase 3.5) — that file is a generated deliverable, not the user's.
-- **Trusted axioms are disclosed, never hidden.** Every `#[spec(skip, target = …)]` and every `prelude_extra.bpl` axiom must land in the report's "Trusted axioms — not proved" section. An undisclosed axiom is a silent hole in the verification.
+- **Trusted axioms are disclosed, never hidden.** Every `#[spec(skip, target = …)]` and every `extra_bpl` Boogie axiom must land in the report's "Trusted axioms — not proved" section. An undisclosed axiom is a silent hole in the verification.
 - **Never spec a `public(package)` function.** The user's intent (per the plan) is external-API specs only.
 - **Never emit legacy MSL syntax.** No `aborts_if`, no `pragma`, no free `axiom`. See `references/spec-patterns.md` for the modern equivalents.
 - **Never duplicate a `#[spec(...)]` for the same function.** Idempotency via the marker block.
