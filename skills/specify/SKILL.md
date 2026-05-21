@@ -229,7 +229,7 @@ public fun <fn>_spec(<params>): <return_type> {
 }
 ```
 
-The `target = <fn>` attribute binds the spec to the imported production function; the spec body **must call** the target (see failure-taxonomy `spec_target_body_no_call`). Imports of the production functions/types go in a plain `use <pkg>::<mod>::{...}` block; only the `prover::*` imports get `#[spec_only]`.
+The `target = <fn>` attribute binds the spec to the imported production function; the spec body **must call** the target (see failure-taxonomy `spec_target_body_no_call`). The templates use the **bare** `target = <fn>` because the function is in scope via the `use <pkg>::<mod>::{<fn>}` import (the proven integer-library idiom); if it isn't imported, use the qualified `target = <pkg>::<mod>::<fn>` — see `references/spec-patterns.md` §3. Imports of the production functions/types go in a plain `use <pkg>::<mod>::{...}` block; only the `prover::*` imports get `#[spec_only]`.
 
 **Inline shape (`--inline` opt-out only).** When the user chose the inline layout, render the legacy in-source twin (no `target =`, spec named `<fn>_spec`, written between markers in the production `.move`) per `references/spec-patterns.md` §2. Never use the inline shape in the default flow.
 
