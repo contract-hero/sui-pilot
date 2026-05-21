@@ -1,11 +1,21 @@
 ---
 name: specify
-description: "Walks the user through writing `#[spec(prove)]` formal specifications for every externally reachable function (`public` non-package + `entry`) in their Sui Move package, drives sui-prover via the sui-prover-mcp, and iterates on failures using a documented taxonomy. Use this skill when the user invokes `/specify`, asks to 'add formal verification', 'write prover specs', 'verify this package with sui-prover', or wants to harden a Move package before mainnet deploy. Skip for `public(package)` or private functions (out of scope), or when sui-prover isn't installed. Complements /move-code-review (SEC-* findings indicate where specs matter most) and /move-tests (specs are static guarantees, tests are dynamic samples)."
+description: "Walks the user through writing `#[spec(prove)]` formal specifications for every externally reachable function (`public` non-package + `entry`) in their Sui Move package. Emits the specs into a separate sibling `<pkg>_specs/` package (keeping production source pristine), drives sui-prover via the sui-prover-mcp, and produces an invariant-driven HTML report plus a `spec-context.json` reproducibility manifest. Use this skill when the user invokes `/specify`, asks to 'add formal verification', 'write prover specs', 'verify this package with sui-prover', or wants to harden a Move package before mainnet deploy. Skip for `public(package)` or private functions (out of scope), or when sui-prover isn't installed. Complements /move-code-review (SEC-* findings indicate where specs matter most) and /move-tests (specs are static guarantees, tests are dynamic samples)."
 ---
 
 # Specify — formal specifications for Sui Move
 
 > **Doc-First Requirement.** Read `.sui-prover-docs/` before drafting any spec. The Sui Prover spec language is **not** the legacy Move Prover MSL — it uses `#[spec(prove)]`, `requires`, `ensures`, `asserts` (positive abort form), and the macros `clone!`, `forall!`, `exists!`, `invariant!`. It does NOT use `aborts_if`, `pragma`, `apply`, `assume`, or free `axiom`. Verify any construct against `.sui-prover-docs/guide/spec-reference.md` before emitting it.
+
+## Deliverable shape (read first)
+
+`/specify` ships **three artifacts**, not one. This is the load-bearing architectural decision (`docs/specify-deliverable-design.html`, learning L1, validated against `~/workspace/integer-library`):
+
+1. **The production package — left pristine.** No `#[spec_only]`, no prover dependency, no marker blocks. Verification scaffolding never touches deployed source.
+2. **One or more spec packages.** A sibling `<pkg>_specs/` package holds `#[spec(prove, target = <pkg>::<mod>::<fn>)]` twins, one `<mod>_specs.move` per source module. A function that needs a custom prover invocation (e.g. `--no-bv-int-encoding` for bit-exact semantics) goes in a *second* package `<pkg>_specs_bv/` (Phase 4.6).
+3. **The report + manifest.** A self-contained HTML report (invariant-driven, per Phase 5) plus `spec-context.json` binding each spec to its source state, dep pins, toolchain versions, and per-package prover flags.
+
+The legacy inline layout (specs in the production `.move` between markers) is now **opt-in only** via `--inline`, for single-module throwaway packages where a sibling package is overkill. Default is always the separate package.
 
 ## Non-interactive (eval) mode
 
@@ -119,6 +129,38 @@ Order pending functions:
 - "Pick one to start with" (offer the top 5 by priority)
 - "Pick a subset" (offer to filter by module or by mutation risk)
 
+## Phase 3.5 — Scaffold the spec package (default layout)
+
+The default deliverable is a **separate sibling spec package**, not inline specs (see "Deliverable shape" above; design doc L1). Scaffold it once, before the per-function loop.
+
+1. **Locate / create `<pkg>_specs/`.** Resolve the production package name from `[package].name` in `Move.toml`. The spec package lives as a sibling directory `<pkg>_specs/` (snake-cased), with this layout:
+
+   ```
+   <pkg>_specs/
+     Move.toml          # name = "<Pkg>Specs", edition = "2024.beta", dep on the production pkg
+     sources/           # one <mod>_specs.move per source module
+   ```
+
+   `Move.toml` template — depend on the production package by relative path, declare the spec address:
+
+   ```toml
+   [package]
+   name = "<Pkg>Specs"
+   edition = "2024.beta"
+
+   [dependencies]
+   <Pkg> = { local = "../<pkg>" }
+
+   [addresses]
+   <pkg>_specs = "0x0"
+   ```
+
+2. **Announce, don't silently create.** Creating the sibling package is the documented default, so it does **not** need a per-run AskUserQuestion gate — but announce it in plain text: *"Scaffolding spec package `<pkg>_specs/` (production source stays untouched)."* In **non-interactive mode**, proceed without prompting. The production package is never modified in the default flow.
+
+3. **`--inline` opt-out.** If the user passed `--inline` (or the package is a single trivial module and the user opted in at Phase 1.5), skip scaffolding and use the legacy in-source marker-block layout (Phase 4.5 "Inline fallback"). Record the chosen layout in `.specify-progress.json` under `layout: "package" | "inline"` so resume is deterministic.
+
+4. **Second package for custom prover configs is lazy.** Do *not* create `<pkg>_specs_bv/` up front. It's created on demand in Phase 4.6 only when a spec is found to need a non-default prover invocation. Most packages never need it.
+
 ## Phase 4 — Per-function loop
 
 For each pending function (sequentially — parallelism would race AskUserQuestion):
@@ -139,28 +181,44 @@ Present a compact fact sheet to the user *inside the AskUserQuestion description
 
 **One batched call** with up to 4 sub-questions, each with 3-4 options + Other. Concrete defaults so the user can accept fast:
 
-1. **Preconditions (`requires`)**: "none / parameter range check (suggested: `x.to_int().add(y.to_int()).lte(MAX_U64)`) / state precondition / Other"
-2. **Postconditions (`ensures`)**: "none / functional result (suggested: `result == x + y`) / state-after-call relation / Other"
-3. **Abort conditions (`asserts`)**: present the detected `assert!` mirrors — "use all detected mirrors / use a subset / replace with custom / none"
+1. **Abort conditions (`asserts`)** — *ask first; for math/arithmetic kernels the abort contract is the security property* (L2). Present the detected `assert!` mirrors plus any implicit abort paths (div-by-zero, shift-out-of-range, overflow in non-wrapping fns): "use all detected mirrors / use a subset / replace with custom / does not abort". The answer becomes both an `asserts(...)` in the spec **and** the report's required "Abort conditions" line (Phase 5).
+2. **Postconditions (`ensures`)** — offer two tiers, recommend the stronger:
+   - **Defining-property (recommended, L4)**: the algebraic property that *defines* the result independent of the formula. E.g. floor division: `result*d <= p < (result+1)*d`; `div_mod`: `p*d + r == num && r < d`. Strictly stronger than recomputation — a wrong mental model can't pass against a wrong implementation.
+   - **Functional result**: `result == <recompute the formula>` (suggested: `result == x + y`). The weakest useful spec; offer only when no defining property exists.
+   - Plus "state-after-call relation / none / Other".
+3. **Preconditions (`requires`)**: "none / parameter range check (suggested: `x.to_int().add(y.to_int()).lte(MAX_U64)`) / state precondition / Other"
 4. **Invariants**: "none needed / loop invariant / type invariant / ghost-state invariant / Other"
+
+For functions over a **custom numeric type** (a wrapper struct over an integer field — signed ints, fixed-point), the postcondition should be expressed in the `Integer` math domain via the type's `to_int` model (L3) — see `references/spec-patterns.md` §6 and Phase 4.3.
 
 ### 4.3 Draft (LLM)
 
-Render a `#[spec(prove)]` twin function in the canonical shape (see `references/spec-patterns.md` §2):
+**Emit the math-domain model first (L3).** If the target operates on a custom numeric type (a `struct` wrapping an integer field — signed ints, fixed-point), and the spec module does not yet contain the model, emit it once at the top of the `<mod>_specs.move` file before any spec: a `to_int` conversion into `std::integer::Integer`, a range predicate (`is_<type>`), any helper ops (`int_div_trunc`, `int_abs`, …), and `use fun` aliases so specs read like the math. See `references/spec-patterns.md` §6 for the full template. This is what makes signed-int / fixed-point specs tractable — without it they drown in two's-complement bit-fiddling.
+
+**Render the twin in the separate-package shape (default, L1).** The spec lives in `<pkg>_specs/sources/<mod>_specs.move` and references the production function by `target =`:
 
 ```move
-#[spec(prove)]
-fun <name>_spec(<params>): <return_type> {
+module <pkg>_specs::<mod>_specs;
+
+use <pkg>::<mod>::{<fn>, /* types used in the signature */};
+
+#[spec_only]
+use prover::prover::{ensures, asserts, requires, clone};
+
+#[spec(prove, target = <fn>)]
+public fun <fn>_spec(<params>): <return_type> {
     requires(<preconditions>);
     let __old = clone!(<mutable_state>);     // only if state mutation detected
-    asserts(<abort_condition>);              // one per detected mirror
-    let <r> = <name>(<args>);
-    ensures(<postcondition>);
+    asserts(<abort_condition>);              // one per detected mirror + implicit paths
+    let <r> = <fn>(<args>);                   // must call the target
+    ensures(<defining_property_postcondition>);
     <r>
 }
 ```
 
-Imports go in a `#[spec_only]` block at the bottom of the file, deduplicated against what's already there.
+The `target = <fn>` attribute binds the spec to the imported production function; the spec body **must call** the target (see failure-taxonomy `spec_target_body_no_call`). Imports of the production functions/types go in a plain `use <pkg>::<mod>::{...}` block; only the `prover::*` imports get `#[spec_only]`.
+
+**Inline shape (`--inline` opt-out only).** When the user chose the inline layout, render the legacy in-source twin (no `target =`, spec named `<fn>_spec`, written between markers in the production `.move`) per `references/spec-patterns.md` §2. Never use the inline shape in the default flow.
 
 ### 4.4 Review (AskUserQuestion)
 
@@ -171,27 +229,28 @@ Show the drafted spec inline. Single question:
 
 ### 4.5 Persist (deterministic)
 
-Write the spec at the bottom of the same `.move` file, between markers:
+**Default — separate package (L1).** Write the twin into `<pkg>_specs/sources/<mod>_specs.move` (one spec module per source module). If the file doesn't exist yet, create it with the module header, the `use <pkg>::<mod>::{...}` production imports, the `#[spec_only] use prover::prover::{...}` block, and the math-domain model (Phase 4.3, if applicable). The production package is **never touched**.
 
 ```move
-// === sui-pilot specify: generated specs (do not edit between markers) ===
+module <pkg>_specs::<mod>_specs;
+
+use <pkg>::<mod>::{<fn>, /* types */};
 
 #[spec_only]
-use prover::prover::{requires, ensures, asserts, clone};
-// (additional imports as needed)
+use prover::prover::{ensures, asserts, requires, clone};
 
-#[spec(prove)]
-fun <name>_spec(...) { ... }
+// (math-domain model here, if the module specs a custom numeric type — §6)
 
-// === end sui-pilot specify ===
+#[spec(prove, target = <fn>)]
+public fun <fn>_spec(<params>): <return_type> { ... }
 ```
 
-**Idempotency rule.** If the marker block already exists, splice the new spec into it. Never duplicate a `#[spec(...)]` for the same function — if one exists, ask the user (4.4-style) whether to refine or overwrite.
+**Idempotency rule.** Key on the `target = <fn>` attribute. If a spec for that target already exists in the module, never duplicate it — ask the user (4.4-style) whether to refine or overwrite. Splice new imports into the existing `use` blocks, deduplicated.
 
-**Sidecar axiom file** (recommended when the package has stub callees, large axiom counts, or any cross-package targets). Instead of inlining axiom declarations next to every spec block, create `sources/specify_axioms.move` inside the target package:
+**Sidecar axiom file** (when the production package has stub callees — every dep body is `abort 0`). Axioms model the stubbed callees of the production package, so they live in the spec package as `<pkg>_specs/sources/specify_axioms.move`:
 
 ```move
-module <pkg>::specify_axioms;
+module <pkg>_specs::specify_axioms;
 
 #[spec_only]
 use prover::prover::{fresh};
@@ -207,13 +266,33 @@ fun mul_down_spec(_a: u256, _b: u256): u256 { fresh() }
 fun ln_spec(_x: u256): u256 { fresh() }
 ```
 
-This is the canonical way to axiomatize external/stubbed dependencies. Specs in the target file then reference the real callees naturally and the prover substitutes the spec summaries. See `references/spec-patterns.md` §4.10 for the full pattern.
+This is the canonical way to axiomatize external/stubbed dependencies — see `references/spec-patterns.md` §4.10. **Every axiom is trusted, not proved** — record each one for the report's "Trusted axioms" disclosure (Phase 5, L6).
 
-**Cross-module fallback.** If the colocated spec causes a compile error, offer to create a sidecar `<pkg>_specs/` package and emit the spec there with `target = pkg::mod::fn`. **AskUserQuestion before creating files outside the user's package directory.**
+**Inline fallback (`--inline` only).** When the user chose the inline layout at Phase 3.5, write the spec at the bottom of the production `.move` between markers, named `<fn>_spec` with no `target =`:
+
+```move
+// === sui-pilot specify: generated specs (do not edit between markers) ===
+#[spec_only]
+use prover::prover::{requires, ensures, asserts, clone};
+
+#[spec(prove)]
+fun <name>_spec(...) { ... }
+// === end sui-pilot specify ===
+```
+
+Idempotency: if the marker block exists, splice into it; never duplicate a `#[spec(...)]` for the same function.
 
 ### 4.6 Verify (MCP)
 
-`mcp__sui-prover__prove_package` with `target_function: "<pkg>::<mod>::<name>_spec"` and `timeout_seconds: 60` (configurable).
+`mcp__sui-prover__prove_package` with `move_toml_path` pointed at the **spec package** (`<pkg>_specs/Move.toml`), `target_function: "<pkg>_specs::<mod>_specs::<fn>_spec"`, and `timeout_seconds: 60` (configurable). In the `--inline` fallback the target is `<pkg>::<mod>::<fn>_spec` against the production `Move.toml`.
+
+**Custom prover config → second spec package (L5).** Some functions can only be proved under a non-default prover invocation — most commonly bit-exact bitwise/shift/wrapping semantics that need `--no-bv-int-encoding` (the integer encoding can't model them). When a spec fails or times out and the diagnosis (Phase 4.7) points at bit-level reasoning:
+
+1. Create `<pkg>_specs_bv/` on demand (same scaffold as Phase 3.5, distinct name `<Pkg>SpecsBV`, address `<pkg>_specs_bv`).
+2. Move that one spec there and re-verify with the flag set, e.g. `extra_args: ["--no-bv-int-encoding"]`.
+3. Record the function's package + flag set in `.specify-progress.json` under `prover_flags` so Phase 5's manifest and report can show *which encoding each spec needed and why* (itself an audit-relevant fact — it signals the property is bit-level).
+
+Most packages never need a `_bv` package; create it only when a spec actually demands it.
 
 ### 4.7 Diagnose failures
 
@@ -248,21 +327,87 @@ Default `attempts ≤ 3` per function. Configurable via Phase 3 batch.
 Update `.specify-progress.json` after each iteration. Schema:
 ```json
 {
-  "function_id": {
-    "status": "pending" | "drafted" | "verified" | "skipped" | "needs_human" | "failed",
-    "attempts": N,
-    "last_error": "..."
+  "layout": "package" | "inline",
+  "spec_packages": ["<pkg>_specs", "<pkg>_specs_bv"],
+  "trusted_axioms": [
+    { "target": "fixed::mul_down", "file": "<pkg>_specs/sources/specify_axioms.move", "assumption": "unconstrained — no postcondition" }
+  ],
+  "functions": {
+    "function_id": {
+      "status": "pending" | "drafted" | "verified" | "skipped" | "needs_human" | "failed",
+      "attempts": N,
+      "last_error": "...",
+      "spec_package": "<pkg>_specs",
+      "prover_flags": ["--no-bv-int-encoding"],
+      "abort_conditions": "aborts unless shift < 128",
+      "invariant": "INV-supply-conservation"
+    }
   }
 }
 ```
+`layout`, `spec_packages`, and per-function `prover_flags` / `spec_package` make resume deterministic and feed Phase 5's manifest. `trusted_axioms` accumulates every `#[spec(skip, target = …)]` for the report's disclosure section.
 
-## Phase 5 — Hand off
+## Phase 5 — Hand off (deliverable)
 
-When the user pauses, or when all pending functions are processed:
+When the user pauses, or when all pending functions are processed, emit the full deliverable. Per "Deliverable shape" this is the manifest + the report; the spec packages already exist on disk from Phase 4.
 
-1. Write `.specify-report.html` at the package root — self-contained, semantic HTML5, inline CSS. Sections: package summary, per-function status, generated specs (with syntax-highlighted code blocks), open issues, next steps.
-2. Print a one-screen summary to the chat: "X verified, Y drafted-but-failing, Z needs-human, K skipped. Report at `<path>`."
-3. Offer to `git diff` the new spec blocks so the user can review the changes.
+### 5.1 Verification-context manifest (Q4 / L5)
+
+Write `spec-context.json` next to the report. It binds the proof to the state it was proved against, so a reviewer can reproduce it:
+
+```json
+{
+  "generated_at": "<ISO8601>",
+  "hash_method": "bytecode" | "normalized_source",
+  "production_package": { "name": "<pkg>", "source_hashes": { "<mod>::<fn>": "<8-char>" } },
+  "spec_packages": [
+    { "package": "<pkg>_specs",    "flags": [] },
+    { "package": "<pkg>_specs_bv", "flags": ["--no-bv-int-encoding"] }
+  ],
+  "deps": [ { "name": "...", "rev": "...", "pinned_to_branch": false } ],
+  "toolchain": { "sui_prover": "...", "sui_cli": "...", "boogie": "...", "z3": "..." }
+}
+```
+
+Source hashes are **per-function** (minimize false-positive staleness) over compiled bytecode where available, else normalized source. Reuse `dep-pins-capture` logic for the `deps` block rather than duplicating it. Toolchain versions come from the Phase 0 `prover_capabilities` probe. **v1 is manifest-only** — capture, no preflight clone, no drift enforcement (those are roadmap v2/v3; design doc Q4).
+
+### 5.2 The report — invariant-driven, hybrid granularity (Q5 / Q1)
+
+Write per-module `<mod>.spec.html` next to each spec module, plus a package-level `index.html`. `--single-file` collapses to one file for tiny packages. Each file is self-contained semantic HTML5 with inline CSS (match the house style in `docs/*.html`).
+
+**Structured sections via markers (Q2).** Machine-derived zones regenerate every run; human-authored prose is preserved. Wrap each:
+
+```html
+<!-- specify:auto:begin coverage-matrix -->  ... regenerated ...  <!-- specify:auto:end -->
+<!-- specify:human:begin intent-INV-supply-conservation -->  ... preserved ...  <!-- specify:human:end -->
+```
+
+On regen, replace only content between `auto:` markers; never touch `human:` zones.
+
+**Module report structure (invariant-driven):**
+1. Module overview (`specify:human`).
+2. **Invariants** — one entry per property the module guarantees. Each carries: statement (formal + prose), functions involved, and the required sections: **Abort conditions** (L2 — the exact abort set per function, or "does not abort"), **Threat model**, **Proof obligations** (the defining-property `ensures` from Phase 4.2 *are* the obligations), plus the Q2 template (Intent / Alternatives / Limitations / Open questions). Counterexamples appear here under `--audit` only.
+3. **Function-local guarantees** — bucket for specs with no cross-cutting invariant.
+4. **Function index (appendix, auto)** — every spec'd fn: signature, the two source hashes (production fn + spec), prover-flag set if non-default, → links to the invariant(s) it serves.
+
+Invariants are named human-readable + stable slug (`INV-supply-conservation`); the source→invariant link is an explicit `// invariant: supply-conservation` marker above the `#[spec(prove)]` in the spec module (survives report regen).
+
+**Limitations section must enumerate trusted axioms (L6).** Under a "Trusted axioms — not proved" heading, list every `#[spec(skip, target = …)]` from `.specify-progress.json` `trusted_axioms[]` (target + file + the assumption in prose) **and** every hand-written `prelude_extra.bpl` axiom if one was used. These are holes in the verification — a wrong axiom makes the proof vacuous, so they're the auditor's first read.
+
+**Package `index.html`:** package overview + top-level claim; cross-module invariants with proof-obligation mapping (which spec in which module discharges which obligation); coverage matrix (module × invariant, every externally-reachable fn marked specified / deliberately-skipped / known-gap *with a reason* — negative space is first-class, L9); per-module summaries with links; the manifest's toolchain + dep pins.
+
+### 5.3 `--audit` extras (opt-in)
+
+Only when the user passed `--audit`:
+
+- **Counterexample regressions (L7).** When a spec produced a counterexample during Phase 4, persist the failing input + the offending production snippet as a named regression beside the spec (the integer-library pattern: keep the buggy fn so the spec demonstrably fails on it). Leaner than a freeform journal and doubles as a vacuity check.
+- **CI stub (L8).** Emit a `.github/workflows/prover.yml` stub that brew-installs sui-prover and runs it once per spec package with that package's flag set (from the manifest). This *is* drift enforcement — frame `/verify --strict` as "the thing CI runs."
+
+### 5.4 Summary
+
+1. Print a one-screen chat summary: "X verified, Y drafted-but-failing, Z needs-human, K skipped. Spec package(s): `<pkg>_specs[, <pkg>_specs_bv]`. Report at `<path>`."
+2. Offer to `git diff` the spec package(s) so the user can review (production source is unchanged — call that out explicitly).
+3. Point the user at the consumer: once specs are in place, **`/verify`** re-proves them against current code and flags drift using the `spec-context.json` this phase emitted (`/verify --strict` is the CI posture). `/specify` authors; `/verify` checks.
 
 ## Resumability
 
@@ -270,7 +415,9 @@ Any run starts at Phase 0 → Phase 1, then loads `.specify-progress.json` and s
 
 ## Operating rules
 
-- **Never auto-edit the user's `Move.toml`.** Surface setup issues; let the user fix them.
+- **Never modify the production package in the default flow.** No `#[spec_only]`, no prover dependency, no marker blocks in the production source; no edits to the production `Move.toml`. Specs go in the sibling `<pkg>_specs/` package, which the skill owns and may create/edit freely. The only exception is the explicit `--inline` opt-out, which writes marker blocks into the production source.
+- **Never auto-edit the user's production `Move.toml`.** Surface setup issues (explicit `Sui`/`MoveStdlib` deps, edition) and let the user fix them. The skill *does* author the spec package's own `Move.toml` (Phase 3.5) — that file is a generated deliverable, not the user's.
+- **Trusted axioms are disclosed, never hidden.** Every `#[spec(skip, target = …)]` and every `prelude_extra.bpl` axiom must land in the report's "Trusted axioms — not proved" section. An undisclosed axiom is a silent hole in the verification.
 - **Never spec a `public(package)` function.** The user's intent (per the plan) is external-API specs only.
 - **Never emit legacy MSL syntax.** No `aborts_if`, no `pragma`, no free `axiom`. See `references/spec-patterns.md` for the modern equivalents.
 - **Never duplicate a `#[spec(...)]` for the same function.** Idempotency via the marker block.

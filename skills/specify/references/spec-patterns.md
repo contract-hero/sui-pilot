@@ -30,6 +30,8 @@ Attribute exclusion for `#[test_only]` / `#[test]`:
 
 ## 2. Canonical spec body shape
 
+> The body shape below is the same whether the spec is inline or in a separate package. The **default layout wraps it in a separate spec package with `#[spec(prove, target = <fn>)]`** — see §3. The bare `#[spec(prove)]` form shown here is the `--inline` opt-out.
+
 The minimal twin function pattern (from `.sui-prover-docs/guide/SKILL.md`):
 
 ```move
@@ -53,28 +55,44 @@ use prover::prover::{requires, ensures, asserts, clone};
 use prover::ghost::{declare_global, global};   // only when using ghost state
 ```
 
-## 3. The colocation-vs-sidecar choice
+## 3. Spec layout — separate package is the default
 
-The Asymptotic SKILL.md warns:
+**The default layout is a separate sibling spec package** — not inline specs in the production source. This matches how real audit-grade engagements ship (`~/workspace/integer-library`: `specs/` package depending on the production package; design doc L1) and it keeps the deployed package pristine — no `#[spec_only]`, no prover dependency, no marker blocks.
+
+The Asymptotic SKILL.md also warns colocation is fragile:
 
 > Specs may cause compile errors when placed alongside regular Move code due to prover-specific changes in the compilation pipeline. If this happens, create a separate package for specs and use the `target` attribute.
 
-Workflow:
+So separate-package is both the cleaner deliverable *and* the more robust one. Layout:
 
-1. Try colocation first (it's what every example in `.sui-prover-docs/examples/` does).
-2. If the compile fails *only* after the spec block is written, fall back to a sidecar package `<pkg>_specs/`:
+```
+<pkg>_specs/
+  Move.toml          # name = "<Pkg>Specs", edition = "2024.beta", dep <Pkg> = { local = "../<pkg>" }
+  sources/
+    <mod>_specs.move # one per production module
+```
 
-   ```move
-   module <pkg>_specs::<mod>;
+```move
+module <pkg>_specs::<mod>_specs;
 
-   #[spec(prove, target = <pkg>::<mod>::<fn>)]
-   public fun <fn>_spec(<params>): <return_type> {
-       <pkg>::<mod>::<fn>(<args>)
-       // requires / ensures / asserts as usual
-   }
-   ```
+use <pkg>::<mod>::{<fn>, /* types in the signature */};
 
-3. The skill must ask the user (`AskUserQuestion`) before creating files outside the user's package directory.
+#[spec_only]
+use prover::prover::{ensures, asserts, requires, clone};
+
+#[spec(prove, target = <fn>)]
+public fun <fn>_spec(<params>): <return_type> {
+    // requires / asserts / ensures as usual
+    let r = <fn>(<args>);   // MUST call the target (failure-taxonomy: spec_target_body_no_call)
+    r
+}
+```
+
+- `target = <fn>` binds the spec to the imported production function; the body must call it.
+- Production functions/types use a plain `use <pkg>::<mod>::{...}`; only `prover::*` imports get `#[spec_only]`.
+- A function needing a non-default prover invocation goes in a *second* package — see §8.
+
+**`--inline` opt-out.** Only for single trivial modules where a sibling package is overkill. Writes the legacy in-source marker-block twin (§2, no `target =`). Never the default.
 
 ## 4. Common patterns
 
@@ -220,10 +238,10 @@ fun withdraw_spec<A, B>(pool: &mut Pool<A, B>, lp_in: Balance<LP<A, B>>): (Balan
 
 Real-world Move packages often depend on libraries whose **source isn't shipped** — the dep's public-bytecode interface is exported but every function body is `abort 0` (the canonical stub shape used when a vendor publishes the ABI but keeps the implementation closed). A prover invoked on such a package concludes every caller path aborts (because every callee aborts), so any spec verifies *vacuously*: the `_Check` and `_Assume` subchecks pass but say nothing about the real math.
 
-The fix is **axiomatic modeling** of the stub callees via a dedicated sidecar file `sources/specify_axioms.move`:
+The fix is **axiomatic modeling** of the stub callees via a dedicated file in the **spec package** (the default layout, §3) — `<pkg>_specs/sources/specify_axioms.move`. The axioms target the stubbed callees of the production package's deps; keeping them in the spec package means the production source stays untouched:
 
 ```move
-module <pkg>::specify_axioms;
+module <pkg>_specs::specify_axioms;
 
 #[spec_only]
 use prover::prover::{fresh};
@@ -290,3 +308,126 @@ The Sui Prover does **not** use the legacy Move Prover MSL keywords. Common drif
 | `invariant <expr>` block | `invariant!` macro (loops) or `<Type>_inv` naming + `#[spec_only(inv_target = T)]` (data invariants) |
 
 If a user pastes legacy MSL into a spec the skill is reviewing, surface this table and ask whether to translate or abort.
+
+## 6. Modeling a custom numeric type (the `Integer` math-domain idiom)
+
+For any package with a custom numeric type — a `struct` wrapping an integer field (signed ints, fixed-point, Q64.64, etc.) — specs must reason in the **unbounded mathematical domain** `std::integer::Integer`, not in machine bits. Lift each value with `.to_int()`, do the math in `Integer`, compare. The prover then never wrestles with two's-complement bit-fiddling, which is otherwise intractable. (Pattern distilled from `~/workspace/integer-library`'s verified `i128_specs.move`, L3.)
+
+**Model the type once, at the top of the spec module, then reuse via `use fun`:**
+
+```move
+module integer_library_specs::i128_specs;
+
+use integer_library::i128::I128;       // + the functions being spec'd
+
+#[spec_only] use std::integer::Integer;
+#[spec_only] use prover::prover::{ensures, asserts};
+
+const MIN_AS_U128: u128 = 0x80000000000000000000000000000000;
+const MAX_AS_U128: u128 = 0x7fffffffffffffffffffffffffffffff;
+
+// 1. Reinterpret the raw bits as a signed mathematical integer (two's complement).
+#[spec_only]
+fun to_signed_int(x: u128): Integer {
+    if (x <= MAX_AS_U128) { x.to_int() }
+    else { x.to_int().sub(0x100000000000000000000000000000000u256.to_int()) }
+}
+
+// 2. Lift the wrapper type into the math domain.
+#[spec_only]
+fun to_int(v: I128): Integer { v.as_u128().to_signed_int() }
+
+// 3. Range predicate — "does this math value fit the type?" (drives abort specs).
+#[spec_only]
+fun is_i128(v: Integer): bool {
+    v.gte(MIN_AS_U128.to_signed_int()) && v.lte(MAX_AS_U128.to_signed_int())
+}
+
+// 4. Domain-specific helper ops, also in Integer space.
+#[spec_only]
+public fun int_div_trunc(x: Integer, y: Integer): Integer {
+    let q = x.abs().div(y.abs());
+    if (x.is_pos() && y.is_pos() || x.is_neg() && y.is_neg()) { q } else { q.neg() }
+}
+
+// 5. `use fun` aliases so specs read like the math.
+use fun to_int as I128.to_int;
+use fun to_signed_int as u128.to_signed_int;
+use fun int_div_trunc as Integer.div_trunc;
+```
+
+With the model in place, specs are short and legible — the abort contract uses the range predicate, the postcondition states the math:
+
+```move
+#[spec(prove, target = add)]
+public fun add_spec(num1: I128, num2: I128): I128 {
+    let sum = num1.to_int().add(num2.to_int());
+    asserts(is_i128(sum));                 // aborts iff the true sum doesn't fit
+    let result = add(num1, num2);
+    ensures(result.to_int() == sum);        // exact, in Integer space
+    result
+}
+```
+
+**Phase 4.3 should emit this model block first** when it detects a wrapper struct over an integer field, before any per-function spec. Put it once per spec module (or a shared spec module imported by the others).
+
+## 7. Defining-property postconditions (prefer over recomputation)
+
+The weakest useful `ensures` is `result == <recompute the formula>`: it re-derives the implementation in spec language, so a wrong mental model passes against a wrong implementation. Prefer the **defining property** — the algebraic relation that characterizes the result regardless of how it's computed. (From integer-library's `full_math` / `math_u256` specs, L4.)
+
+| Function | Recomputation (weak) | Defining property (strong) |
+|---|---|---|
+| floor div `mul_div_floor` | `result == p / d` | `result*d <= p  &&  p < (result+1)*d` |
+| `div_mod` | `(p, r) == (num/d, num%d)` | `p*d + r == num  &&  r < d` |
+| ceil div | `result == (p + d-1)/d` | `(result-1)*d < p  &&  p <= result*d` |
+| `add_check` (overflow test) | mirror the impl's branch | `result == (a+b <= MAX)` in Integer space |
+
+Real example — note the functional `ensures` *and* the bounding inequalities together:
+
+```move
+#[spec(prove, target = mul_div_floor)]
+public fun mul_div_floor_spec(num1: u64, num2: u64, denom: u64): u64 {
+    asserts(denom > 0);
+    let product = num1.to_int().mul(num2.to_int());
+    let expected = product.div(denom.to_int());
+    asserts(expected.lte(std::u64::max_value!().to_int()));
+    let result = mul_div_floor(num1, num2, denom);
+    ensures(result.to_int() == expected);                                   // functional
+    ensures(result.to_int().mul(denom.to_int()).lte(product));              // result*d <= p
+    ensures(product.lt(result.to_int().add(1u64.to_int()).mul(denom.to_int()))); // p < (result+1)*d
+    result
+}
+```
+
+Offer defining-property as the recommended postcondition tier in Phase 4.2 for division, rounding, sqrt, and any inverse-relation function. These inequalities *are* the report's "Proof obligations" (Phase 5).
+
+## 8. Multiple spec packages & custom prover configs
+
+A single production package can need **more than one spec package**, each proved with a different prover invocation. The canonical case (integer-library, L5): bit-exact bitwise/shift/wrapping semantics can't be modeled in the default integer encoding and must be proved with `--no-bv-int-encoding` (bitvector encoding). Those specs live in a second package:
+
+```
+<pkg>_specs/      → sui-prover                       # default integer encoding
+<pkg>_specs_bv/   → sui-prover --no-bv-int-encoding  # bit-exact semantics
+```
+
+- Create `<pkg>_specs_bv/` **lazily** — only when a spec fails/times out and the diagnosis points at bit-level reasoning (Phase 4.6).
+- Record each function's package + flag set in `.specify-progress.json` `prover_flags` and surface it in the report — *which encoding a function needed is itself audit signal* (it tells you the property is bit-level).
+- In the bv package the proof sometimes needs a `native fun` bound to a Boogie procedure (e.g. `ashr`) plus a custom prelude — see below.
+
+### 8.1 `prelude_extra.bpl` — hand-written axioms (TRUSTED, NOT PROVED)
+
+When Boogie can't derive a fact, the engagement adds it as an axiom in a `prelude_extra.bpl` shipped beside the spec package's `Move.toml`. integer-library's prelude teaches Boogie things like:
+
+```
+axiom (forall x: int :: {$xorInt'u128'(x, $MAX_U128)} $xorInt'u128'(x, $MAX_U128) == $MAX_U128 - x);
+axiom (forall x: int :: {$andInt'u128'(x, $LO_64_MASK)} $andInt'u128'(x, $LO_64_MASK) == x mod $TWO_POW_64);
+axiom (forall x: int :: {$shr(x, 127)} $shr(x, 127) == x div $TWO_POW_127);
+```
+
+…and the bv prelude binds a native `ashr` to `$AShr'BvN'`.
+
+**Every line in `prelude_extra.bpl` is a hole in the verification.** An axiom is assumed true, never checked — if it's wrong, every proof that relies on it is vacuous. Therefore:
+
+- Treat the prelude as an **escape hatch of last resort**, after `requires`-strengthening, `no_opaque`, `--split-paths`, and `boogie_opt` (failure-taxonomy `timeout` / `ensures_failed`) have failed.
+- **Every axiom must be disclosed** in the report's "Trusted axioms — not proved" section (Phase 5, L6): the axiom, the file+line, and a prose justification of why it's sound. This is the single most audit-critical content in the deliverable.
+- Prefer the narrowest axiom that unblocks the proof (a single masking identity), never a broad one.
