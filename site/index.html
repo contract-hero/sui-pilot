@@ -182,6 +182,47 @@
     color: var(--ink);
   }
 
+  .sidetool {
+    margin-top: 2.5rem;
+    padding: 1.1rem 1.35rem;
+    background: var(--bg);
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+  }
+  .sidetool .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 0.5rem;
+  }
+  .sidetool h2 {
+    margin: 0 0 0.45rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .sidetool p { margin: 0.35rem 0 0.7rem; color: var(--muted); font-size: 0.95rem; }
+  .sidetool a {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .sidetool a:hover { border-bottom-color: var(--accent); }
+  .sidetool code {
+    background: var(--code-bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 3px;
+    padding: 0.05em 0.35em;
+    font-size: 0.85em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--ink);
+  }
+
   footer.page {
     margin-top: 3rem;
     padding-top: 1.25rem;
@@ -211,60 +252,45 @@
       sui-pilot is a doc-first plugin: it ships the current Sui, Move, Walrus, Seal and TypeScript-SDK
       docs so Claude reads them instead of trusting stale training memory. The hard question was never
       <em>which</em> docs &mdash; it's <strong>how they should enter the context window</strong>.
-      This is the running log of how we measure that, one experiment at a time.
+      This is the running log of how we measure that &mdash; two evals so far, plus a lab to see why.
     </p>
   </header>
 
   <section class="arc">
-    <p class="arc-intro">The story so far &mdash; one theme, a sharper question each time</p>
+    <p class="arc-intro">The story in two chapters &mdash; one question: how should the docs reach Claude?</p>
 
     <ol class="timeline">
 
       <li class="beat">
         <span class="marker">1</span>
-        <span class="step-kind">First — what shape should the always-loaded preamble be?</span>
-        <h3>The first eval — and the harness it left behind</h3>
+        <span class="step-kind">Chapter 1 — does the borrowed machinery earn its keep?</span>
+        <h3>Pipe-delimited index vs. the full plugin copycat</h3>
         <p>
-          The opening question was about the <em class="em">always-loaded preamble</em>: keep the bulky
-          19.4&nbsp;KB pipe-delimited <em>file index</em> that listed every bundled doc, or replace it with
-          a slim 2.9&nbsp;KB <em>topic-routing table</em>? To answer it we built a 27-task A/B suite &mdash;
-          Move 2024 syntax, one-time-witness, SDK 2.0, stale-training traps, multi-file refactors,
-          ambiguous specs &mdash; scored on literal pass/fail, an LLM rubric, token economics and an
-          optional compile gate. The verdict: <em class="em">no measurable quality or cost difference</em>,
-          so we shipped slim purely to delete ~17&nbsp;K LOC of maintenance. The lasting win wasn't the
-          answer &mdash; it was the instrument every later experiment now runs on.
+          sui-pilot started by cloning a heavyweight approach: a Vercel-style plugin with a borrowed
+          matcher pipeline and a fat <em>pipe-delimited doc index</em> baked into the preamble. The first
+          eval A/B'd that machinery against leaner shapes across a 27-task suite &mdash; Move 2024 syntax,
+          one-time-witness, SDK 2.0, stale-training traps, multi-file refactors, ambiguous specs &mdash;
+          scored on literal pass/fail, an LLM rubric, token economics and an optional compile gate. After a
+          few baseline runs the answer settled: none of the borrowed machinery beat a slim
+          <em class="em">table that just points at the docs</em>. We deleted ~17&nbsp;K LOC and kept the
+          pointer &mdash; plus the eval harness, which became the instrument chapter&nbsp;2 runs on.
         </p>
         <a class="read" href="EVAL_FRAMEWORK.html">Read the methodology &rarr;</a>
         <p class="source">Source: <code>EVAL_FRAMEWORK.html</code></p>
       </li>
 
-      <li class="beat">
-        <span class="marker">2</span>
-        <span class="step-kind">Then — see what actually loads</span>
-        <h3>A lab for the context window itself</h3>
-        <p>
-          Before changing what we inject, we mapped what already enters Claude's head during a real Sui
-          workflow: bundled docs, MCP tool calls, skill payloads, the agent file &mdash; step by step.
-          The interactive tour makes the invisible visible, and it's why we can reason about a doc-first
-          plugin behaving differently from a vanilla model rather than just asserting that it does.
-        </p>
-        <a class="read" href="SUI_PILOT_TOUR.html">Open the lab &rarr;</a>
-        <p class="source">Source: <code>SUI_PILOT_TOUR.html</code></p>
-      </li>
-
       <li class="beat newest">
-        <span class="marker">3</span>
-        <span class="step-kind">Now — having cut the index, is a smarter one worth re-adding?</span>
-        <h3>The point-vs-index experiment — a different question</h3>
+        <span class="marker">2</span>
+        <span class="step-kind">Chapter 2 — point at the docs, or map them?</span>
+        <h3>Pointing vs. docs-section mapping</h3>
         <p>
-          Note the turn. The first eval <em class="em">removed</em> an always-loaded index and lost
-          nothing. This one asks the inverse: with the slim routing table in place, is it worth
-          <em class="em">adding back</em> an always-loaded structure &mdash; not a flat file list this
-          time, but a 445-line relational <em>ecosystem graph</em> (abilities, object model, auth patterns
-          and how they connect)? So the axis is new: a bare <em class="em">pointer</em> (the 7-row table,
-          searched on demand) versus that graph <em class="em">indexed straight into the prompt</em>. Same
-          harness from beat&nbsp;1, but a fresh 4-task NFT-dapp fixture, byte-identical everything except
-          that one file. The answer wasn't the clean win we expected &mdash; and where it got murky turned
+          Chapter&nbsp;1 left us pointing at the docs. Chapter&nbsp;2 tests the one piece of the old plugin
+          that might still earn its place: a <em class="em">mapping of the docs' sections</em> &mdash; a
+          445-line relational ecosystem graph (abilities, object model, auth patterns and how they connect)
+          loaded straight into the prompt. So the axis is: a bare <em class="em">pointer</em> (the 7-row
+          routing table, searched on demand) versus that <em class="em">map</em> always present. Same
+          harness as chapter&nbsp;1, a fresh 4-task NFT-dapp fixture, byte-identical everything except that
+          one file. The two shapes performed differently &mdash; and where the measurement got murky turned
           out to be the most useful part.
         </p>
         <a class="read" href="POINT_VS_INDEX.html">Read what we found &rarr;</a>
@@ -273,20 +299,33 @@
 
     </ol>
 
+    <aside class="sidetool">
+      <span class="tag">Side tool — not a chapter</span>
+      <h2>The context-window lab</h2>
+      <p>
+        Neither eval explains, on its own, <em>why</em> a shape behaves the way it does. For that we keep an
+        interactive lab that walks what actually enters Claude's head during a real Sui workflow &mdash;
+        bundled docs, MCP calls, skill payloads, the agent file, step by step. It isn't a chapter in the
+        story; it's the bench instrument we read the story against.
+      </p>
+      <a href="SUI_PILOT_TOUR.html">Open the lab &rarr;</a>
+    </aside>
+
     <div class="open">
       <h2>What's still open</h2>
       <p>
-        Experiment&nbsp;3 is a checkpoint, not a verdict. Code quality came out indistinguishable between
-        the two shapes, and wall-time and cache-reads dropped with the always-loaded graph &mdash; but the
-        <em>cost</em> claim isn't trustworthy yet, because the graph nudged the agent into dispatching
-        background subagents whose tokens our harness doesn't count. Until <code>tokens.csv</code> walks
-        the full subagent tree, "cheaper" stays unproven.
+        Chapter&nbsp;2 is a checkpoint, not a verdict. Code quality came out indistinguishable between
+        pointing and mapping, and wall-time and cache-reads dropped with the always-loaded map &mdash; but
+        the <em>cost</em> claim isn't trustworthy yet, because the map nudged the agent into dispatching
+        background subagents whose tokens our harness doesn't count. Until <code>tokens.csv</code> walks the
+        full subagent tree, "cheaper" stays unproven.
       </p>
       <p>
-        So the log continues. Two evals now, two different axes &mdash; index-vs-slim, then point-vs-graph
-        &mdash; and both came back <em>quality-neutral</em>. That's the recurring lesson: measuring what
-        context <em>does</em> is harder than changing it, and the methodology keeps turning out to be part
-        of the result.
+        Next, we'll point the lab at the same question: capture the context window <em>side by side</em>
+        when the agent merely points at the docs versus when the section-map is loaded, so we can see the
+        difference rather than infer it. The recurring lesson holds &mdash; measuring what context
+        <em>does</em> is harder than changing it, and the methodology keeps turning out to be part of the
+        result.
       </p>
     </div>
   </section>
