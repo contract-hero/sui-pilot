@@ -6,6 +6,8 @@ on:
     paths:
       - EVAL_FRAMEWORK.html
       - SUI_PILOT_TOUR.html
+      - POINT_VS_INDEX.html
+      - evals/docs-fetching-investigation.html
       - site/**
       - .github/workflows/pages.yml
   workflow_dispatch:
@@ -36,6 +38,8 @@ jobs:
           cp -R site/. _site/
           cp EVAL_FRAMEWORK.html _site/EVAL_FRAMEWORK.html
           cp SUI_PILOT_TOUR.html _site/SUI_PILOT_TOUR.html
+          cp POINT_VS_INDEX.html _site/POINT_VS_INDEX.html
+          cp evals/docs-fetching-investigation.html _site/docs-fetching-investigation.html
           ls -la _site
 
       - name: Configure Pages

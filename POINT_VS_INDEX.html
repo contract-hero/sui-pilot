@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Point at the docs, or index them? — sui-pilot context-injection experiment</title>
+<meta name="description" content="A sui-pilot experiment: should a doc-first agent be handed a pointer to the docs it searches on demand, or have the docs' relational map indexed straight into its prompt? What we found, and why the cost story is still open." />
+<style>
+  :root {
+    --ink: #0f1115;
+    --muted: #555;
+    --faint: #7a7a7a;
+    --line: #d6d6d6;
+    --line-soft: #ececec;
+    --bg: #ffffff;
+    --bg-elev: #fafafa;
+    --accent: #0a4a8a;
+    --accent-soft: #eaf2fb;
+    --code-bg: #f4f4f4;
+    --warn-bg: #fff8e6;
+    --warn-line: #e6c34d;
+    --good: #1a7f37;
+    --max: 820px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.62;
+    margin: 0;
+    padding: 0 1.5rem 4rem;
+  }
+  main { max-width: var(--max); margin: 0 auto; padding-top: 3.5rem; }
+  a.back {
+    display: inline-block;
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+  }
+  a.back:hover { text-decoration: underline; }
+  header.page { margin-bottom: 2.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.22; margin: 0 0 0.6rem; letter-spacing: -0.015em; }
+  .lede { font-size: 1.06rem; color: var(--muted); margin: 0.5rem 0 0; max-width: 64ch; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+  p.meta { color: var(--faint); font-size: 0.85rem; margin: 0.85rem 0 0; }
+  p.meta code { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 3px; padding: 0.05em 0.35em; font-size: 0.85em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); }
+
+  h2 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin: 2.75rem 0 1rem;
+  }
+  h3 { font-size: 1.12rem; font-weight: 600; margin: 1.75rem 0 0.4rem; letter-spacing: -0.005em; }
+  p { color: var(--muted); margin: 0.6rem 0; }
+  p .em { color: var(--ink); font-weight: 600; }
+  code { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 3px; padding: 0.05em 0.35em; font-size: 0.86em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); }
+
+  /* two-arm comparison */
+  .arms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.25rem 0; }
+  .arm {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem 1.2rem;
+    background: var(--bg-elev);
+  }
+  .arm.index { border-color: var(--accent); }
+  .arm .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-bottom: 0.6rem;
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .arm h4 { margin: 0 0 0.35rem; font-size: 1.02rem; font-weight: 600; color: var(--ink); }
+  .arm p { margin: 0.3rem 0 0; font-size: 0.92rem; }
+  @media (max-width: 640px) { .arms { grid-template-columns: 1fr; } }
+
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0 1.25rem; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--line); padding: 0.45rem 0.65rem; text-align: left; vertical-align: top; }
+  th { background: var(--bg-elev); font-weight: 600; color: var(--ink); }
+  td { color: var(--muted); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.win { color: var(--good); font-weight: 600; }
+  caption { caption-side: bottom; text-align: left; font-size: 0.8rem; color: var(--faint); padding-top: 0.4rem; }
+
+  .callout {
+    margin: 1.5rem 0;
+    padding: 1.1rem 1.3rem;
+    border-radius: 8px;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-line);
+    border-left: 3px solid var(--warn-line);
+  }
+  .callout strong { color: var(--ink); }
+  .callout p { color: #6b5410; margin: 0.35rem 0 0; }
+  .callout p:first-child { margin-top: 0; }
+
+  .takeaway {
+    margin: 1.5rem 0;
+    padding: 1.1rem 1.3rem;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    border: 1px solid #cfe0f3;
+    border-left: 3px solid var(--accent);
+  }
+  .takeaway p { color: #143a5e; margin: 0.4rem 0 0; }
+  .takeaway p:first-child { margin-top: 0; }
+
+  ul { margin: 0.6rem 0; padding-left: 1.3rem; color: var(--muted); }
+  li { margin: 0.4rem 0; }
+  li .q { color: var(--ink); font-weight: 600; }
+
+  footer.page {
+    margin-top: 3rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--faint);
+  }
+  footer.page a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+  footer.page a:hover { border-bottom-color: var(--accent); }
+  footer.page code { background: var(--code-bg); border: 1px solid var(--line-soft); border-radius: 3px; padding: 0.05em 0.35em; font-size: 0.85em; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+
+  <a class="back" href="index.html">&larr; sui-pilot context-injection log</a>
+
+  <header class="page">
+    <div class="eyebrow">sui-pilot · experiment 3</div>
+    <h1>Point at the docs, or index them into the prompt?</h1>
+    <p class="lede">
+      sui-pilot ships the live Sui, Move, Walrus, Seal and TS-SDK docs so Claude doesn't lean on stale
+      training memory. But shipping the docs is only half the question. The other half:
+      <strong>how should that knowledge enter the context window?</strong> This is what happened when we
+      ran the two obvious answers head-to-head.
+    </p>
+    <p class="meta">
+      Source run: <code>evals/results/2026-05-19T12-20-07Z/</code> &nbsp;·&nbsp;
+      Build: 4-task NFT dapp (Move package + Vite/React/dApp&nbsp;Kit) &nbsp;·&nbsp;
+      Reference held hidden during grading.
+    </p>
+  </header>
+
+  <h2>The two ways to inject</h2>
+  <p>
+    Everything downstream of the agent was held constant &mdash; bundled corpora, skills, MCP servers,
+    fixtures, model, and the task prompts were byte-identical. The <em class="em">only</em> thing that
+    changed between the two arms was the content of the agent's system file:
+  </p>
+
+  <div class="arms">
+    <div class="arm point">
+      <span class="tag">Arm A — point</span>
+      <h4>A 7-row routing table</h4>
+      <p>
+        The slim agent file: a small table that says "Move syntax lives in <code>.move-book-docs/</code>,
+        Sui runtime in <code>.sui-docs/</code>…" and tells the agent to <code>Glob</code>/<code>Grep</code>
+        the right corpus on demand. The knowledge is <em>reachable</em>, not <em>present</em>. The agent
+        decides when to go look.
+      </p>
+    </div>
+    <div class="arm index">
+      <span class="tag">Arm B — index</span>
+      <h4>A 445-line ecosystem graph, always loaded</h4>
+      <p>
+        The same routing table, plus a relational knowledge graph appended to the prompt: abilities,
+        object-model ownership, authorization patterns, the off-chain stack — with cross-links and
+        <code>📖 docs:</code> pointers. The map of how the pieces relate is <em>always present</em>,
+        before the agent reads a single file.
+      </p>
+    </div>
+  </div>
+
+  <h2>What we expected vs. what we got</h2>
+  <p>
+    The bet was simple: indexing the relational map costs static tokens up front but saves the agent from
+    flailing around the corpus, so it should be faster and maybe produce better-connected code. Quality
+    was the first thing we checked &mdash; and it's where the experiment got interesting by
+    <em>refusing</em> to move.
+  </p>
+
+  <h3>Code quality: indistinguishable</h3>
+  <p>
+    Spot-checking the diffs across the three solvable tasks: same module shape, same Move 2024 idioms,
+    same dApp&nbsp;Kit hooks, the same four-<code>moveCall</code> PTB with the hero handle threaded
+    correctly, the same React-Query / <code>getObject</code> pattern for the shared registry, the same
+    SDK&nbsp;2.0 / gRPC client choice, and no SDK&nbsp;1.x leakage in either arm. <span class="em">The
+    difference between the two shapes is in <em>how</em> the answer gets produced, not <em>what</em> the
+    answer is.</span>
+  </p>
+
+  <h3>Latency and cache traffic: down with the graph</h3>
+  <table>
+    <thead><tr><th></th><th>Arm A — point</th><th>Arm B — index</th><th>Δ</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Arm wall time</th><td class="num">~78 min</td><td class="num">~23 min</td><td class="num win">~−71%</td></tr>
+      <tr><th scope="row">Total cache reads</th><td class="num">12,853,209</td><td class="num">9,227,368</td><td class="num win">~−28%</td></tr>
+      <tr><th scope="row">Task-04 cache reads <span style="font-weight:400;color:var(--faint)">(in-process both arms)</span></th><td class="num">8,871,182</td><td class="num">7,585,488</td><td class="num win">~−15%</td></tr>
+      <tr><th scope="row">Cache-hit ratio</th><td class="num">96.8%</td><td class="num">97.4%</td><td class="num">~+0.6 pp</td></tr>
+    </tbody>
+    <caption>The always-loaded graph appears to shave the opportunistic <code>Glob</code>/<code>Grep</code> loops the slim arm issues, at the cost of more static input. The cleanest single number is the task-04 cache-read delta, because both arms kept that task in-process.</caption>
+  </table>
+
+  <h2>Where it got murky — and why that's the real finding</h2>
+  <p>
+    The wall-time number above is too good to take at face value, and chasing down <em>why</em> is what
+    this experiment actually taught us. With the ecosystem graph in context, the agent started
+    <em class="em">dispatching background subagents</em> for whole tasks — visible in the transcripts as
+    "the earlier background search has completed." The slim arm tended to keep the work in-process.
+  </p>
+  <p>
+    That single behavioral shift quietly broke our measurement. Per-task parent output tokens swung by
+    two orders of magnitude on the <em>same</em> prompt, depending on whether the work happened in the
+    parent or in a subagent:
+  </p>
+  <table>
+    <thead><tr><th>Task</th><th>Arm A parent output</th><th>Arm B parent output</th></tr></thead>
+    <tbody>
+      <tr><td><code>task-nft-01-move-package</code></td><td class="num">27,081</td><td class="num">34</td></tr>
+      <tr><td><code>task-nft-02-dapp-kit-setup</code></td><td class="num">177</td><td class="num">8,186</td></tr>
+      <tr><td><code>task-nft-03-mint-and-list</code></td><td class="num">11,655</td><td class="num">248</td></tr>
+      <tr><td><code>task-nft-04-full-stack-smoke</code></td><td class="num">30,434</td><td class="num">25,944</td></tr>
+    </tbody>
+    <caption>The 34 / 248 / 177 cells are runs where the work happened inside a subagent; the parent only emitted a closing acknowledgement. Our harness aggregates the parent's <code>usage</code> block only — so those subagent tokens never appear in <code>tokens.csv</code>.</caption>
+  </table>
+
+  <div class="callout">
+    <p><strong>The honest caveat.</strong> Any cost-per-task claim drawn from <code>tokens.csv</code> as it
+    stands today is partially fiction. The subagents that the graph encourages do real, billed work that
+    our token accounting silently drops on the floor. "The graph is cheaper" is <em>not</em> a claim this
+    run can support — only "the graph is faster on the wall clock and reads less cache," with a caveat
+    that wall time is itself confounded by the delegation behavior.</p>
+  </div>
+
+  <h2>The takeaway</h2>
+  <div class="takeaway">
+    <p><span class="em" style="color:#143a5e">Quality is shape-neutral.</span> Pointing and indexing
+    produced the same code. If you only care about correctness on these tasks, either shape works.</p>
+    <p><span class="em" style="color:#143a5e">Indexing changes behavior, not just speed.</span> The
+    always-loaded relational map nudges the agent toward delegation and fewer ad-hoc corpus searches.
+    That's a genuinely different operating mode, and it's the lever worth understanding next.</p>
+    <p><span class="em" style="color:#143a5e">The methodology is part of the result.</span> The most
+    valuable output of this run wasn't a winner — it was discovering that our instrument can't yet measure
+    the thing the winner would be decided on. Measuring what context <em>does</em> is harder than changing
+    what context <em>is</em>.</p>
+  </div>
+
+  <h2>What the next iteration has to settle</h2>
+  <ul>
+    <li><span class="q">Honest token accounting first.</span> The aggregator must walk the subagent tree
+      for nested <code>usage</code> blocks. Re-scoring the <em>same captured transcripts</em> (no rerun
+      cost) then tells us whether any cost story survives once subagent tokens are counted.</li>
+    <li><span class="q">What tips the agent into delegating?</span> Is it the cross-link density of the
+      graph, the extra surface area for subtasks, or something else? Ablate the graph to the Legend plus
+      one section and see if the delegation behavior persists.</li>
+    <li><span class="q">Is a smaller index most of the win?</span> If the value is mostly latency at
+      quality parity, a trimmed graph (Legend + abilities + object-model) may capture the bulk of it at a
+      fraction of the always-loaded cost.</li>
+    <li><span class="q">Does it generalize past NFT-flavored tasks?</span> Re-run the multi-file refactor,
+      stale-API, and token-pressure tasks under both shapes before claiming the latency delta is real.</li>
+    <li><span class="q">Does always-loading hurt small tasks?</span> For typo fixes and single-line edits,
+      the extra 445 lines may be pure overhead — worth checking the smallest tasks explicitly.</li>
+  </ul>
+
+  <footer class="page">
+    The raw, unpolished behavioral notes (with the exact methodology issues and the full open-questions
+    list) live at <a href="docs-fetching-investigation.html">docs-fetching-investigation.html</a> ·
+    Captured 2026-05-19 · Plugin repo:
+    <a href="https://github.com/contract-hero/sui-pilot">github.com/contract-hero/sui-pilot</a>
+  </footer>
+
+</main>
+</body>
+</html>
