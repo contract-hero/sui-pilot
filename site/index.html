@@ -216,20 +216,23 @@
   </header>
 
   <section class="arc">
-    <p class="arc-intro">The story so far &mdash; three experiments, one question</p>
+    <p class="arc-intro">The story so far &mdash; one theme, a sharper question each time</p>
 
     <ol class="timeline">
 
       <li class="beat">
         <span class="marker">1</span>
-        <span class="step-kind">First — build a way to measure it</span>
-        <h3>An eval harness for context, not just code</h3>
+        <span class="step-kind">First — what shape should the always-loaded preamble be?</span>
+        <h3>The first eval — and the harness it left behind</h3>
         <p>
-          You can't tune what you can't measure. We built a 27-task A/B suite spanning Move 2024 syntax,
-          one-time-witness, SDK 2.0, stale-training traps, multi-file refactors and ambiguous specs &mdash;
-          scored with literal pass/fail, an LLM rubric, token economics and an optional compile gate.
-          Three committed baselines, with the framing axis spelled out honestly. This is the instrument
-          every later experiment runs on.
+          The opening question was about the <em class="em">always-loaded preamble</em>: keep the bulky
+          19.4&nbsp;KB pipe-delimited <em>file index</em> that listed every bundled doc, or replace it with
+          a slim 2.9&nbsp;KB <em>topic-routing table</em>? To answer it we built a 27-task A/B suite &mdash;
+          Move 2024 syntax, one-time-witness, SDK 2.0, stale-training traps, multi-file refactors,
+          ambiguous specs &mdash; scored on literal pass/fail, an LLM rubric, token economics and an
+          optional compile gate. The verdict: <em class="em">no measurable quality or cost difference</em>,
+          so we shipped slim purely to delete ~17&nbsp;K LOC of maintenance. The lasting win wasn't the
+          answer &mdash; it was the instrument every later experiment now runs on.
         </p>
         <a class="read" href="EVAL_FRAMEWORK.html">Read the methodology &rarr;</a>
         <p class="source">Source: <code>EVAL_FRAMEWORK.html</code></p>
@@ -251,15 +254,18 @@
 
       <li class="beat newest">
         <span class="marker">3</span>
-        <span class="step-kind">Now — point at the docs, or index them?</span>
-        <h3>The point-vs-index experiment</h3>
+        <span class="step-kind">Now — having cut the index, is a smarter one worth re-adding?</span>
+        <h3>The point-vs-index experiment — a different question</h3>
         <p>
-          With the instrument and the lab in place, we ran the experiment we'd been circling: should the
-          agent be handed a <em class="em">pointer</em> to the docs (a 7-row routing table it searches on
-          demand), or should the docs' relational map be <em class="em">indexed straight into the
-          prompt</em> (a 445-line ecosystem graph that's always present)? Same build, byte-identical
-          everything except that one file. The answer wasn't the clean win we expected &mdash; and where
-          it got murky turned out to be the most useful part.
+          Note the turn. The first eval <em class="em">removed</em> an always-loaded index and lost
+          nothing. This one asks the inverse: with the slim routing table in place, is it worth
+          <em class="em">adding back</em> an always-loaded structure &mdash; not a flat file list this
+          time, but a 445-line relational <em>ecosystem graph</em> (abilities, object model, auth patterns
+          and how they connect)? So the axis is new: a bare <em class="em">pointer</em> (the 7-row table,
+          searched on demand) versus that graph <em class="em">indexed straight into the prompt</em>. Same
+          harness from beat&nbsp;1, but a fresh 4-task NFT-dapp fixture, byte-identical everything except
+          that one file. The answer wasn't the clean win we expected &mdash; and where it got murky turned
+          out to be the most useful part.
         </p>
         <a class="read" href="POINT_VS_INDEX.html">Read what we found &rarr;</a>
         <p class="source">Source: <code>POINT_VS_INDEX.html</code> · raw lab notes: <code>docs-fetching-investigation.html</code></p>
@@ -277,8 +283,10 @@
         the full subagent tree, "cheaper" stays unproven.
       </p>
       <p>
-        So the log continues. The recurring lesson across all three experiments is that measuring what
-        context <em>does</em> is harder than changing it &mdash; the methodology is part of the result.
+        So the log continues. Two evals now, two different axes &mdash; index-vs-slim, then point-vs-graph
+        &mdash; and both came back <em>quality-neutral</em>. That's the recurring lesson: measuring what
+        context <em>does</em> is harder than changing it, and the methodology keeps turning out to be part
+        of the result.
       </p>
     </div>
   </section>
