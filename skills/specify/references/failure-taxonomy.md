@@ -37,11 +37,11 @@ Findings always carry `raw_stdout` / `raw_stderr` as the escape hatch — if a k
 **Remediation.**
 
 1. `mcp__move-lsp__move_diagnostics` on the affected file to confirm where the compiler complains.
-2. If the diagnostic points at the spec block we just wrote:
-   - Re-read `references/spec-patterns.md` §1 for the import shape.
-   - Check that every `prover::...` function used in the spec is imported.
-   - Check that the function name in the spec matches an actual function in the module.
-3. If the diagnostic points at the colocated-spec compile bug, switch to the sidecar package pattern (§3 of spec-patterns).
+2. If the diagnostic points at the spec we just wrote:
+   - Re-read `references/spec-patterns.md` §3 for the separate-package shape (the default) and §1 for the import shape.
+   - Check that every `prover::...` function used in the spec is imported under `#[spec_only]`, and every production function/type under a plain `use <pkg>::<mod>::{...}`.
+   - Check that the `target = <fn>` attribute names a real function in the production module, and that the spec body actually calls it (else `spec_target_body_no_call`).
+3. If the failure only happens in the `--inline` layout (the colocated-spec compile bug), switch to the **default separate-package layout** (§3 of spec-patterns) — this is exactly the failure mode the default avoids.
 4. If the diagnostic points at a pre-existing issue, surface it and ask the user — don't try to fix unrelated bugs from inside `specify`.
 
 ## kind: `asserts_failed`
@@ -88,9 +88,10 @@ Findings always carry `raw_stdout` / `raw_stderr` as the escape hatch — if a k
 **Remediation.** In escalation order:
 
 1. **Increase `timeout_seconds`** — start at 60s, try 120s, then 300s.
-2. **Add `--split-paths=N`** via `extra_args` (start at 4, try 8). The workshop example uses `--split-paths=4`.
+2. **Add `--split-paths=N`** via `extra_args` (start at 4, try 8). The workshop example uses `--split-paths=4`. Always use the `=`-joined form (one array element); `extra_args` splits each token on `=`, so a space-separated `"--split-paths", "4"` would drop the value (`prove.ts`).
 3. **Per-spec `boogie_opt` tuning.** See §4.9 of spec-patterns. Start with `vcsMaxKeepGoingSplits:2`. Keep tokens verbatim across retries.
 4. **Narrow the spec.** If three escalations don't help, the spec might be asking the prover to discharge too much in one go. Split into multiple smaller specs (e.g. one for the abort path, one for the functional postcondition).
+5. **Bit-level semantics → second spec package.** If the timeout is on bitwise/shift/wrapping reasoning (the integer encoding can't model it efficiently), move that one spec to a `<pkg>_specs_bv/` package proved with `extra_args: ["--no-bv-int-encoding"]`. See spec-patterns §8; record the flag in `.specify-progress.json` `prover_flags` for the manifest.
 
 ## kind: `dep_address_conflict`
 
@@ -128,9 +129,9 @@ Caused by:
 
 **Remediation.**
 
-1. Confirm the source file actually contains a `#[spec(prove)] fun <name>_spec(...)` block — sui-prover targets the spec function, not the function under test. The naming convention is `<fn>_spec`; for `target_function: "pkg::mod::foo"`, the spec must be named `pkg::mod::foo_spec`.
+1. sui-prover targets the **spec** function, not the function under test. In the default separate-package layout the spec lives in `<pkg>_specs::<mod>_specs` as `<fn>_spec` with `#[spec(prove, target = <fn>)]`, so the target is `<pkg>_specs::<mod>_specs::<fn>_spec` — and `prove_package` must point `move_toml_path` at the spec package, not the production package. In the `--inline` layout it's `<pkg>::<mod>::<fn>_spec`.
 2. Confirm the package built successfully on the previous run (a stale build cache can leave the prover targeting an older symbol table).
-3. If the spec lives in a sidecar axiom file with `#[spec(target = pkg::mod::foo)]`, target the spec function's name (`<sidecar>::foo_spec`), not the original function.
+3. If the spec lives in the axiom file (`<pkg>_specs/sources/specify_axioms.move`) with `#[spec(skip, target = pkg::mod::foo)]`, target the spec function's name (`<pkg>_specs::specify_axioms::foo_spec`), not the original function.
 
 ## kind: `spec_target_body_no_call`
 
