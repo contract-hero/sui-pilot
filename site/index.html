@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>sui-pilot — a Claude Code plugin for Sui/Move development</title>
-  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 747 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
+  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 753 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
   <style>
     :root {
       --bg: #fafaf7;
@@ -338,6 +338,7 @@
       .cards { grid-template-columns: 1fr; }
       .corpus-grid { grid-template-columns: 1fr 1fr; }
       .research-links { grid-template-columns: 1fr; }
+      .tools-table { display: block; overflow-x: auto; }
       nav.site-nav a { margin-left: 12px; font-size: 14px; }
       nav.site-nav a:first-child { margin-left: 0; }
       .lede { font-size: 17px; }
@@ -372,7 +373,7 @@
         <span class="eyebrow">Claude Code Plugin</span>
         <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
         <p class="lede">
-          sui-pilot bundles 747 documentation files from six MystenLabs corpora, bridges the Move LSP
+          sui-pilot bundles 753 documentation files from six MystenLabs corpora, bridges the Move LSP
           and Sui Prover into Claude Code, and ships five specialized skills &mdash; all behind a
           doc-first agent that reads the docs before writing code. No hallucinated APIs, no deprecated
           patterns, no stale training data.
@@ -448,7 +449,7 @@
 
             <rect x="80" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
             <text x="170" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Doc corpora</text>
-            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">747 files &middot; 6 sources</text>
+            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">753 files &middot; 6 sources</text>
             <text x="170" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">Glob/Grep navigated</text>
 
             <rect x="270" y="214" width="140" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
@@ -487,10 +488,10 @@
         </p>
         <div class="corpus-grid">
           <div class="corpus-item"><strong>Sui</strong> <span>369 files &mdash; blockchain, objects, transactions, DeFi</span></div>
-          <div class="corpus-item"><strong>Move Book</strong> <span>143 files &mdash; language tutorial, syntax, types, abilities</span></div>
+          <div class="corpus-item"><strong>Move Book</strong> <span>145 files &mdash; language tutorial, syntax, types, abilities</span></div>
           <div class="corpus-item"><strong>TS SDK</strong> <span>115 files &mdash; TypeScript SDK, dapp-kit, React hooks</span></div>
           <div class="corpus-item"><strong>Walrus</strong> <span>86 files &mdash; blob storage, Walrus Sites, HTTP API</span></div>
-          <div class="corpus-item"><strong>Sui Prover</strong> <span>20 files &mdash; formal verification, specs, Boogie</span></div>
+          <div class="corpus-item"><strong>Sui Prover</strong> <span>24 files &mdash; formal verification, specs, Boogie</span></div>
           <div class="corpus-item"><strong>Seal</strong> <span>14 files &mdash; secrets, encryption, key servers</span></div>
         </div>
 

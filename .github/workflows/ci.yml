@@ -61,7 +61,7 @@ jobs:
 
       - name: Run unit tests (move-lsp-mcp)
         working-directory: mcp/move-lsp-mcp
-        run: set -o pipefail; pnpm test -- --reporter=verbose 2>&1 | grep -E '(✓|✗|PASS|FAIL|test/unit)'
+        run: pnpm test -- --reporter=verbose
 
       - name: Install dependencies (sui-prover-mcp)
         working-directory: mcp/sui-prover-mcp

@@ -6,7 +6,7 @@
 
 > A Claude Code plugin that turns Claude into a Sui/Move development expert — grounded in current docs, not stale training data.
 
-sui-pilot bundles **747 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
+sui-pilot bundles **753 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
 
 **[Read the full story](https://contract-hero.github.io/sui-pilot/)**
 
@@ -14,17 +14,17 @@ sui-pilot bundles **747 documentation files** from six upstream MystenLabs corpo
 
 ## What Ships
 
-### Bundled documentation (747 files, 6 corpora)
+### Bundled documentation (753 files, 6 corpora)
 
 All docs are local and searchable. Claude reads them before generating code — no hallucinated APIs, no deprecated patterns.
 
 | Source | Files | Topics |
 |---|---|---|
 | **Sui** | 369 | Blockchain, objects, transactions, DeFi, framework |
-| **Move Book** | 143 | Move language tutorial + reference: syntax, types, abilities, idioms |
+| **Move Book** | 145 | Move language tutorial + reference: syntax, types, abilities, idioms |
 | **TS SDK** | 115 | TypeScript SDK, dapp-kit, payment-kit, kiosk, React hooks |
 | **Walrus** | 86 | Decentralized blob storage, Walrus Sites, HTTP API |
-| **Sui Prover** | 20 | Formal verification: `#[spec(prove)]` specs, Boogie tuning |
+| **Sui Prover** | 24 | Formal verification: `#[spec(prove)]` specs, Boogie tuning |
 | **Seal** | 14 | Secrets management, encryption, key servers, access control |
 
 ### MCP tools
@@ -124,6 +124,7 @@ A [GitHub Actions workflow](.github/workflows/refresh-docs.yml) runs this weekly
 git clone https://github.com/contract-hero/sui-pilot.git
 cd sui-pilot
 pnpm --dir mcp/move-lsp-mcp install && pnpm --dir mcp/move-lsp-mcp build
+pnpm --dir mcp/sui-prover-mcp install && pnpm --dir mcp/sui-prover-mcp build
 claude --plugin-dir "$(pwd)"
 ```
 
