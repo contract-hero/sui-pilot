@@ -368,7 +368,7 @@
   <main>
     <section class="hero" id="top">
       <div class="wrap">
-        <img class="hero-banner" src="../sui-pilot.jpg" alt="sui-pilot banner">
+        <img class="hero-banner" src="sui-pilot.jpg" alt="sui-pilot banner">
         <span class="eyebrow">Claude Code Plugin</span>
         <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
         <p class="lede">
@@ -523,6 +523,7 @@
             <tr><td><code>/move-code-review</code></td><td>Security and architecture review (40 checks across 6 categories)</td></tr>
             <tr><td><code>/oz-math</code></td><td>OpenZeppelin math library recommendations for DeFi arithmetic</td></tr>
             <tr><td><code>/specify</code></td><td>Author <code>#[spec(prove)]</code> formal specs and verify via sui-prover</td></tr>
+            <tr><td><code>/verify</code></td><td>Re-verify that authored specs still hold against current code</td></tr>
           </tbody>
         </table>
       </div>
@@ -550,7 +551,7 @@
           <div>
             <h3>Install the Sui toolchain</h3>
             <p>The Move LSP requires <code>move-analyzer</code>; formal verification requires <code>sui-prover</code>.</p>
-            <pre><code>curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
+            <pre><code>curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
 suiup install sui
 suiup install move-analyzer</code></pre>
           </div>

@@ -184,10 +184,10 @@
 <p>sui-pilot is a Claude Code plugin that bundles Sui-ecosystem docs and dev tooling:</p>
 
 <ul>
-  <li><strong>~695 doc files</strong> across five corpora (<code>.sui-docs/</code>, <code>.move-book-docs/</code>, <code>.walrus-docs/</code>, <code>.seal-docs/</code>, <code>.ts-sdk-docs/</code>). The agent reaches for them via <code>Glob</code>/<code>Grep</code>.</li>
+  <li><strong>747 doc files</strong> across six corpora (<code>.sui-docs/</code>, <code>.move-book-docs/</code>, <code>.walrus-docs/</code>, <code>.seal-docs/</code>, <code>.ts-sdk-docs/</code>, <code>.sui-prover-docs/</code>). The agent reaches for them via <code>Glob</code>/<code>Grep</code>.</li>
   <li><strong>A slim always-loaded preamble</strong> (<code>agents/sui-pilot-agent.md</code>, ~2.9 KB) — a topic-routing table, no precomputed file index.</li>
-  <li><strong>Five procedural slash skills</strong> (<code>/move-code-quality</code>, <code>/move-code-review</code>, <code>/move-pr-review</code>, <code>/move-tests</code>, <code>/oz-math</code>), loaded on invocation.</li>
-  <li><strong>An MCP server</strong> (<code>move-lsp</code>) bridging <code>move-analyzer</code> (the official Move LSP) — exposes <code>move_diagnostics</code>, <code>move_hover</code>, <code>move_completions</code>, <code>move_goto_definition</code>.</li>
+  <li><strong>Five procedural slash skills</strong> (<code>/move-code-quality</code>, <code>/move-code-review</code>, <code>/oz-math</code>, <code>/specify</code>, <code>/verify</code>), loaded on invocation.</li>
+  <li><strong>Two MCP servers</strong> — <code>move-lsp</code> bridging <code>move-analyzer</code> (the official Move LSP) and <code>sui-prover</code> for formal verification.</li>
 </ul>
 
 <p>That's the entire surface. No matcher pipeline, no hooks, no precomputed indexes — the agent reaches for docs when needed, you type a slash command for a procedural skill.</p>

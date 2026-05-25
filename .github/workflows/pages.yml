@@ -8,6 +8,7 @@ on:
       - SUI_PILOT_TOUR.html
       - POINT_VS_INDEX.html
       - evals/docs-fetching-investigation.html
+      - sui-pilot.jpg
       - site/**
       - .github/workflows/pages.yml
   workflow_dispatch:
@@ -36,6 +37,7 @@ jobs:
           set -euo pipefail
           mkdir -p _site
           cp -R site/. _site/
+          cp sui-pilot.jpg _site/sui-pilot.jpg
           cp EVAL_FRAMEWORK.html _site/EVAL_FRAMEWORK.html
           cp SUI_PILOT_TOUR.html _site/SUI_PILOT_TOUR.html
           cp POINT_VS_INDEX.html _site/POINT_VS_INDEX.html

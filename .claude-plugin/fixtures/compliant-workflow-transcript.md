@@ -136,86 +136,11 @@ Invoking `move-code-review` skill on the package.
 
 TST-* findings noted for follow-up.
 
-**Generated tests:**
-
-```move
-#[test_only]
-module counter::counter_tests;
-
-use counter::counter;
-use sui::test_scenario;
-
-#[test]
-fun test_new_counter_starts_at_zero() {
-    let mut scenario = test_scenario::begin(@0xA);
-    {
-        let ctx = test_scenario::ctx(&mut scenario);
-        let c = counter::new(ctx);
-        assert!(counter::value(&c) == 0, 0);
-        sui::test_utils::destroy(c);
-    };
-    test_scenario::end(scenario);
-}
-
-#[test]
-fun test_increment_increases_value() {
-    let mut scenario = test_scenario::begin(@0xA);
-    {
-        let ctx = test_scenario::ctx(&mut scenario);
-        let mut c = counter::new(ctx);
-        counter::increment(&mut c);
-        counter::increment(&mut c);
-        assert!(counter::value(&c) == 2, 0);
-        sui::test_utils::destroy(c);
-    };
-    test_scenario::end(scenario);
-}
-
-#[test]
-fun test_decrement_decreases_value() {
-    let mut scenario = test_scenario::begin(@0xA);
-    {
-        let ctx = test_scenario::ctx(&mut scenario);
-        let mut c = counter::new(ctx);
-        counter::increment(&mut c);
-        counter::decrement(&mut c);
-        assert!(counter::value(&c) == 0, 0);
-        sui::test_utils::destroy(c);
-    };
-    test_scenario::end(scenario);
-}
-
-#[test]
-#[expected_failure(abort_code = counter::counter::EUnderflow)]
-fun test_decrement_underflow_aborts() {
-    let mut scenario = test_scenario::begin(@0xA);
-    {
-        let ctx = test_scenario::ctx(&mut scenario);
-        let mut c = counter::new(ctx);
-        counter::decrement(&mut c); // should abort: EUnderflow
-        sui::test_utils::destroy(c);
-    };
-    test_scenario::end(scenario);
-}
-```
-
-> `sui move test`
-
-```
-BUILDING counter
-Running Move unit tests
-[ PASS    ] counter::counter_tests::test_new_counter_starts_at_zero
-[ PASS    ] counter::counter_tests::test_increment_increases_value
-[ PASS    ] counter::counter_tests::test_decrement_decreases_value
-[ PASS    ] counter::counter_tests::test_decrement_underflow_aborts
-Test result: OK. Total tests: 4; passed: 4; failed: 0
-```
-
 ---
 
 ### Step 9 — Implementation complete
 
-All skill findings addressed, all tests passing. Implementation done.
+All skill findings addressed. Implementation done.
 
 ---
 

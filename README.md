@@ -45,6 +45,7 @@ Two MCP servers provide real-time tooling from within Claude Code:
 | `/move-code-review` | Security and architecture review (40 checks, 6 categories) |
 | `/oz-math` | OpenZeppelin math library recommendations |
 | `/specify` | Author `#[spec(prove)]` formal specs + verify via `sui-prover` |
+| `/verify` | Re-verify that authored specs still hold against current code |
 
 ### Specialized agent
 
@@ -65,7 +66,7 @@ Then restart Claude Code — MCP servers launch at session start.
 
 | Component | Version | Notes |
 |---|---|---|
-| suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh \| sh` |
+| suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
 | sui + move-analyzer | Same version | **Must match** — install both via suiup |
 | Claude Code | Latest | Plugin host environment |
 

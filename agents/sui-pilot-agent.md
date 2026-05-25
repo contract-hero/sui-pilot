@@ -521,7 +521,7 @@ TOOLING
 │   ⤳ skill: move-code-quality
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
 │   ⊃ tools: move_diagnostics, move_hover, move_completions, move_goto_definition
-│   ⤳ skill: move-code-quality
+│   ⤳ skill: specify (LSP-driven spec authoring + verification)
 └── sui-pilot plugin                  → this package; bundles all of the above
    ⤳ skill: move-code-review (security + architecture review)
 ```
