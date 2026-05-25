@@ -65,7 +65,7 @@ The scoring run flagged a **suspected verbose-TODO regression** on v2: tasks 09/
 
 ## 4. What got cut and why — `v2-minimal` (commit `97484c5`)
 
-The matcher exists to disambiguate skills against vague prompts when a plugin has many of them. `vercel-plugin` ships ~19 skills, many of which compete for the same kinds of prompts. sui-pilot ships **5, all directly invokable as slash commands** (`/move-code-quality`, `/move-code-review`, `/move-pr-review`, `/move-tests`, `/oz-math`). The pattern works for vercel-plugin because the disambiguation matters; it doesn't here because there's nothing to disambiguate.
+The matcher exists to disambiguate skills against vague prompts when a plugin has many of them. `vercel-plugin` ships ~19 skills, many of which compete for the same kinds of prompts. sui-pilot ships **5, all directly invokable as slash commands** (`/move-code-quality`, `/move-code-review`, `/oz-math`, `/specify`, `/verify`). The pattern works for vercel-plugin because the disambiguation matters; it doesn't here because there's nothing to disambiguate.
 
 A second tell: `hooks/src/lexical-index.mts` carried a 1,978-line `SYNONYM_MAP` of vocabulary inherited from vercel-plugin (`ssr`, `isr`, `next-rewrite`, `edge-middleware`, `satori`, `preview-deployment`, `feature-flag`, `og/opengraph`) — we'd copied the file and never re-tuned the vocabulary for Sui/Move. That's not a problem the pattern caused; it's a problem we created by copying without adapting. Either way, it confirmed the pattern wasn't earning the per-byte attention required to keep it tuned.
 

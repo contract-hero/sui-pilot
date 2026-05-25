@@ -341,4 +341,4 @@ let result = positive.add(negative);
 
 - **Complements `/move-code-review`**: That skill flags SEC-AR-* issues; this skill provides the fix
 - **Runs after `/move-code-quality`**: Style fixes first, then math safety improvements
-- **Precedes `/move-tests`**: Ensure math is safe before generating tests for it
+- **Precedes `/specify`**: Ensure math is safe before writing formal specs for it

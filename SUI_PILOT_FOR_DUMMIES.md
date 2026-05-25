@@ -127,13 +127,6 @@ cd ~/projects/my-defi-pool
 # Security pass — substantial changes only.
 > /move-code-review
 
-# Generate tests.
-> /move-tests
-
-# Before opening a PR — multi-agent deep review. Ten parallel reviewers
-# + one consolidator produce a high-confidence Markdown report.
-> /move-pr-review
-
 # Math-heavy DeFi code? Audit it for safer arithmetic.
 > /oz-math
 
@@ -195,8 +188,6 @@ They must match. Fix with `suiup update sui && suiup update move-analyzer`.
 | `/sui-pilot`          | Doc-first entry point — routes to the specialized `sui-pilot-agent` subagent    |
 | `/move-code-quality`  | Move Book Code Quality Checklist compliance (Move 2024 idioms, syntax, style)   |
 | `/move-code-review`   | Security and architecture review of Move code (40 checks across 6 categories)   |
-| `/move-tests`         | Generate or improve `test_scenario`-style unit tests for a Move package         |
-| `/move-pr-review`     | Multi-agent deep PR review — 10 parallel reviewers + 1 consolidator             |
 | `/oz-math`            | Audit arithmetic and recommend OpenZeppelin math contracts where helpful        |
 | `/specify`            | Author `#[spec(prove)]` formal specs for `public`/`entry` functions and verify them with `sui-prover` (interactive, per-function `AskUserQuestion`-driven) |
 

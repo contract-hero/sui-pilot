@@ -1,5 +1,0 @@
-[submodule ".mysten-skills"]
-	path = .mysten-skills
-	url = git@github.com:MystenLabs/skills.git
-	branch = main
-	update = merge

@@ -134,13 +134,7 @@ Invoking `move-code-review` skill on the package.
 - ⚠️ TST-001: No tests for underflow boundary condition (decrement when value = 0)
 - ⚠️ TST-002: No tests for zero-state initialization
 
-TST-* findings noted — will be covered in /move-tests step.
-
----
-
-### Step 8c — /move-tests
-
-Invoking `move-tests` skill (triggered because: no tests exist + TST-* findings from review).
+TST-* findings noted for follow-up.
 
 **Generated tests:**
 
@@ -234,4 +228,3 @@ All skill findings addressed, all tests passing. Implementation done.
 | (c) Code implementation after docs | ✅ |
 | (d) `/move-code-quality` invoked | ✅ Step 8a |
 | (e) `/move-code-review` invoked | ✅ Step 8b |
-| (f) `/move-tests` invoked (tests absent + TST-* findings) | ✅ Step 8c |

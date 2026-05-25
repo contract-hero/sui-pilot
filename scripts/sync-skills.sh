@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${PLUGIN_ROOT}/../.." && pwd)"
 
-SKILLS=(move-code-quality move-code-review move-tests)
+SKILLS=(move-code-quality move-code-review oz-math specify verify)
 
 # Parse the value of a frontmatter key from a SKILL.md file.
 # Usage: parse_frontmatter_key <file> <key>
