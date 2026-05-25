@@ -4,99 +4,56 @@
   <img src="sui-pilot.jpg" alt="Sui Pilot" width="600" />
 </p>
 
-A Claude Code plugin that transforms Claude into a Sui/Move development expert.
+> A Claude Code plugin that turns Claude into a Sui/Move development expert — grounded in current docs, not stale training data.
+
+sui-pilot bundles **753 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
+
+**[Read the full story](https://contract-hero.github.io/sui-pilot/)**
 
 ---
 
-## Why sui-pilot?
+## What Ships
 
-Sui Move evolves rapidly. LLM training data goes stale fast, and agents confidently generate outdated patterns, deprecated APIs, and incorrect syntax.
-
-sui-pilot solves this by bundling **747 documentation files** across six upstream corpora directly into your Claude Code environment:
-
-| Source         | Files | Topics                                                                  |
-| -------------- | ----- | ----------------------------------------------------------------------- |
-| **Sui**        | 369   | Blockchain, Move language, objects, transactions, SDKs, DeFi standards  |
-| **Move Book**  | 143   | Move language tutorial + reference: syntax, types, abilities, idioms    |
-| **Walrus**     | 86    | Decentralized blob storage, Walrus Sites, HTTP API, node operations     |
-| **Seal**       | 14    | Secrets management, encryption, key servers, access control policies    |
-| **TS SDK**     | 115   | TypeScript SDK, dapp-kit, payment-kit, kiosk, React hooks, transactions |
-| **Sui Prover** | 20    | Formal verification: `#[spec(prove)]` specs, Boogie tuning, examples    |
-
-The Move Book corpus also ships with `.move-book-docs/packages/` — Move source examples referenced from the prose via `file=` directives, available for follow-up reads but excluded from the indexed search corpus.
-
----
-
-## Learning artifacts
-
-Two self-contained explainers, published via GitHub Pages — read them before installing if you want to *see* what sui-pilot does and *why* it's shaped this way:
-
-- **[Inside Claude's context, step by step](https://contract-hero.github.io/sui-pilot/SUI_PILOT_TOUR.html)** — interactive tour of a real Sui workflow showing exactly what enters Claude's context window at each step (bundled docs, MCP calls, skill payloads, agent file). The fastest way to understand what the plugin actually does at runtime.
-- **[Evaluating Claude Code context for Sui Move development](https://contract-hero.github.io/sui-pilot/EVAL_FRAMEWORK.html)** — the 27-task A/B eval methodology that shaped v2: scoring rubric, three committed baselines, and the honest framing axis (parity, not improvement). Read this if you're building context-injection plugins of your own.
-
-Both are also reachable from the [landing page](https://contract-hero.github.io/sui-pilot/).
-
----
-
-## What You Get
-
-### Bundled Documentation
+### Bundled documentation (753 files, 6 corpora)
 
 All docs are local and searchable. Claude reads them before generating code — no hallucinated APIs, no deprecated patterns.
 
-### MCP Tools (LSP Integration)
+| Source | Files | Topics |
+|---|---|---|
+| **Sui** | 369 | Blockchain, objects, transactions, DeFi, framework |
+| **Move Book** | 145 | Move language tutorial + reference: syntax, types, abilities, idioms |
+| **TS SDK** | 115 | TypeScript SDK, dapp-kit, payment-kit, kiosk, React hooks |
+| **Walrus** | 86 | Decentralized blob storage, Walrus Sites, HTTP API |
+| **Sui Prover** | 24 | Formal verification: `#[spec(prove)]` specs, Boogie tuning |
+| **Seal** | 14 | Secrets management, encryption, key servers, access control |
 
-Real-time feedback from `move-analyzer`:
+### MCP tools
 
-| Tool                     | Description                                                                |
-| ------------------------ | -------------------------------------------------------------------------- |
-| `move_diagnostics`       | Get compiler warnings and errors for a Move file                           |
-| `move_hover`             | Get type information at a position                                         |
-| `move_completions`       | Get completion suggestions                                                 |
-| `move_goto_definition`   | Navigate to symbol definitions                                             |
-| `move_find_references`   | Find every call site / usage of a symbol across the workspace              |
-| `move_document_symbols`  | Return a file's full outline (modules, structs, functions, constants)      |
-| `move_type_definition`   | Jump to where a value's type is declared (distinct from goto-definition)   |
-| `move_code_actions`      | Compiler-offered quick fixes and refactorings (auto-resolved when needed)  |
-| `move_inlay_hints`       | Inferred types and parameter-name hints across a range                     |
-| `move_rename`            | Refactor-safe rename — returns proposed edits without writing them to disk |
+Two MCP servers provide real-time tooling from within Claude Code:
+
+| Server | Tools | What it wraps |
+|---|---|---|
+| **move-lsp** | `move_diagnostics`, `move_hover`, `move_completions`, `move_goto_definition`, `move_find_references`, `move_document_symbols`, `move_type_definition`, `move_code_actions`, `move_inlay_hints`, `move_rename` | The `move-analyzer` LSP |
+| **sui-prover** | `prove_package`, `list_specs`, `prover_capabilities` | The `sui-prover` formal verification binary |
 
 ### Slash commands
 
-| Command               | Purpose                                                                       |
-| --------------------- | ----------------------------------------------------------------------------- |
-| `/sui-pilot`          | Doc-first entry point; routes to the sui-pilot agent                          |
-| `/move-code-quality`  | Move Book Code Quality Checklist compliance                                   |
-| `/move-code-review`   | Security and architecture review                                              |
-| `/move-tests`         | Test generation best practices                                                |
-| `/move-pr-review`     | Multi-agent deep PR review (10 reviewers + consolidator)                      |
-| `/oz-math`            | OpenZeppelin math library recommendations                                     |
-| `/specify`            | Author `#[spec(prove)]` formal specs + verify via `sui-prover` (interactive)  |
+| Command | Purpose |
+|---|---|
+| `/sui-pilot` | Doc-first entry point; routes to the sui-pilot agent |
+| `/move-code-quality` | Move 2024 Edition compliance (50+ rules) |
+| `/move-code-review` | Security and architecture review (40 checks, 6 categories) |
+| `/oz-math` | OpenZeppelin math library recommendations |
+| `/specify` | Author `#[spec(prove)]` formal specs + verify via `sui-prover` |
+| `/verify` | Re-verify that authored specs still hold against current code |
 
-Each command routes to a bundled skill of the same name; skills live under `skills/` and hold the actual behavior.
+### Specialized agent
 
-### MCP servers
-
-| Server          | What it wraps                                                            |
-| --------------- | ------------------------------------------------------------------------ |
-| `move-lsp`      | The `move-analyzer` LSP — diagnostics, hover, references, document symbols, rename, etc. |
-| `sui-prover`    | The `sui-prover` formal-verification binary — `prove_package`, `list_specs`, `prover_capabilities` |
-
-### Specialized Agent
-
-The `sui-pilot-agent` enforces a doc-first workflow: consult documentation before writing code, use LSP for real-time validation. Its always-loaded preamble is a 2.9 KB topic→corpus routing table — it tells the agent to navigate `.<source>-docs/` directly via `Glob`/`Grep` rather than precomputing an index.
-
-### Architecture
-
-The plugin is intentionally small: a slim always-loaded preamble plus user-invokable skills plus an MCP bridge to `move-analyzer`. No matcher pipeline, no hooks, no precomputed indexes — the agent reaches for `Glob`/`Grep` over the bundled corpora when it needs docs, and you type a slash command when you want a procedural skill. Earlier work on this branch adopted a hook-based skill-matcher pattern (modeled on Vercel's own Claude Code plugin), but the eval suite showed it didn't help for sui-pilot's shape — we ship 5 explicitly-named skills, so there's nothing for a matcher to disambiguate. Full rationale in [`NOTES.md`](./NOTES.md); the empirical numbers in [`evals/BASELINE.md`](./evals/BASELINE.md).
+The `sui-pilot-agent` enforces a doc-first workflow: consult documentation before writing code, use LSP for real-time validation. Its always-loaded preamble is a topic-to-corpus routing table that navigates the bundled docs via `Glob`/`Grep`.
 
 ---
 
-## Installation
-
-### From the marketplace (recommended)
-
-sui-pilot is distributed via the [Contract Hero plugin marketplace](https://github.com/contract-hero/plugin-marketplace). Inside Claude Code:
+## Install
 
 ```
 /plugin marketplace add contract-hero/plugin-marketplace
@@ -105,85 +62,34 @@ sui-pilot is distributed via the [Contract Hero plugin marketplace](https://gith
 
 Then restart Claude Code — MCP servers launch at session start.
 
-The MCP server bundle ships prebuilt with the plugin, so end users do not need Node.js or pnpm installed.
-
-### Migrating from the old `alilloig/sui-pilot` marketplace
-
-Earlier releases were distributed from a self-hosted marketplace at `alilloig/sui-pilot`. That install path is **deprecated** — the catalog has moved into `contract-hero/plugin-marketplace`. To migrate:
-
-```
-/plugin uninstall sui-pilot@alilloig
-/plugin marketplace remove alilloig
-/plugin marketplace add contract-hero/plugin-marketplace
-/plugin install sui-pilot@contract-hero
-```
-
-### Upgrading from a manual install
-
-If you installed sui-pilot before the marketplace existed (git clone into `~/.claude/plugins/sui-pilot`), remove it first so the old copy doesn't shadow the marketplace install:
-
-```bash
-rm -rf ~/.claude/plugins/sui-pilot
-```
-
 ### Requirements
 
-| Component            | Version      | Notes                                                                  |
-| -------------------- | ------------ | ---------------------------------------------------------------------- |
-| suiup                | Latest       | `curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh \| sh` |
-| sui + move-analyzer  | Same version | **Must match versions** — install both via suiup                       |
-| Claude Code          | Latest       | Plugin host environment                                                |
-| Node.js              | 18+          | Used to run the bundled MCP server (usually already present)           |
-
-### Installing the Sui Toolchain
-
-[suiup](https://docs.sui.io/guides/developer/getting-started/sui-install) is the official Sui version manager:
+| Component | Version | Notes |
+|---|---|---|
+| suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
+| sui + move-analyzer | Same version | **Must match** — install both via suiup |
+| Claude Code | Latest | Plugin host environment |
 
 ```bash
-# Install suiup
-curl -sSfL https://raw.githubusercontent.com/Mystenlabs/suiup/main/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"  # Add to shell profile
-
-# Install sui and move-analyzer (versions must match!)
 suiup install sui
 suiup install move-analyzer
-
-# Verify
-sui --version
-move-analyzer --version
 ```
 
 ---
 
 ## Quick Start
 
-### Ask About Sui/Move
-
 ```
+# Ask about Sui/Move (doc-grounded answer)
 What are shared objects in Sui and when should I use them?
-```
 
-### Generate a Module
-
-```
-Create a Counter module in Move 2024 with increment and value functions
-```
-
-### Check Code Quality
-
-```
+# Check code quality
 /move-code-quality
-```
 
-### Security Review
-
-```
+# Security review
 /move-code-review
-```
 
-### Get Diagnostics
-
-```
+# Get compiler diagnostics
 Check diagnostics for sources/my_module.move
 ```
 
@@ -191,187 +97,38 @@ Check diagnostics for sources/my_module.move
 
 ## For Other AI Agents
 
-sui-pilot also works as a standalone documentation source for non-Claude Code environments:
-
-1. Clone or copy this repo into your workspace
-2. Point your AI agent at the project
-3. The agent reads `agents/sui-pilot-agent.md`, a slim doc-first directive that routes topics to the bundled `.<source>-docs/` corpora and instructs the agent to navigate them with `Glob` and `Grep`
-
-The directive includes a warning: *"What you remember about Sui and Move is WRONG or OUTDATED — always search these docs first."*
+sui-pilot also works as a standalone documentation source for non-Claude Code environments. Clone the repo, point your agent at `agents/sui-pilot-agent.md`, and it will navigate the bundled `.<source>-docs/` corpora with `Glob` and `Grep`.
 
 ---
 
 ## Keeping Docs Up to Date
 
-### Why Local Docs?
-
-LLMs have a knowledge cutoff. Sui Move evolves rapidly — new framework methods, changed APIs, deprecated patterns. An LLM trained 6 months ago will confidently generate code that no longer compiles or follows outdated conventions.
-
-sui-pilot solves this by bundling documentation locally. The agent reads current docs before generating code, not stale training data.
-
-### Why Sync from Upstream?
-
-The docs are extracted directly from the official MystenLabs repositories — the same source that powers docs.sui.io, docs.walrus.site, and docs.seal.xyz. This ensures accuracy and consistency with what developers see in the official documentation.
-
-| Source    | Repository                                                      | Doc Path(s)                       |
-| --------- | --------------------------------------------------------------- | --------------------------------- |
-| Sui       | [MystenLabs/sui](https://github.com/MystenLabs/sui)             | `docs/content/`                   |
-| Move Book | [MystenLabs/move-book](https://github.com/MystenLabs/move-book) | `book/`, `reference/`, `packages/` |
-| Walrus    | [MystenLabs/walrus](https://github.com/MystenLabs/walrus)       | `docs/content/`                   |
-| Seal      | [MystenLabs/seal](https://github.com/MystenLabs/seal)           | `docs/content/`                   |
-| TS SDK    | [MystenLabs/ts-sdks](https://github.com/MystenLabs/ts-sdks)     | `packages/docs/content/`          |
-
-### Updating the Docs
-
-Run periodically (e.g., monthly, or before a major project):
-
 ```bash
-./sync-docs.sh           # Pull latest from MystenLabs repos
+./sync-docs.sh    # Pull latest from upstream MystenLabs repos
 ```
 
-The sync script clones or pulls each upstream repo and copies the prose into the corresponding `.{source}-docs/` folder. Most sources contribute a single `docs/content/` tree; the Move Book contributes its `book/`, `reference/`, and `packages/` subtrees into `.move-book-docs/` (with `packages/` available on disk for `file=` example references). v2 no longer generates a precomputed pipe-delimited index — the agent navigates the corpora directly via `Glob`/`Grep`, routed by a small topic table at the top of `agents/sui-pilot-agent.md`. A scheduled GitHub Actions workflow (`.github/workflows/refresh-docs.yml`) runs this pipeline weekly and opens a chore PR when upstream docs change.
+A [GitHub Actions workflow](.github/workflows/refresh-docs.yml) runs this weekly and opens a chore PR when upstream docs change.
 
 ---
 
-## Plugin Structure
+## Links
 
-```
-sui-pilot/
-├── .claude-plugin/plugin.json    # Plugin manifest (registers move-lsp MCP server)
-├── agents/sui-pilot-agent.md     # Slim doc-first directive (~2.9 KB, always-loaded via @-import)
-├── commands/                     # 6 slash commands (sui-pilot, move-*, oz-math)
-├── skills/                       # 5 bundled skills
-├── mcp/move-lsp-mcp/             # MCP server wrapping move-analyzer (prebuilt bundle)
-├── evals/                        # 15-task A/B eval harness (run-comparison.sh, tasks.json, fixtures)
-├── scripts/                      # sync-docs.sh helpers
-├── .sui-docs/                    # 369 Sui documentation files
-├── .move-book-docs/              # 143 Move Book files (+ packages/ examples)
-├── .walrus-docs/                 # 86 Walrus documentation files
-├── .seal-docs/                   # 14 Seal documentation files
-├── .ts-sdk-docs/                 # 115 TS SDK documentation files
-└── .sui-prover-docs/             # 20 Sui Prover files (guide + sources + examples)
-```
+- **Landing page** — <https://contract-hero.github.io/sui-pilot/>
+- **Marketplace** — [`contract-hero/plugin-marketplace`](https://github.com/contract-hero/plugin-marketplace)
+- **Release history** — [CHANGELOG.md](./CHANGELOG.md)
+- **Eval methodology** — [how we measured context injection](https://contract-hero.github.io/sui-pilot/EVAL_FRAMEWORK.html)
 
-For the onboarding walkthrough, see [`SUI_PILOT_FOR_DUMMIES.md`](SUI_PILOT_FOR_DUMMIES.md). For why we adopted a matcher pipeline from a sibling plugin and then rolled it back, see [`NOTES.md`](NOTES.md). For the polished, shareable explainers of the eval methodology and the runtime context tour, see [Learning artifacts](#learning-artifacts) above — also published live at [contract-hero.github.io/sui-pilot](https://contract-hero.github.io/sui-pilot/).
-
----
-
-## Troubleshooting
-
-### MCP tools not appearing
-
-Restart Claude Code completely (close and reopen). MCP servers launch at session start, not on plugin reload.
-
-Verify the installed plugin's manifest declares the MCP server:
-```bash
-find ~/.claude/plugins/cache -path '*sui-pilot*/.claude-plugin/plugin.json' -exec cat {} +
-```
-
-### LSP tools return "move-analyzer not found"
-
-```bash
-suiup install move-analyzer
-which move-analyzer  # Should show ~/.local/bin/move-analyzer
-```
-
-If it shows `~/.cargo/bin/move-analyzer`, you have an old cargo version shadowing suiup:
-```bash
-mv ~/.cargo/bin/move-analyzer ~/.cargo/bin/move-analyzer.bak
-```
-
-### LSP crashes with "Max restarts exceeded"
-
-Version mismatch between `sui` and `move-analyzer`:
-
-```bash
-sui --version
-move-analyzer --version  # Must match!
-```
-
-Fix with:
-```bash
-suiup update sui
-suiup update move-analyzer
-```
-
-Then restart Claude Code to reset the crash counter.
-
-### MCP server fails to start
-
-The plugin ships a prebuilt bundle at `mcp/move-lsp-mcp/dist/index.js`. Confirm it was copied into the plugin cache:
-
-```bash
-find ~/.claude/plugins/cache -path '*sui-pilot*/mcp/move-lsp-mcp/dist/index.js'
-```
-
-If the file is missing, remove and reinstall the plugin from the marketplace:
-
-```
-/plugin uninstall sui-pilot@contract-hero
-/plugin marketplace update contract-hero
-/plugin install sui-pilot@contract-hero
-```
-
----
-
-## Limitations
-
-sui-pilot is designed for Claude Code. Some capabilities are environment-specific:
-
-| Feature | Claude Code | Other AI Agents |
-|---------|-------------|-----------------|
-| Bundled documentation | Yes | Yes (read the index block in `agents/sui-pilot-agent.md`) |
-| MCP tools (diagnostics, hover, etc.) | Yes | No |
-| Skills (/move-code-quality, etc.) | Yes | No |
-| Specialized sui-pilot-agent | Yes | No |
-
-**Other limitations:**
-
-- **move-analyzer required separately**: LSP tools require `move-analyzer` to be installed via `suiup install move-analyzer`. The plugin does not bundle move-analyzer.
-- **Version matching critical**: `sui` and `move-analyzer` must be the same version or LSP will crash.
-- **macOS and Linux only**: Windows is not officially supported.
-- **Documentation lag**: Bundled docs are point-in-time snapshots. Run `./sync-docs.sh` to update.
-
-### Doc-first directive is subagent-scoped by default
-
-The slim doc-first directive in `agents/sui-pilot-agent.md` is loaded into context only when something invokes the `sui-pilot-agent` subagent. The bundled skills (`/sui-pilot`, `/move-pr-review`, `/move-code-review`, `/move-code-quality`, `/move-tests`, `/oz-math`) all dispatch the subagent, so they get the directive for free.
-
-**Free-form Claude Code chat does not.** If you ask a Sui/Move/Walrus/Seal question without invoking one of the sui-pilot skills, Claude falls back to its training memory — which is stale. You may see deprecated Move 1.x syntax, removed `SuiClient` imports, missing `network` parameters on the new TS SDK 2.0 clients, and similar drift.
-
-**Workaround for users whose work is predominantly Sui-related:** add this line to your `~/.claude/CLAUDE.md` so the directive loads in every session:
-
-```markdown
-@~/.claude/sui-pilot/agents/sui-pilot-agent.md
-```
-
-The trade-off is ~2 KB of context per session (vs. zero when only skills are invoked). For occasional Sui work, prefer running the skills on demand instead.
-
----
-
-## Contributing / local development
-
-For local iteration on the plugin, clone the repo and load it with `--plugin-dir` instead of installing from the marketplace:
+## Contributing
 
 ```bash
 git clone https://github.com/contract-hero/sui-pilot.git
 cd sui-pilot
-
-# Build the MCP bundle after changes to mcp/move-lsp-mcp/src/
-pnpm --dir mcp/move-lsp-mcp install
-pnpm --dir mcp/move-lsp-mcp build
-
-# Launch Claude Code with this checkout as the active plugin
+pnpm --dir mcp/move-lsp-mcp install && pnpm --dir mcp/move-lsp-mcp build
+pnpm --dir mcp/sui-prover-mcp install && pnpm --dir mcp/sui-prover-mcp build
 claude --plugin-dir "$(pwd)"
 ```
 
-Commit the rebuilt `mcp/move-lsp-mcp/dist/index.js` whenever `src/` changes — the bundle ships with the plugin.
-
----
-
-## Support
-
-- **Report issues**: [github.com/contract-hero/sui-pilot/issues](https://github.com/contract-hero/sui-pilot/issues)
-- **Release history**: See [CHANGELOG.md](./CHANGELOG.md)
+See [`CLAUDE.md`](./CLAUDE.md) for architectural invariants and the doc-first workflow.
 
 ---
 

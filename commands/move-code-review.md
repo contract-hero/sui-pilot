@@ -23,4 +23,4 @@ Invoke the `move-code-review` skill to perform a security and architecture revie
 ## Related Commands
 
 - `/move-code-quality` — Syntax and idiom analysis (different scope)
-- `/move-tests` — Generate tests for TST-* findings from this review
+- `/oz-math` — Concrete fixes for SEC-AR-* arithmetic findings

@@ -106,7 +106,6 @@ An audit tool can detect this violation by checking:
 4. **Then** write implementation
 5. Run `/move-code-quality`
 6. Run `/move-code-review`
-7. Run `/move-tests` if needed
 
 ---
 
@@ -135,4 +134,3 @@ These would have been avoided if the agent had read the docs first.
 | (d) Code implementation after docs | :x: Code came first |
 | (e) `/move-code-quality` invoked | :x: Not invoked |
 | (f) `/move-code-review` invoked | :x: Not invoked |
-| (g) `/move-tests` invoked | :x: Not invoked |

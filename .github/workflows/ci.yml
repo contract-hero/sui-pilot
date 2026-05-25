@@ -61,7 +61,7 @@ jobs:
 
       - name: Run unit tests (move-lsp-mcp)
         working-directory: mcp/move-lsp-mcp
-        run: set -o pipefail; pnpm test -- --reporter=verbose 2>&1 | grep -E '(✓|✗|PASS|FAIL|test/unit)'
+        run: pnpm test -- --reporter=verbose
 
       - name: Install dependencies (sui-prover-mcp)
         working-directory: mcp/sui-prover-mcp
@@ -122,8 +122,8 @@ jobs:
           test -d .ts-sdk-docs && echo "✓ .ts-sdk-docs exists ($(count_doc_files .ts-sdk-docs) doc files)"
           test -d .sui-prover-docs && echo "✓ .sui-prover-docs exists ($(count_doc_files .sui-prover-docs) doc files)"
 
-      - name: Smoke test move-pr-review scripts
-        run: bash skills/move-pr-review/scripts/tests/smoke.sh
+      - name: Smoke test bundled skills
+        run: bash scripts/smoke-test-skills.sh
 
   lint:
     runs-on: ubuntu-latest

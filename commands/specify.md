@@ -38,4 +38,4 @@ Invoke the `specify` skill to walk through formal-specification authoring for th
 
 - `/move-code-review` — Identifies which functions most need specs (SEC-* findings).
 - `/move-code-quality` — Style/idiom pass that should precede formal verification.
-- `/move-tests` — Behavioural tests; complementary to formal specs, not a replacement.
+- `/verify` — Run verification after authoring specs.

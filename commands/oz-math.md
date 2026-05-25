@@ -23,4 +23,4 @@ Invoke the `oz-math` skill to analyze the Move package in the current directory 
 
 - `/move-code-review` — Flags SEC-AR-* arithmetic security issues (this skill provides the fixes)
 - `/move-code-quality` — Style and idiom analysis (run before oz-math)
-- `/move-tests` — Generate tests after applying oz-math recommendations
+- `/specify` — Author formal specs after applying oz-math recommendations

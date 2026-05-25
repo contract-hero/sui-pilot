@@ -22,4 +22,4 @@ Invoke the `move-code-quality` skill to analyze the Move package in the current 
 ## Related Commands
 
 - `/move-code-review` — Security and architecture analysis (different scope)
-- `/move-tests` — Generate unit tests for identified gaps
+- `/oz-math` — OpenZeppelin math library recommendations

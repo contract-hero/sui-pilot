@@ -95,9 +95,9 @@ If `move-analyzer` is not available, continue without MCP tools and note that la
 >
 > ⤳ skill: move-code-quality — Move-2024 syntax/idiom enforcement
 > ⤳ skill: move-code-review — security, architecture, design review
-> ⤳ skill: move-pr-review — multi-agent deep PR review
-> ⤳ skill: move-tests — unit-test generation
 > ⤳ skill: oz-math — OpenZeppelin math integration audit
+> ⤳ skill: specify — formal spec authoring + sui-prover verification
+> ⤳ skill: verify — verification workflow
 
 ---
 
@@ -354,7 +354,7 @@ TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/
 ├── Transaction auth                  📖 docs: .sui-docs/develop/transactions/transaction-auth/
 ├── Gas model                         📖 docs: .sui-docs/develop/transaction-payment/gas-in-sui.mdx
 ├── Sponsored / gasless txns          📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
-└── ⤳ skill: move-pr-review
+└── ⤳ skill: move-code-review
 ```
 
 Stub — fleshed in v2 follow-up. Cross-reference `Sui object model § Object ownership`
@@ -521,9 +521,9 @@ TOOLING
 │   ⤳ skill: move-code-quality
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
 │   ⊃ tools: move_diagnostics, move_hover, move_completions, move_goto_definition
-│   ⤳ skill: move-tests (LSP-driven test scaffolding)
+│   ⤳ skill: specify (LSP-driven spec authoring + verification)
 └── sui-pilot plugin                  → this package; bundles all of the above
-   ⤳ skill: move-pr-review (multi-agent orchestration on PRs)
+   ⤳ skill: move-code-review (security + architecture review)
 ```
 
 Stub — flesh in v2 follow-up. The LSP integration is the single most useful tool for
