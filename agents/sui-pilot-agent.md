@@ -10,6 +10,7 @@ tools:
   - MultiEdit
   - Write
   - Bash
+  - SendMessage
   - mcp__move-lsp__move_diagnostics
   - mcp__move-lsp__move_hover
   - mcp__move-lsp__move_completions
