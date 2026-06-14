@@ -1,0 +1,24 @@
+# .understandignore — focus the Understand Anything scan on sui-pilot's OWN code,
+# not the 750+ vendored third-party doc pages bundled in this repo.
+# Syntax: same as .gitignore.
+
+# --- Vendored documentation mirrors (bulk of the repo, not our code) ---
+.sui-docs/
+.walrus-docs/
+.seal-docs/
+.move-book-docs/
+.ts-sdk-docs/
+.sui-prover-docs/
+
+# --- Belt-and-suspenders secret exclusions ---
+# (git ls-files --exclude-standard already drops gitignored files, but these
+#  also cover any *tracked* secret and protect non-git scans. Reusable template.)
+*.env
+.env*
+!*.env.example
+*.key
+*.pem
+*.p12
+.secrets/
+id_rsa*
+*.mnemonic
