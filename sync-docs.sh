@@ -38,6 +38,23 @@ strip_binaries() {
     find "$dir" -type d -empty -delete 2>/dev/null || true
 }
 
+# Resolve a GitHub tarball's dynamic top-level directory (e.g.
+# "mystenlabs-sui-9a3f1c2/"). Used to extract a wanted subtree by *exact
+# member path* rather than a glob.
+#
+# Why exact paths instead of `--include=GLOB`: `--include` is a bsdtar
+# (macOS) option. GNU tar — which the Ubuntu CI runner ships — does not
+# recognize it, so the old `tar ... --include=... 2>/dev/null || true`
+# errored, the error was swallowed, 0 files extracted, and the data-loss
+# guard aborted the whole sync. That is why the weekly "Refresh upstream
+# docs" job never once succeeded in CI while local macOS syncs worked.
+# Both GNU tar and bsdtar extract a named directory member recursively and
+# honor --strip-components, so the exact-path approach is portable with no
+# flavor detection.
+tarball_top() {
+    tar tzf "$1" 2>/dev/null | head -1 | cut -d/ -f1
+}
+
 sync_repo() {
     local owner="$1"
     local repo="$2"
@@ -59,8 +76,19 @@ sync_repo() {
     strip_count=$(echo "$upstream_path" | tr '/' '\n' | wc -l | tr -d ' ')
     strip_count=$((strip_count + 1))  # +1 for the top-level "owner-repo-hash" dir
 
+    local top
+    top=$(tarball_top "$tarball") || true
+    if [[ -z "$top" ]]; then
+        echo "[$label] WARNING: could not read tarball top-level dir! Skipping."
+        return 1
+    fi
+
+    # stderr left visible on purpose — extracting an exact member is silent on
+    # success, so anything printed here is a real failure worth seeing (the
+    # old 2>/dev/null is what hid the --include break). The count guard below
+    # still decides whether to abort.
     tar xzf "$tarball" -C "$extract_dir" --strip-components="$strip_count" \
-        --include="*/${upstream_path}/*" 2>/dev/null || true
+        "$top/$upstream_path" || true
 
     # Count extracted files. `.move` is accepted because the prover corpus
     # syncs construct-source subtrees (packages/prover/sources/) that contain
@@ -113,38 +141,33 @@ sync_repo_multi() {
     local extract_dir="$TMPDIR_BASE/${repo}-extract"
     mkdir -p "$extract_dir"
 
+    local top
+    top=$(tarball_top "$tarball") || true
+    if [[ -z "$top" ]]; then
+        echo "[$label] WARNING: could not read tarball top-level dir! Skipping."
+        return 1
+    fi
+
     # Strip only the top-level "owner-repo-hash/" dir so each upstream path
-    # lands as $extract_dir/<path>/...
+    # lands as $extract_dir/<path>/... Members are passed as exact paths
+    # ("$top/<path>") rather than `--include` globs — see tarball_top() for
+    # why (GNU tar on the CI runner has no --include).
     local IFS_SAVE="$IFS"
     IFS=','
-    local includes=()
+    local members=()
     for p in $upstream_paths; do
         echo "[$label] Extracting $p/..."
-        includes+=("--include=*/${p}/*")
+        members+=("$top/${p}")
     done
     IFS="$IFS_SAVE"
 
+    # stderr is intentionally NOT suppressed: extracting exact named members
+    # produces no output on success, so any message here is a real failure
+    # (missing member, tar quirk) we want surfaced rather than hidden behind
+    # the downstream "0 files extracted" guard — that opacity is what let the
+    # original --include break go unnoticed for the life of the CI job.
     tar xzf "$tarball" -C "$extract_dir" --strip-components=1 \
-        "${includes[@]}" 2>/dev/null || true
-
-    # bsdtar may materialize empty top-level dirs for archive entries that
-    # don't match the --include filter. Drop anything not in the expected
-    # set so the local corpus contains only the requested subtrees.
-    local expected_top=()
-    IFS=','
-    for p in $upstream_paths; do
-        expected_top+=("${p%%/*}")
-    done
-    IFS="$IFS_SAVE"
-    while IFS= read -r entry; do
-        local name
-        name=$(basename "$entry")
-        local keep=false
-        for e in "${expected_top[@]}"; do
-            [[ "$name" == "$e" ]] && keep=true && break
-        done
-        $keep || rm -rf "$entry"
-    done < <(find "$extract_dir" -mindepth 1 -maxdepth 1)
+        "${members[@]}" || true
 
     local md_count
     md_count=$(find "$extract_dir" -type f \( -name '*.mdx' -o -name '*.md' -o -name '*.move' \) | wc -l | tr -d ' ')
