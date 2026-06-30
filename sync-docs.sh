@@ -38,6 +38,23 @@ strip_binaries() {
     find "$dir" -type d -empty -delete 2>/dev/null || true
 }
 
+# Resolve a GitHub tarball's dynamic top-level directory (e.g.
+# "mystenlabs-sui-9a3f1c2/"). Used to extract a wanted subtree by *exact
+# member path* rather than a glob.
+#
+# Why exact paths instead of `--include=GLOB`: `--include` is a bsdtar
+# (macOS) option. GNU tar — which the Ubuntu CI runner ships — does not
+# recognize it, so the old `tar ... --include=... 2>/dev/null || true`
+# errored, the error was swallowed, 0 files extracted, and the data-loss
+# guard aborted the whole sync. That is why the weekly "Refresh upstream
+# docs" job never once succeeded in CI while local macOS syncs worked.
+# Both GNU tar and bsdtar extract a named directory member recursively and
+# honor --strip-components, so the exact-path approach is portable with no
+# flavor detection.
+tarball_top() {
+    tar tzf "$1" 2>/dev/null | head -1 | cut -d/ -f1
+}
+
 sync_repo() {
     local owner="$1"
     local repo="$2"
@@ -59,8 +76,15 @@ sync_repo() {
     strip_count=$(echo "$upstream_path" | tr '/' '\n' | wc -l | tr -d ' ')
     strip_count=$((strip_count + 1))  # +1 for the top-level "owner-repo-hash" dir
 
+    local top
+    top=$(tarball_top "$tarball") || true
+    if [[ -z "$top" ]]; then
+        echo "[$label] WARNING: could not read tarball top-level dir! Skipping."
+        return 1
+    fi
+
     tar xzf "$tarball" -C "$extract_dir" --strip-components="$strip_count" \
-        --include="*/${upstream_path}/*" 2>/dev/null || true
+        "$top/$upstream_path" 2>/dev/null || true
 
     # Count extracted files. `.move` is accepted because the prover corpus
     # syncs construct-source subtrees (packages/prover/sources/) that contain
@@ -113,19 +137,28 @@ sync_repo_multi() {
     local extract_dir="$TMPDIR_BASE/${repo}-extract"
     mkdir -p "$extract_dir"
 
+    local top
+    top=$(tarball_top "$tarball") || true
+    if [[ -z "$top" ]]; then
+        echo "[$label] WARNING: could not read tarball top-level dir! Skipping."
+        return 1
+    fi
+
     # Strip only the top-level "owner-repo-hash/" dir so each upstream path
-    # lands as $extract_dir/<path>/...
+    # lands as $extract_dir/<path>/... Members are passed as exact paths
+    # ("$top/<path>") rather than `--include` globs — see tarball_top() for
+    # why (GNU tar on the CI runner has no --include).
     local IFS_SAVE="$IFS"
     IFS=','
-    local includes=()
+    local members=()
     for p in $upstream_paths; do
         echo "[$label] Extracting $p/..."
-        includes+=("--include=*/${p}/*")
+        members+=("$top/${p}")
     done
     IFS="$IFS_SAVE"
 
     tar xzf "$tarball" -C "$extract_dir" --strip-components=1 \
-        "${includes[@]}" 2>/dev/null || true
+        "${members[@]}" 2>/dev/null || true
 
     # bsdtar may materialize empty top-level dirs for archive entries that
     # don't match the --include filter. Drop anything not in the expected
