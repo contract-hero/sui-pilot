@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<!--
+  architecture.html — sui-pilot's interactive architecture map.
+
+  An explorable knowledge graph of the plugin: layers, modules, files, and the
+  edges between them, plus a guided tour. Generated from the sui-pilot knowledge
+  graph by scripts/build-architecture-html.mjs.
+
+  Self-contained: inline CSS, inline SVG, inline JS, a vanilla force-directed
+  layout, and the graph data embedded below. No external requests, no build step
+  to view — open the file or browse it on GitHub Pages.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sui-pilot · architecture map</title>
+<style>
+  :root {
+    --ink: #0f172a; --muted: #475569; --muted-2: #64748b;
+    --line: #e2e8f0; --line-strong: #cbd5e1;
+    --bg: #f8fafc; --panel: #ffffff; --panel-alt: #fdfdfb;
+    --accent: #0a4a8a; --accent-2: #1e6fb8; --accent-soft: #e6f0fa;
+    --radius: 10px; --radius-sm: 6px;
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+    --shadow-md: 0 4px 12px rgba(15,23,42,0.08);
+    --shadow-lg: 0 12px 34px rgba(15,23,42,0.16);
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: var(--font-sans); color: var(--ink); background: var(--bg); overflow: hidden; }
+  .app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+
+  header.bar {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--panel);
+    box-shadow: var(--shadow-sm); z-index: 5;
+  }
+  header.bar h1 { font-size: 15px; margin: 0; letter-spacing: .2px; }
+  header.bar h1 b { color: var(--accent); }
+  header.bar .desc { font-size: 12.5px; color: var(--muted); max-width: 60ch; }
+  header.bar .counts { margin-left: auto; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted-2); white-space: nowrap; }
+
+  .main { position: relative; display: grid; grid-template-columns: 264px 1fr; min-height: 0; }
+
+  aside.side {
+    border-right: 1px solid var(--line); background: var(--panel-alt);
+    padding: 14px; overflow-y: auto; font-size: 13px;
+  }
+  aside.side h2 { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted-2); margin: 18px 0 8px; }
+  aside.side h2:first-child { margin-top: 0; }
+  .search { width: 100%; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font-sans); }
+  .search:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent-2); }
+
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: var(--radius-sm); cursor: pointer; user-select: none; }
+  .legend-item:hover { background: var(--accent-soft); }
+  .legend-item.off { opacity: .38; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .legend-item .lname { flex: 1; }
+  .legend-item .lcount { font-family: var(--font-mono); font-size: 11px; color: var(--muted-2); }
+
+  .tour { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+  .tour .step-meta { font-family: var(--font-mono); font-size: 11px; color: var(--accent-2); }
+  .tour .step-title { font-weight: 600; margin: 4px 0 6px; font-size: 13.5px; }
+  .tour .step-desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .tour .tour-nav { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { font: inherit; font-size: 12.5px; padding: 6px 11px; border: 1px solid var(--line-strong); background: var(--panel); border-radius: var(--radius-sm); cursor: pointer; color: var(--ink); }
+  .btn:hover { border-color: var(--accent-2); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-2); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .tour-start { width: 100%; margin-top: 2px; }
+
+  .graph-wrap { position: relative; min-width: 0; background:
+      radial-gradient(circle at 1px 1px, rgba(15,23,42,.05) 1px, transparent 0) 0 0 / 22px 22px,
+      var(--bg); }
+  svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  svg.panning { cursor: grabbing; }
+  .edge { stroke: var(--line-strong); stroke-opacity: .55; fill: none; }
+  .edge.hot { stroke: var(--accent-2); stroke-opacity: .9; stroke-width: 1.6; }
+  .node circle, .node rect { stroke: #fff; stroke-width: 1.4; cursor: pointer; transition: opacity .15s; }
+  .node text { font-size: 9.5px; fill: var(--ink); paint-order: stroke; stroke: rgba(248,250,252,.92); stroke-width: 2.6px; pointer-events: none; }
+  .node.dim { opacity: .12; }
+  .node.sel circle, .node.sel rect { stroke: var(--accent); stroke-width: 2.6; }
+
+  .zoom { position: absolute; left: 14px; bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .zoom button { width: 32px; height: 32px; border: 1px solid var(--line-strong); background: var(--panel); border-radius: var(--radius-sm); cursor: pointer; font-size: 16px; box-shadow: var(--shadow-sm); }
+  .zoom button:hover { border-color: var(--accent-2); color: var(--accent); }
+
+  .detail {
+    position: absolute; right: 14px; top: 14px; width: 300px; max-height: calc(100% - 28px);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow-lg); padding: 14px 16px; overflow-y: auto; display: none;
+  }
+  .detail.show { display: block; }
+  .detail .type-pill { display: inline-block; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding: 2px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+  .detail h3 { margin: 8px 0 2px; font-size: 15px; word-break: break-word; }
+  .detail .path { font-family: var(--font-mono); font-size: 11px; color: var(--muted-2); word-break: break-all; margin-bottom: 8px; }
+  .detail .summary { font-size: 13px; color: var(--ink); line-height: 1.55; }
+  .detail .meta { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  .detail .tags { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .detail .tag { font-size: 10.5px; font-family: var(--font-mono); background: #f1f5f9; color: var(--muted); padding: 2px 7px; border-radius: 999px; }
+  .detail .conns { margin-top: 12px; }
+  .detail .conns h4 { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-2); margin: 0 0 5px; }
+  .detail .conn { font-size: 12px; padding: 2px 0; color: var(--accent-2); cursor: pointer; }
+  .detail .conn:hover { text-decoration: underline; }
+  .detail .closex { float: right; cursor: pointer; color: var(--muted-2); font-size: 18px; line-height: 1; margin: -2px -4px 0 0; }
+  footer.foot { position: absolute; left: 14px; bottom: 56px; font-size: 11px; color: var(--muted-2); font-family: var(--font-mono); pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1>sui&#8209;pilot <b>· architecture map</b></h1>
+    <span class="desc" id="proj-desc"></span>
+    <span class="counts" id="counts"></span>
+  </header>
+  <div class="main">
+    <aside class="side">
+      <h2>Find</h2>
+      <input class="search" id="search" type="text" placeholder="Filter nodes…" autocomplete="off">
+      <h2>Layers</h2>
+      <div id="legend"></div>
+      <h2>Guided tour</h2>
+      <div class="tour">
+        <div id="tour-idle">
+          <div class="step-desc">Step through the architecture the way it actually works — manifest → MCP servers → the formal-verification split → grounding.</div>
+          <button class="btn primary tour-start" id="tour-start">▶ Start tour</button>
+        </div>
+        <div id="tour-live" style="display:none">
+          <div class="step-meta" id="step-meta"></div>
+          <div class="step-title" id="step-title"></div>
+          <div class="step-desc" id="step-desc"></div>
+          <div class="tour-nav">
+            <button class="btn" id="tour-prev">‹ Prev</button>
+            <button class="btn primary" id="tour-next">Next ›</button>
+            <button class="btn" id="tour-exit" style="margin-left:auto">Exit</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="graph-wrap">
+      <svg id="svg"></svg>
+      <div class="zoom">
+        <button id="zoom-in" title="Zoom in">+</button>
+        <button id="zoom-out" title="Zoom out">−</button>
+        <button id="zoom-fit" title="Fit" style="font-size:13px">⤢</button>
+      </div>
+      <footer class="foot">auto-generated · self-contained · no external requests</footer>
+      <div class="detail" id="detail"></div>
+    </div>
+  </div>
+</div>
+
+<script>window.__GRAPH__ = /*__GRAPH_DATA__*/ {};</script>
+<script>
+(function () {
+  "use strict";
+  const G = window.__GRAPH__;
+  const svg = document.getElementById("svg");
+  const NS = "http://www.w3.org/2000/svg";
+
+  // ---- layer assignment + palette -------------------------------------------
+  const PALETTE = ["#2563eb","#7c3aed","#0d9488","#ea580c","#64748b","#db2777","#16a34a","#0891b2"];
+  const layerOf = {}, layerColor = {}, layerName = {};
+  G.layers.forEach((L, i) => {
+    layerColor[L.id] = PALETTE[i % PALETTE.length];
+    layerName[L.id] = L.name;
+    L.nodeIds.forEach(id => { if (layerOf[id] === undefined) layerOf[id] = L.id; });
+  });
+  const NEUTRAL = "#94a3b8";
+  const colorFor = n => (layerOf[n.id] !== undefined ? layerColor[layerOf[n.id]] : NEUTRAL);
+
+  const byId = {}; G.nodes.forEach(n => byId[n.id] = n);
+  const radiusFor = n => n.type === "module" ? 11 : n.type === "concept" ? 9
+      : n.type === "file" ? (n.complexity === "complex" ? 7 : n.complexity === "moderate" ? 5.5 : 4.5) : 6;
+
+  // adjacency for highlight + detail
+  const adj = {}; G.nodes.forEach(n => adj[n.id] = []);
+  G.edges.forEach(e => { if (adj[e.source] && adj[e.target]) { adj[e.source].push(e); adj[e.target].push(e); } });
+
+  // ---- force-directed layout (vanilla, layer-clustered) ---------------------
+  const W = 1600, H = 1100;
+  const nodes = G.nodes.map(n => ({ id: n.id, r: radiusFor(n), x: 0, y: 0, vx: 0, vy: 0, ref: n }));
+  const nmap = {}; nodes.forEach(p => nmap[p.id] = p);
+  // layer anchors arranged on a circle so layers separate visually
+  const anchors = {};
+  G.layers.forEach((L, i) => {
+    const a = (i / G.layers.length) * Math.PI * 2 - Math.PI / 2;
+    anchors[L.id] = { x: W/2 + Math.cos(a) * W*0.30, y: H/2 + Math.sin(a) * H*0.32 };
+  });
+  nodes.forEach(p => {
+    const an = layerOf[p.id] !== undefined ? anchors[layerOf[p.id]] : { x: W/2, y: H/2 };
+    p.x = an.x + (Math.random()-.5)*120; p.y = an.y + (Math.random()-.5)*120;
+  });
+  const links = G.edges.filter(e => nmap[e.source] && nmap[e.target]);
+  function tick() {
+    // repulsion (naive O(n^2), fine for a few hundred nodes)
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        let dx = a.x - b.x, dy = a.y - b.y, d2 = dx*dx + dy*dy || 0.01;
+        const f = 2200 / d2; const d = Math.sqrt(d2);
+        const fx = (dx/d)*f, fy = (dy/d)*f;
+        a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+      }
+    }
+    // link springs
+    links.forEach(e => {
+      const a = nmap[e.source], b = nmap[e.target];
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.sqrt(dx*dx+dy*dy) || 0.01;
+      const L = 70, f = (d - L) * 0.02;
+      const fx = (dx/d)*f, fy = (dy/d)*f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    });
+    // pull toward layer anchor (clustering) + gentle global centering
+    nodes.forEach(p => {
+      const an = layerOf[p.id] !== undefined ? anchors[layerOf[p.id]] : { x: W/2, y: H/2 };
+      p.vx += (an.x - p.x) * 0.012 + (W/2 - p.x) * 0.0015;
+      p.vy += (an.y - p.y) * 0.012 + (H/2 - p.y) * 0.0015;
+      p.vx *= 0.86; p.vy *= 0.86;
+      p.x += Math.max(-30, Math.min(30, p.vx));
+      p.y += Math.max(-30, Math.min(30, p.vy));
+    });
+  }
+  for (let i = 0; i < 380; i++) tick();
+
+  // ---- render ----------------------------------------------------------------
+  const root = document.createElementNS(NS, "g");
+  svg.appendChild(root);
+  const gEdges = document.createElementNS(NS, "g"); root.appendChild(gEdges);
+  const gNodes = document.createElementNS(NS, "g"); root.appendChild(gNodes);
+
+  const edgeEls = links.map(e => {
+    const a = nmap[e.source], b = nmap[e.target];
+    const ln = document.createElementNS(NS, "line");
+    ln.setAttribute("class", "edge");
+    ln.setAttribute("x1", a.x); ln.setAttribute("y1", a.y);
+    ln.setAttribute("x2", b.x); ln.setAttribute("y2", b.y);
+    ln._e = e; gEdges.appendChild(ln); return ln;
+  });
+
+  const nodeEls = {};
+  nodes.forEach(p => {
+    const n = p.ref;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "node");
+    g.setAttribute("transform", `translate(${p.x},${p.y})`);
+    let shape;
+    if (n.type === "concept") {
+      shape = document.createElementNS(NS, "rect");
+      const s = p.r * 1.7; shape.setAttribute("x", -s/2); shape.setAttribute("y", -s/2);
+      shape.setAttribute("width", s); shape.setAttribute("height", s);
+      shape.setAttribute("transform", "rotate(45)"); shape.setAttribute("rx", 2);
+    } else {
+      shape = document.createElementNS(NS, "circle");
+      shape.setAttribute("r", p.r);
+    }
+    shape.setAttribute("fill", colorFor(n));
+    g.appendChild(shape);
+    if (n.type === "module" || n.type === "concept") {
+      const t = document.createElementNS(NS, "text");
+      t.setAttribute("text-anchor", "middle"); t.setAttribute("y", -p.r - 4);
+      t.textContent = n.name; g.appendChild(t);
+    }
+    g.addEventListener("click", ev => { ev.stopPropagation(); select(n.id); });
+    g.addEventListener("mouseenter", () => hover(n.id, true));
+    g.addEventListener("mouseleave", () => hover(n.id, false));
+    gNodes.appendChild(g); nodeEls[n.id] = g;
+  });
+
+  // ---- pan / zoom ------------------------------------------------------------
+  let tx = 0, ty = 0, scale = 1;
+  function apply() { root.setAttribute("transform", `translate(${tx},${ty}) scale(${scale})`); }
+  function fit() {
+    const xs = nodes.map(p=>p.x), ys = nodes.map(p=>p.y);
+    const minX=Math.min(...xs)-40, maxX=Math.max(...xs)+40, minY=Math.min(...ys)-40, maxY=Math.max(...ys)+40;
+    const r = svg.getBoundingClientRect();
+    scale = Math.min(r.width/(maxX-minX), r.height/(maxY-minY), 1.6);
+    tx = (r.width - (maxX+minX)*scale)/2; ty = (r.height - (maxY+minY)*scale)/2; apply();
+  }
+  let dragging=false, sx=0, sy=0;
+  svg.addEventListener("mousedown", e => { dragging=true; sx=e.clientX-tx; sy=e.clientY-ty; svg.classList.add("panning"); deselect(); });
+  window.addEventListener("mousemove", e => { if(!dragging) return; tx=e.clientX-sx; ty=e.clientY-sy; apply(); });
+  window.addEventListener("mouseup", () => { dragging=false; svg.classList.remove("panning"); });
+  svg.addEventListener("wheel", e => {
+    e.preventDefault(); const r = svg.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top, k=e.deltaY<0?1.12:1/1.12;
+    const nx=(mx-tx)/scale, ny=(my-ty)/scale; scale=Math.max(.2,Math.min(4,scale*k));
+    tx=mx-nx*scale; ty=my-ny*scale; apply();
+  }, { passive:false });
+  document.getElementById("zoom-in").onclick = () => { scale=Math.min(4,scale*1.2); apply(); };
+  document.getElementById("zoom-out").onclick = () => { scale=Math.max(.2,scale/1.2); apply(); };
+  document.getElementById("zoom-fit").onclick = fit;
+
+  // ---- selection + hover + detail -------------------------------------------
+  const detail = document.getElementById("detail");
+  let selected = null;
+  function setHot(ids, edges) {
+    const set = new Set(ids);
+    Object.entries(nodeEls).forEach(([id, el]) => el.classList.toggle("dim", ids.length>0 && !set.has(id)));
+    const eset = new Set(edges||[]);
+    edgeEls.forEach(el => el.classList.toggle("hot", eset.has(el._e)));
+  }
+  function hover(id, on) {
+    if (selected || tourOn) return;
+    if (!on) { setHot([], []); return; }
+    const es = adj[id]; const ids = [id]; es.forEach(e => ids.push(e.source===id?e.target:e.source));
+    setHot(ids, es);
+  }
+  function select(id) {
+    selected = id;
+    Object.entries(nodeEls).forEach(([k,el]) => el.classList.toggle("sel", k===id));
+    const es = adj[id]; const ids = [id]; es.forEach(e => ids.push(e.source===id?e.target:e.source));
+    setHot(ids, es);
+    renderDetail(id, es);
+  }
+  function deselect() { if(selected){ selected=null; Object.values(nodeEls).forEach(el=>el.classList.remove("sel")); setHot([],[]); detail.classList.remove("show"); } }
+  function renderDetail(id, es) {
+    const n = byId[id];
+    const ln = layerOf[id]!==undefined ? layerName[layerOf[id]] : "—";
+    const conns = es.slice(0,12).map(e => {
+      const other = e.source===id ? e.target : e.source; const dir = e.source===id ? "→" : "←";
+      return `<div class="conn" data-id="${esc(other)}">${dir} <span style="font-family:var(--font-mono);color:var(--muted-2)">${esc(e.type)}</span> ${esc(byId[other]?byId[other].name:other)}</div>`;
+    }).join("");
+    detail.innerHTML =
+      `<span class="closex" id="dx">×</span>`+
+      `<span class="type-pill" style="background:${colorFor(n)}22;color:${colorFor(n)}">${esc(n.type)}</span>`+
+      `<h3>${esc(n.name)}</h3>`+
+      (n.filePath?`<div class="path">${esc(n.filePath)}</div>`:"")+
+      `<div class="summary">${esc(n.summary||"")}</div>`+
+      `<div class="meta">Layer: <b>${esc(ln)}</b> · Complexity: ${esc(n.complexity||"—")}</div>`+
+      (n.tags&&n.tags.length?`<div class="tags">${n.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`:"")+
+      (conns?`<div class="conns"><h4>Connections (${es.length})</h4>${conns}</div>`:"");
+    detail.classList.add("show");
+    document.getElementById("dx").onclick = deselect;
+    detail.querySelectorAll(".conn").forEach(c => c.onclick = () => { select(c.dataset.id); centerOn([c.dataset.id]); });
+  }
+  function esc(s){ return String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+
+  // ---- search ----------------------------------------------------------------
+  document.getElementById("search").addEventListener("input", e => {
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) { setHot([],[]); return; }
+    const ids = G.nodes.filter(n => (n.name+" "+(n.filePath||"")+" "+(n.summary||"")).toLowerCase().includes(q)).map(n=>n.id);
+    setHot(ids, []);
+  });
+
+  // ---- legend toggle ---------------------------------------------------------
+  const legend = document.getElementById("legend"); const layerHidden = {};
+  G.layers.forEach(L => {
+    const count = L.nodeIds.length;
+    const row = document.createElement("div"); row.className = "legend-item";
+    row.innerHTML = `<span class="swatch" style="background:${layerColor[L.id]}"></span><span class="lname">${esc(L.name)}</span><span class="lcount">${count}</span>`;
+    row.onclick = () => {
+      layerHidden[L.id] = !layerHidden[L.id]; row.classList.toggle("off", layerHidden[L.id]);
+      nodes.forEach(p => { if (layerOf[p.id]===L.id) nodeEls[p.id].style.display = layerHidden[L.id] ? "none" : ""; });
+      edgeEls.forEach(el => { const e=el._e; const hs=layerHidden[layerOf[e.source]], ht=layerHidden[layerOf[e.target]]; el.style.display = (hs||ht)?"none":""; });
+    };
+    legend.appendChild(row);
+  });
+
+  // ---- guided tour -----------------------------------------------------------
+  const tour = (G.tour||[]).slice().sort((a,b)=>a.order-b.order);
+  let tourOn=false, ti=0;
+  const idle=document.getElementById("tour-idle"), live=document.getElementById("tour-live");
+  function centerOn(ids) {
+    const pts = ids.map(id=>nmap[id]).filter(Boolean); if(!pts.length) return;
+    const cx=pts.reduce((s,p)=>s+p.x,0)/pts.length, cy=pts.reduce((s,p)=>s+p.y,0)/pts.length;
+    const r=svg.getBoundingClientRect(); scale=Math.max(scale,1.1);
+    tx=r.width/2 - cx*scale; ty=r.height/2 - cy*scale; apply();
+  }
+  function showStep() {
+    const s = tour[ti]; if(!s) return;
+    document.getElementById("step-meta").textContent = `Step ${ti+1} / ${tour.length}`;
+    document.getElementById("step-title").textContent = s.title;
+    document.getElementById("step-desc").textContent = s.description;
+    document.getElementById("tour-prev").disabled = ti===0;
+    document.getElementById("tour-next").disabled = ti===tour.length-1;
+    const ids = s.nodeIds.filter(id=>nmap[id]);
+    setHot(ids, []); centerOn(ids);
+    Object.entries(nodeEls).forEach(([k,el]) => el.classList.toggle("sel", ids.includes(k)));
+  }
+  function startTour(){ tourOn=true; ti=0; idle.style.display="none"; live.style.display=""; deselect(); showStep(); }
+  function exitTour(){ tourOn=false; idle.style.display=""; live.style.display="none"; setHot([],[]); Object.values(nodeEls).forEach(el=>el.classList.remove("sel")); }
+  document.getElementById("tour-start").onclick = startTour;
+  document.getElementById("tour-prev").onclick = () => { if(ti>0){ti--;showStep();} };
+  document.getElementById("tour-next").onclick = () => { if(ti<tour.length-1){ti++;showStep();} };
+  document.getElementById("tour-exit").onclick = exitTour;
+
+  // ---- header + boot ---------------------------------------------------------
+  document.getElementById("proj-desc").textContent = G.project.description || "";
+  document.getElementById("counts").textContent =
+    `${G.nodes.length} nodes · ${G.edges.length} edges · ${G.layers.length} layers`;
+  document.title = `${G.project.name} · architecture map`;
+  fit();
+  svg.addEventListener("click", deselect);
+})();
+</script>
+</body>
+</html>
