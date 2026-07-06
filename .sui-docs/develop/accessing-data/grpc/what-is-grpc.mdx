@@ -22,7 +22,7 @@ The [gRPC API](/references/fullnode-protocol) replaces JSON-RPC on full nodes. J
 
 ## Release status
 
-gRPC polling and streaming APIs are generally available. JSON-RPC is deprecated, and applications should migrate to gRPC or GraphQL RPC by July 2026, when JSON-RPC is planned for deactivation.
+gRPC polling and streaming APIs are generally available. JSON-RPC is deprecated, and applications should migrate to gRPC or GraphQL RPC by July 2026, when JSON-RPC is planned for deactivation. For decision criteria, a JSON-RPC method mapping, and common migration gotchas, see the [JSON-RPC Migration Guide](/develop/accessing-data/json-rpc-migration).
 
 :::warning
 The gRPC and GraphQL RPC APIs have replaced JSON-RPC. View the video below to learn more about the migration timeline and which API to use. 
@@ -34,6 +34,12 @@ The gRPC and GraphQL RPC APIs have replaced JSON-RPC. View the video below to le
 With built-in support for code generation, you can scaffold clients in TypeScript, Go, Rust, and more. This makes gRPC a strong fit for scalable backend systems, indexers, exchanges, and typed systems-language clients.
 
 In addition to request-response calls, gRPC supports server-side streaming, enabling real-time data delivery without constant polling. Use gRPC when you need subscriptions, generated protobuf clients, low protocol overhead, or low-latency point lookups. For frontends, developer tools, scripts, dynamic-language clients, or flexible filtered historical queries, consider [GraphQL RPC](/develop/accessing-data/graphql/graphql-rpc) first. GraphQL currently supports filtered pagination over historical transactions and events, while gRPC is the interface that currently supports streaming subscriptions.
+
+:::info Trust boundary
+
+gRPC is an API transport, not proof by itself: a response reflects what the node you queried returns, so it is only as trustworthy as that node. When you need trustless verification rather than trust in a single endpoint, use checkpoint verification, [authenticated events](/develop/accessing-data/authenticated-events), or the `SignatureVerificationService`.
+
+:::
 
 ## How gRPC fits into the application stack
 

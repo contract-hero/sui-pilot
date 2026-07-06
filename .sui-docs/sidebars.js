@@ -92,6 +92,7 @@ export default {
             'develop/publish-upgrade-packages/upgrade',
             'develop/publish-upgrade-packages/custom-policies',
             'develop/publish-upgrade-packages/versioning',
+            'develop/publish-upgrade-packages/deploy-github-actions',
         ]
       },
       {
@@ -127,6 +128,7 @@ export default {
             'develop/transactions/ptbs/prog-txn-blocks',
             'develop/transactions/ptbs/building-ptb',
             'develop/transactions/ptbs/inputs-and-results',
+            'develop/transactions/ptbs/ts-sdk-ptb-template',
           ],
         },
         {
@@ -141,6 +143,7 @@ export default {
             'develop/transactions/transaction-auth/address-aliases',
           ],
         },
+        'develop/transactions/soft-bundles',
       ],
     },
     {
@@ -161,6 +164,7 @@ export default {
       link: { type: 'doc', id: 'develop/accessing-data/index' },
       items: [
         'develop/accessing-data/data-serving',
+        'develop/accessing-data/json-rpc-migration',
         {
           type: 'category',
           label: 'gRPC',
@@ -229,7 +233,7 @@ export default {
 
   gettingStartedSidebar: [
     'getting-started',
-    'getting-started/agent-skills',
+    { type: 'link', label: 'Skills', href: '/skills' },
     {
       type: 'category',
       label: 'Hello, World!',
@@ -541,7 +545,72 @@ suiStackSidebar: [
           href: 'https://seal-docs.wal.app',
         },
         'sui-stack/seal/sui-stack-seal',
-        'sui-stack/seal/sui-chat-app',
+        {
+          type: 'link',
+          label: 'Messaging SDK Chat App Example →',
+          href: '/sui-stack/messaging/chat-app',
+        },
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Messaging SDK',
+      link: { type: 'doc', id: 'sui-stack/messaging/index' },
+      items: [
+        {
+          type: 'category',
+          label: 'Getting Started',
+          collapsed: true,
+          items: [
+            'sui-stack/messaging/installation',
+            'sui-stack/messaging/setup',
+            'sui-stack/messaging/examples',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Architecture',
+          collapsed: true,
+          items: [
+            'sui-stack/messaging/encryption',
+            'sui-stack/messaging/security',
+            'sui-stack/messaging/relayer',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Guides',
+          collapsed: true,
+          items: [
+            'sui-stack/messaging/attachments',
+            'sui-stack/messaging/archive-recovery',
+            'sui-stack/messaging/group-discovery',
+            'sui-stack/messaging/extending',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Reference',
+          collapsed: true,
+          items: [
+            'sui-stack/messaging/api-reference',
+            'sui-stack/messaging/testing',
+            'sui-stack/messaging/community-contributed',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Examples',
+          collapsed: true,
+          items: [
+            'sui-stack/messaging/chat-app',
+          ],
+        },
+        {
+          type: 'link',
+          label: 'GitHub Repo',
+          href: 'https://github.com/MystenLabs/sui-stack-messaging',
+        },
       ],
     },
     {

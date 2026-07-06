@@ -46,6 +46,8 @@ curl "https://docs.wal.app/setup/client_config_testnet.yaml" -o /opt/walrus/conf
 
 </div>
 
+For the canonical configuration snippets and the object IDs they contain, see the [Network Reference](/docs/network-reference#configuration-snippets).
+
 ## Create and fund the publisher wallet {#fund-publisher}
 
 The publisher needs a **separate wallet** from the storage node, even if it runs on the same host. See the [storage node FAQ](/docs/operator-guide/storage-nodes/storage-node-faq#wallets) for details on wallet requirements.
@@ -97,7 +99,7 @@ On Testnet, you can exchange SUI for WAL using the exchange objects in the clien
 /opt/walrus/bin/walrus --config /opt/walrus/config/publisher/client_config.yaml get-wal --amount 5000000000
 ```
 
-This exchanges SUI for 5 WAL. Adjust the amount based on the number of sub-wallets and expected usage.
+This exchanges SUI for 5 WAL. Adjust the amount based on the number of sub-wallets and expected usage. For the standard Testnet wallet flow, see [Exchange Testnet SUI for WAL](/docs/system-overview/available-networks#testnet-wal-faucet).
 
 </TabItem>
 </Tabs>
