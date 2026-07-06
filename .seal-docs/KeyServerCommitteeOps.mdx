@@ -132,7 +132,7 @@ cargo run --bin seal-committee-cli -- publish-and-init
 This command:
 
 - Publishes the `seal_committee` package onchain with upgrade capability
-- Extracts the InitCap and UpgradeCap from the publish transaction
+- Extracts the UpgradeCap from the publish transaction
 - Initializes the committee state and attaches the UpgradeManager (which holds the UpgradeCap) to the committee
 - Appends the committee identifiers to `dkg.yaml`
 
@@ -185,11 +185,19 @@ cargo run --bin seal-committee-cli -- check-committee
 
 When finalization completes, the output includes the `KEY_SERVER_OBJ_ID`. Share this object ID with all members so they can configure their key servers.
 
-8. **Collect API keys for [aggregator server](/Aggregator)**
+8. **Verify partial public keys and collect API keys for the [aggregator server](/Aggregator)**
 
-After all committee members have their key servers running, ask each member to generate API credentials for the aggregator.
+After all committee members have their key servers running, ask each member to send you the full curl request and response from the `/v1/debug/committee_partial_pk` endpoint (this includes their API key name and key).
 
-Collect and share the following with the aggregator operator:
+Confirm that the `partial_pk` returned in their curl response matches the onchain partial public key for their address. The onchain partial public keys for the committee can be fetched:
+
+```bash
+cargo run --bin seal-committee-cli -- check-committee
+```
+
+If they are mismatched, ask the member to double check the `MASTER_SHARE_V0` environment variable. 
+
+Then collect and share the following with the aggregator operator:
 
 - API credentials for each committee member, including:
     - The onchain server name (the `PartialKeyServer.name` field)
@@ -197,7 +205,7 @@ Collect and share the following with the aggregator operator:
     - The API key
 - The committee's `KEY_SERVER_OBJ_ID` from the previous step.
 
-With this information, the aggregator operator can set up the configuration and run the aggregator server. For configuration and startup instructions, see [Aggregator Server](/Aggregator).
+With this information, the aggregator operator can add each key server to the aggregator configuration and run the aggregator server. For configuration and startup instructions, see [Aggregator Server](/Aggregator).
 
 ### Fresh DKG member runbook
 
@@ -240,6 +248,8 @@ cargo run --bin seal-committee-cli -- genkey-and-register \
   -n <YOUR_SERVER_NAME>
 ```
 
+To print the unsigned transaction data, add `--sender-address <MY_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
+
 This command:
 
 - Generates DKG key material and stores it in `dkg-state/`. Keep this directory secure.
@@ -268,6 +278,8 @@ mv path/to/dkg-messages dkg-state/
 cargo run --bin seal-committee-cli -- process-all-and-propose
 ```
 
+To print the unsigned transaction data, add `--sender-address <MY_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
+
 This command:
 
 - Processes all DKG messages from the directory.
@@ -285,6 +297,8 @@ b. Create a `key-server-config.yaml` file with your address (`MY_ADDRESS`) and t
 
 Example config file:
 ```yaml
+network: Testnet # or Mainnet
+# node_url: https://your-custom-rpc.example.com # Uncomment to use your own full node; defaults to the public node for the network if omitted
 server_mode: !Committee
   member_address: '<MY_ADDRESS>'
   key_server_obj_id: '<KEY_SERVER_OBJ_ID>'
@@ -296,25 +310,49 @@ c. Start the key server, setting the config path and your master key share from 
 CONFIG_PATH=crates/key-server/key-server-config.yaml MASTER_SHARE_V0=0x... cargo run --bin key-server
 ```
 
+For any `cargo run --bin key-server` command in this runbook, include the `FULL_NODE_RPC_API_NAME` and `FULL_NODE_RPC_API_KEY` environment variables only if your Sui fullnode requires authentication:
+```bash
+FULL_NODE_RPC_API_NAME=<fullnode-api-key-name> \
+  FULL_NODE_RPC_API_KEY=<fullnode-api-key> \
+  CONFIG_PATH=crates/key-server/key-server-config.yaml \
+  MASTER_SHARE_V0=0x... \
+  cargo run --bin key-server
+```
+
 For infrastructure and deployment recommendations, see [Infrastructure requirements](#infrastructure-requirements).
 
 6. **Generate API credentials for the [aggregator](/Aggregator)**
 
-After your key server is running successfully, generate API credentials for aggregator access and share them with the coordinator.
+After your key server is running successfully, generate an **API key name** and **API key** for your key server. These credentials let the aggregator authenticate its requests to your key server.
 
-- Generate an **API key name** and **API key** for your key server.
-- Share the following details with the coordinator:
-   - Your server name (`MY_SERVER_NAME` from `dkg.yaml`, corresponding to the onchain `PartialKeyServer.name`)
-   - API key name
-   - API key
+7. **Share your credentials and verify your partial public key**
 
-The coordinator passes these credentials to the aggregator operator, who uses them to authenticate requests to your key server.
+Query your server's debug endpoint using the API credentials you just generated:
+```bash
+curl -H "<YOUR_API_KEY_NAME>:<YOUR_API_KEY>" \
+  -H "Client-Sdk-Version: 0.6.0" \
+  -H "Content-Type: application/json" \
+  https://<YOUR_SERVER_URL>/v1/debug/committee_partial_pk
+```
 
-7. **Backup and clean up local DKG state**
+Send the coordinator the full curl request and response (which include your API key name and key). The coordinator uses these to verify your partial public key against the onchain value and to configure the aggregator.
 
-Once your key server is running successfully, back up the `MASTER_SHARE_V0` value. Then you can safely delete the local DKG state directory:
+8. **Backup and clean up local DKG state**
+
+a. Back up the wallet you used, since it is needed for committee rotation in the future.
+
+b. Once your key server is running successfully, back up the `MASTER_SHARE_V0` value. Then you can safely delete the local DKG state directory:
 ```bash
 rm -rf dkg-state
+```
+
+9. **Enable metrics push (Optional)**
+
+If a metrics collector is configured, wait for the coordinator to share a `metrics_push_config` block containing a `bearer_token` and `push_url`. Add it to your `key-server-config.yaml` and restart your server to begin pushing metrics:
+```yaml
+metrics_push_config:
+  bearer_token: '<BEARER_TOKEN>'
+  push_url: '<PUSH_URL>'
 ```
 
 ## Key rotation process
@@ -400,7 +438,7 @@ The output shows which members have registered and which are still pending. Wait
 Once all members are registered:
 
 - Notify members to begin **Phase B (Message creation)**.
-- Monitor the off-chain storage (e.g. group chat) until all members upload their DKG message files.
+- Monitor the offchain storage (for example, group chat) until continuing members have uploaded exactly the old committee threshold number of DKG message files. New members run `init-state` and do not upload message files.
 
 6. **Collect and share DKG messages and notify Phase C (Finalization)**
 
@@ -467,6 +505,8 @@ cargo run --bin seal-committee-cli -- genkey-and-register \
   -n <YOUR_SERVER_NAME>
 ```
 
+To print the unsigned transaction data, add `--sender-address <MY_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
+
 This command:
 
 - Generates sensitive key material and stores it in `dkg-state/`. Keep this directory secure.
@@ -497,7 +537,7 @@ cargo run --bin seal-committee-cli -- init-state
 
 4. **Process messages and propose the rotation (Phase C: Finalization)**
 
-Wait for the coordinator to announce **Phase C (Finalization)** and provide a directory containing all DKG messages (for example, `path/to/dkg-messages`).
+Wait for the coordinator to announce **Phase C (Finalization)** and provide a directory containing exactly the old committee threshold number of DKG messages from continuing members (for example, `path/to/dkg-messages`).
 
 Move the directory into `dkg-state` and process the messages:
 ```bash
@@ -505,6 +545,8 @@ mv path/to/dkg-messages dkg-state/
 
 cargo run --bin seal-committee-cli -- process-all-and-propose
 ```
+
+To print the unsigned transaction data, add `--sender-address <MY_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
 
 This command:
 
@@ -525,6 +567,8 @@ a. Update `key-server-config.yaml`
 
 Example config file:
 ```yaml
+network: Testnet # or Mainnet
+# node_url: https://your-custom-rpc.example.com # Uncomment to use your own full node; defaults to the public node for the network if omitted
 server_mode: !Committee
   member_address: '<MY_ADDRESS>'
   key_server_obj_id: '<KEY_SERVER_OBJ_ID>'
@@ -544,6 +588,8 @@ c. Wait for the coordinator to confirm that rotation is complete. Then update th
 
 Example config file:
 ```yaml
+network: Testnet # or Mainnet
+# node_url: https://your-custom-rpc.example.com # Uncomment to use your own full node; defaults to the public node for the network if omitted
 server_mode: !Committee
   member_address: '<MY_ADDRESS>'
   key_server_obj_id: '<KEY_SERVER_OBJ_ID>'
@@ -562,6 +608,8 @@ a. Create `key-server-config.yaml`. Since `X+1` is your first committee version,
 
 Example config file:
 ```yaml
+network: Testnet # or Mainnet
+# node_url: https://your-custom-rpc.example.com # Uncomment to use your own full node; defaults to the public node for the network if omitted
 server_mode: !Committee
   member_address: '<MY_ADDRESS>'
   key_server_obj_id: '<KEY_SERVER_OBJ_ID>'
@@ -655,6 +703,17 @@ cargo run --bin seal-committee-cli -- approve-upgrade \
   -n <NETWORK>
 ```
 
+To print the unsigned transaction data, add `--sender-address <MEMBER_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
+
+```bash
+cargo run --bin seal-committee-cli -- \
+  --sender-address <MEMBER_ADDRESS> \
+  approve-upgrade \
+  -k <KEY_SERVER_OBJ_ID> \
+  -n <NETWORK> \
+  --unsigned
+```
+
 **Notes:** 
 
 1. To check the current upgrade proposal status (digest, votes, threshold), run:
@@ -665,14 +724,15 @@ cargo run --bin seal-committee-cli -- check-key-server-status \
   -n <NETWORK>
 ```
 
-2. If needed, the local package is not what you want to approve, run this to reject it onchain.
+2. If you do not want to approve the current onchain upgrade proposal, reject it:
 
 ```bash
 cargo run --bin seal-committee-cli -- reject-upgrade \
-  -p <PACKAGE_PATH>
   -k <KEY_SERVER_OBJ_ID> \
   -n <NETWORK>
 ```
+
+`reject-upgrade` also accepts `--sender-address <MEMBER_ADDRESS> --unsigned` to print the unsigned transaction data. Sign and execute the transaction elsewhere to complete this phase.
 
 3. If needed, can run `approve-upgrade` or `reject-upgrade` again to change your vote option. 
 
@@ -693,6 +753,8 @@ cargo run --bin seal-committee-cli -- authorize-and-upgrade \
   -k <KEY_SERVER_OBJ_ID> \
   -n <NETWORK>
 ```
+
+To print the unsigned transaction data, add `--sender-address <MEMBER_ADDRESS> --unsigned`. Sign and execute the transaction elsewhere to complete this phase.
 
 This command:
 - Authorizes the upgrade (gets an UpgradeTicket).
