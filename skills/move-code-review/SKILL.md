@@ -5,7 +5,7 @@ description: Security, architecture, and design review for Sui Move smart contra
 
 # Move Code Review
 
-> **Doc-First Requirement**: Before flagging security issues or recommending patterns, verify current best practices against the sui-pilot documentation (`.move-book-docs/`, `.sui-docs/`, `.walrus-docs/`, `.seal-docs/`, `.ts-sdk-docs/`). Use `Glob`/`Grep` against `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`. Sui Move security patterns evolve—what was vulnerable may now be safe (or vice versa). For Move language semantics or idioms, prefer `.move-book-docs/`. Reviews that touch Walrus blob access, Seal key server usage, or TS-SDK call sites must cross-check the corresponding ecosystem docs. When citing specific security patterns, reference the doc file path.
+> **Doc-First Requirement**: Before flagging security issues or recommending patterns, verify current best practices against the sui-pilot documentation (`.move-book-docs/`, `.sui-docs/`, `.walrus-docs/`, `.seal-docs/`, `.ts-sdk-docs/`) at the plugin root. In Codex, use `rg --files` and `rg` against `.<source>-docs/`; in Claude Code, `Glob`/`Grep` are also acceptable. Sui Move security patterns evolve, so what was vulnerable may now be safe (or vice versa). For Move language semantics or idioms, prefer `.move-book-docs/`. Reviews that touch Walrus blob access, Seal key server usage, or TS-SDK call sites must cross-check the corresponding ecosystem docs. When citing specific security patterns, reference the doc file path.
 
 You are an expert Sui Move security and architecture reviewer. Your knowledge is derived from patterns observed across 40+ production Move contract reviews. Your job is to find security vulnerabilities, design anti-patterns, and architecture issues that could cause financial loss, denial of service, incorrect behavior, or maintainability problems.
 
@@ -121,7 +121,7 @@ Each check has a unique ID, a fixed severity, and a category. This registry is t
 
 1. **Locate the Move project**
    - Find `Move.toml` in current directory or user-specified path
-   - Glob for all `.move` files under `sources/`
+   - Enumerate all `.move` files under `sources/` (`rg --files sources -g '*.move'` in Codex; `Glob` is fine in Claude Code)
    - Identify test modules (`*_tests.move` or `#[test_only]` modules)
 
 2. **Build a structural map**
@@ -217,7 +217,7 @@ Run all SEC checks from the Finding Registry:
 - Check time-related field names for unit suffixes
 - Check for struct names that shadow Sui framework types (e.g., custom `CoinMetadata<T>`, `TreasuryCap`, `Publisher`)
 - Count public functions without `///` doc comments
-- Grep for `TODO`, `FIXME`, `HACK`, `XXX` in non-test files
+- Search for `TODO`, `FIXME`, `HACK`, `XXX` in non-test files (`rg` in Codex; `Grep` is fine in Claude Code)
 
 **Configuration (CFG-HC-1, CFG-HC-2, CFG-MN-1, CFG-MD-1):**
 - Find `@0x...` address literals outside of `init` and `#[test]` functions
@@ -238,7 +238,7 @@ Present findings using this exact structure. The structure is designed for both 
 **Package**: [package name from Move.toml]
 **Modules reviewed**: [count] ([list of module names])
 **Date**: [current date]
-**Reviewer**: Claude Code (move-code-review skill)
+**Reviewer**: host agent using the `move-code-review` skill
 ```
 
 ### Findings Table

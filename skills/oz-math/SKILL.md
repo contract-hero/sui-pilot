@@ -21,7 +21,7 @@ Activate this skill when:
 
 1. **Locate Move project structure**
    - Find `Move.toml` in current directory
-   - Glob for all `.move` files under `sources/`
+   - Enumerate all `.move` files under `sources/` (`rg --files sources -g '*.move'` in Codex; `Glob` is fine in Claude Code)
    - Check if `openzeppelin_math` or `openzeppelin_fp_math` is already a dependency
 
 2. **Identify target files**

@@ -5,7 +5,7 @@ description: "Walks the user through writing `#[spec(prove)]` formal specificati
 
 # Specify — formal specifications for Sui Move
 
-> **Doc-First Requirement.** Read `.sui-prover-docs/` before drafting any spec. The Sui Prover spec language is **not** the legacy Move Prover MSL — it uses `#[spec(prove)]`, `requires`, `ensures`, `asserts` (positive abort form), and the macros `clone!`, `forall!`, `exists!`, `invariant!`. It does NOT use `aborts_if`, `pragma`, `apply`, `assume`, or free `axiom`. Verify any construct against `.sui-prover-docs/guide/spec-reference.md` before emitting it.
+> **Doc-First Requirement.** Read `.sui-prover-docs/` at the plugin root before drafting any spec. The Sui Prover spec language is **not** the legacy Move Prover MSL — it uses `#[spec(prove)]`, `requires`, `ensures`, `asserts` (positive abort form), and the macros `clone!`, `forall!`, `exists!`, `invariant!`. It does NOT use `aborts_if`, `pragma`, `apply`, `assume`, or free `axiom`. Verify any construct against `.sui-prover-docs/guide/spec-reference.md` before emitting it.
 
 ## Deliverable shape (read first)
 
@@ -19,15 +19,15 @@ The legacy inline layout (specs in the production `.move` between markers) is no
 
 ## Non-interactive (eval) mode
 
-This skill is **interactive by default** — every gate runs through `AskUserQuestion`. Non-interactive mode activates via **either** of two triggers:
+This skill is **interactive by default**. In hosts with a structured user-input tool, use it for decision gates; in Codex sessions without that tool, ask concise plain-text questions and wait. Non-interactive mode activates via **either** of two triggers:
 
 1. **Environment-flag trigger.** Before doing anything else, run `echo "${SPECIFY_AUTO_DEFAULTS:-}"` via Bash. If the output is exactly `1`, this run is in non-interactive mode (typically because `evals/run-comparison.sh` or a similar headless rig is driving it).
 2. **Verbal-directive trigger.** The user has explicitly said something like *"don't stop"*, *"don't pause"*, *"work autonomously"*, *"no questions"*, *"proceed without asking"*, or *"no-pause"* in the current conversation. A `Stop` hook with an autonomy-oriented condition counts as such a directive.
 
 When non-interactive mode is active:
 
-- **Skip every `AskUserQuestion` gate.** Pick the first option (the suggested default) and announce the choice in plain text instead.
-- **Surface a single-line acknowledgement in chat** the first time you enter the non-interactive branch: *"Entering non-interactive mode (trigger: <env-flag | verbal-directive>) — picking defaults at every gate."* The elision must be auditable; never skip an `AskUserQuestion` silently.
+- **Skip every interactive gate.** Pick the first option (the suggested default) and announce the choice in plain text instead.
+- **Surface a single-line acknowledgement in chat** the first time you enter the non-interactive branch: *"Entering non-interactive mode (trigger: <env-flag | verbal-directive>) — picking defaults at every gate."* The elision must be auditable; never skip a decision gate silently.
 - **Abort hard on any `setup_warning` of severity error.** Don't surface "proceed anyway" — write the warning to `.specify-report.html`, exit Phase 0, and return. (Warnings of severity `info` like `private_dependency` advisories surface in the report but don't abort.)
 - **Cap iterations at 1.** The Phase 4 loop tries once per function; failures get marked `needs_human` immediately instead of looping. Eval harnesses care about the discovery + draft signal, not multi-attempt convergence.
 - **Cap prioritization batch.** Process every pending function in default priority order — no user picks.
@@ -45,8 +45,8 @@ This skill is a multi-phase, per-function orchestrator. It uses:
 - `mcp__move-lsp__move_diagnostics` — compile-health gate
 - `mcp__move-lsp__move_find_references` — call-cascade traversal
 - `mcp__move-lsp__move_goto_definition` — callee inspection
-- `Glob` / `Grep` / `Read` — visibility classification (the LSP does **not** return visibility on document symbols; see `references/spec-patterns.md` §1 for the regex contract this skill uses)
-- `AskUserQuestion` — every gate where intent is human-supplied
+- File search/read tools — visibility classification (the LSP does **not** return visibility on document symbols; see `references/spec-patterns.md` §1 for the regex contract this skill uses). In Codex, prefer `rg --files`, `rg`, and normal file reads; in Claude Code, `Glob` / `Grep` / `Read` are fine.
+- Structured user-input tool when available — every gate where intent is human-supplied. In Codex sessions without that tool, ask concise plain-text questions and wait.
 
 ## Phase 0 — Validate (single shot)
 
@@ -64,7 +64,7 @@ Phase 0 is a **hard gate**. If any of the four checks below surfaces an error, w
 
 5. **setup_warnings.** If `setup_warnings` is non-empty (explicit `Sui`/`MoveStdlib` deps, non-2024 edition, private deps surfaced by step 3):
    - Surface every warning verbatim.
-   - **AskUserQuestion (single batch)**: "fix Move.toml myself first / proceed anyway (specs may not compile) / abort". Default suggestion: "fix first".
+   - Ask the user in one batch: "fix Move.toml myself first / proceed anyway (specs may not compile) / abort". Default suggestion: "fix first".
    - **Non-interactive mode**: abort hard (per the contract at the top of this file); the eval harness needs a deterministic exit.
    - **Never auto-edit the user's Move.toml.** Surface the line to change and let them do it.
 
@@ -72,9 +72,9 @@ Phase 0 is a **hard gate**. If any of the four checks below surfaces an error, w
 
 Per the plan, the target set is `public` (non-package) + `entry`. Use the regex contract in `references/spec-patterns.md` §1 — **not** `move_document_symbols`, which collapses all visibilities to `kind: 'function'`.
 
-1. `Glob` `sources/**/*.move` under the package root.
+1. Enumerate `sources/**/*.move` under the package root (`rg --files sources -g '*.move'` in Codex; `Glob` is fine in Claude Code).
 2. For each `.move` file:
-   - `Read` the file.
+   - Read the file.
    - Strip line and block comments.
    - Apply the visibility regex (`references/spec-patterns.md` §1). Classify each `fun` declaration as `public`, `public(package)`, `entry`, `macro`, `native`, or private.
    - **Exclude** the immediately-preceding `#[test_only]`, `#[test]`, or `#[allow(...)]` attribute lines from the classifier window (lookback ≤ 1 attribute block, not 200 chars).
@@ -93,13 +93,13 @@ Before launching Phase 2's per-function loop, two cheap checks decide *what* get
 
 **(a) Scope decision.** If `N > 25`, ask the user how to scope:
 
-- **AskUserQuestion (single batch)**, options: "spec the whole package (large — may take a session) / pick a prioritized subset (recommended, default) / pick a single module to start with / single function".
+- Ask in a single decision batch, options: "spec the whole package (large — may take a session) / pick a prioritized subset (recommended, default) / pick a single module to start with / single function".
 - **Non-interactive mode**: pick "prioritized subset" using the Phase 3 ranking (invariant > swap > deposit/withdraw > getters > admin caps). Codify the heuristic instead of improvising; the eval harness needs reproducible scope.
 - For *math kernel* packages with an `invariant`-named function family, the invariant is almost always the right first target — it's the smallest atomic spec and every downstream swap/deposit/withdraw spec depends on its semantics.
 
 **(b) Callee-quality probe.** Before drafting any spec, sample the callees called inside the target functions:
 
-1. For each external callee not already in the target set, `Read` its source.
+1. For each external callee not already in the target set, read its source.
 2. If every public function body in the callee's module is `abort 0` or `native`, the module is a **stub** — its bytecode interface is published but the real source isn't shipped (common with `published-at` deps and proprietary fixed-point math packages).
 3. **If any stub callee is detected**, surface it in `.specify-progress.json` under `callee_quality[]` and warn the user: *"Module `<X>` is a stub (every body is `abort 0`). Specifying functions that call into it requires axiomatic modeling — see `references/spec-patterns.md` §4.10 — or every verification will be vacuous (the prover concludes every caller path aborts)."*
 
@@ -110,9 +110,9 @@ The right escape is the canonical `#[spec(skip, target = <stub_fn>)]` idiom docu
 For each function the user is about to spec:
 
 1. `mcp__move-lsp__move_find_references` on the function's declaration position → list of callers.
-2. For each callee invoked inside the function body (parsed from `Read` of the source):
+2. For each callee invoked inside the function body (parsed from source reads):
    - `mcp__move-lsp__move_goto_definition` to find the callee's location.
-   - `Read` the callee's source up to 30 lines.
+   - Read the callee's source up to 30 lines.
    - Note whether the callee already has a spec via the Phase 1 map.
 3. Limit depth to 2 by default. Cycle-detect with a visited set keyed on `<file>:<line>`. If the call graph exceeds 25 nodes for a single function, prompt the user (Phase 4 gate) to confirm before continuing.
 
@@ -126,7 +126,7 @@ Order pending functions:
 2. Then `public` functions that take `&mut` references or write to `Table` / `Bag` / dynamic fields (highest mutation risk).
 3. Then `public` functions that only read state (lower risk, often simpler specs).
 
-**AskUserQuestion (single batch)**:
+Ask in a single decision batch:
 - "Specify all `N` pending functions in the default order"
 - "Pick one to start with" (offer the top 5 by priority)
 - "Pick a subset" (offer to filter by module or by mutation risk)
@@ -176,11 +176,11 @@ The default deliverable is a **separate sibling spec package**, not inline specs
 
 ## Phase 4 — Per-function loop
 
-For each pending function (sequentially — parallelism would race AskUserQuestion):
+For each pending function (sequentially — parallelism would race the user-input gates):
 
 ### 4.1 Surface (LLM)
 
-Present a compact fact sheet to the user *inside the AskUserQuestion description*, not as a separate chat turn:
+Present a compact fact sheet to the user inside the structured question description when available, or immediately before the plain-text question in Codex:
 
 - Module + function name + signature
 - Caller list (top 5)
@@ -190,7 +190,7 @@ Present a compact fact sheet to the user *inside the AskUserQuestion description
 - Suggested invariants (LLM-derived from the body — explicitly mark as "suggestion, not proof")
 - Excerpts from `.sui-prover-docs/examples/` for any pattern that matches (overflow, ghost state, bag/table)
 
-### 4.2 Elicit (AskUserQuestion)
+### 4.2 Elicit
 
 **One batched call** with up to 4 sub-questions, each with 3-4 options + Other. Concrete defaults so the user can accept fast:
 
@@ -233,7 +233,7 @@ The `target = <fn>` attribute binds the spec to the imported production function
 
 **Inline shape (`--inline` opt-out only).** When the user chose the inline layout, render the legacy in-source twin (no `target =`, spec named `<fn>_spec`, written between markers in the production `.move`) per `references/spec-patterns.md` §2. Never use the inline shape in the default flow.
 
-### 4.4 Review (AskUserQuestion)
+### 4.4 Review
 
 Show the drafted spec inline. Single question:
 - "Looks good — write it"
@@ -325,7 +325,7 @@ If `findings` contains a failure for this spec, consult `references/failure-taxo
 
 Use `summary.overall` (one of `verified_all` / `failed_some` / `no_specs` / `compile_failure` / `timeout` / `error`) as the single trustworthy "did this run succeed?" signal — don't try to reconcile `summary.verified === 0` with `findings.length > 0` yourself, the MCP already did it.
 
-### 4.8 Iterate (AskUserQuestion)
+### 4.8 Iterate
 
 After surfacing the diagnostic + remediation suggestion:
 - "Apply suggested fix" (loop to 4.3 with the suggestion seeded)
@@ -441,5 +441,5 @@ Any run starts at Phase 0 → Phase 1, then loads `.specify-progress.json` and s
 - **Never duplicate a `#[spec(...)]` for the same function.** Idempotency via the marker block.
 - **Never strip per-spec `boogie_opt` tokens.** They are load-bearing on hard specs (the AMM `withdraw_spec` uses three).
 - **Never delete downstream tasks on a Phase 0 blocker.** If `/specify` hits a hard blocker (unreachable deps, compile failure, missing binary), leave queued Phase 2–4 tasks as `pending` or move them to a `blocked` status — the resumption breadcrumb in `.specify-progress.json` must stay coherent with the session task list so the user can resume cleanly after fixing the blocker.
-- **`AskUserQuestion` is the only user-input channel.** No free-form prompts. Batch sub-questions by topic.
+- **Prefer structured user input when available.** Batch sub-questions by topic. In Codex sessions without structured user input, use concise plain-text questions and wait for the user before proceeding.
 - **For document deliverables outside chat, prefer self-contained HTML.** The Phase 5 audit report is the user's record.

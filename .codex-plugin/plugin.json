@@ -1,0 +1,46 @@
+{
+  "name": "sui-pilot",
+  "version": "0.1.0",
+  "description": "Doc-first Sui, Move, Walrus, Seal, TypeScript SDK, and Sui Prover development support for Codex.",
+  "author": {
+    "name": "Contract Hero",
+    "email": "alilloig@gmail.com",
+    "url": "https://github.com/contract-hero"
+  },
+  "homepage": "https://github.com/contract-hero/sui-pilot",
+  "repository": "https://github.com/contract-hero/sui-pilot",
+  "license": "MIT",
+  "keywords": [
+    "sui",
+    "move",
+    "blockchain",
+    "smart-contracts",
+    "walrus",
+    "seal",
+    "language-server",
+    "diagnostics",
+    "formal-verification",
+    "sui-prover"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Sui Pilot",
+    "shortDescription": "Doc-first Sui Move development, review, and verification.",
+    "longDescription": "Sui Pilot gives Codex current, local Sui-stack context: bundled Sui, Move Book, Walrus, Seal, TypeScript SDK, and Sui Prover docs; Move code-quality and security-review workflows; arithmetic guidance; and optional formal-verification flows backed by Move LSP and Sui Prover MCP servers.",
+    "developerName": "Contract Hero",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/contract-hero/sui-pilot",
+    "brandColor": "#4DA2FF",
+    "defaultPrompt": [
+      "Review this Sui Move package",
+      "Check this Move code for 2024 idioms",
+      "Help add Sui Prover specs"
+    ]
+  }
+}

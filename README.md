@@ -4,9 +4,9 @@
   <img src="sui-pilot.jpg" alt="Sui Pilot" width="600" />
 </p>
 
-> A Claude Code plugin that turns Claude into a Sui/Move development expert — grounded in current docs, not stale training data.
+> A Claude Code and Codex plugin that turns an agent into a Sui/Move development expert — grounded in current docs, not stale training data.
 
-sui-pilot bundles **753 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
+sui-pilot bundles **753 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and specialized skills — all wired into a doc-first workflow that reads the docs before writing code. Install it and every Sui/Move answer is grounded in the current state of the ecosystem.
 
 **[Read the full story](https://contract-hero.github.io/sui-pilot/)**
 
@@ -16,7 +16,7 @@ sui-pilot bundles **753 documentation files** from six upstream MystenLabs corpo
 
 ### Bundled documentation (753 files, 6 corpora)
 
-All docs are local and searchable. Claude reads them before generating code — no hallucinated APIs, no deprecated patterns.
+All docs are local and searchable. The host agent reads them before generating code — no hallucinated APIs, no deprecated patterns.
 
 | Source | Files | Topics |
 |---|---|---|
@@ -29,23 +29,23 @@ All docs are local and searchable. Claude reads them before generating code — 
 
 ### MCP tools
 
-Two MCP servers provide real-time tooling from within Claude Code:
+Two MCP servers provide real-time tooling from within Claude Code or Codex:
 
 | Server | Tools | What it wraps |
 |---|---|---|
 | **move-lsp** | `move_diagnostics`, `move_hover`, `move_completions`, `move_goto_definition`, `move_find_references`, `move_document_symbols`, `move_type_definition`, `move_code_actions`, `move_inlay_hints`, `move_rename` | The `move-analyzer` LSP |
 | **sui-prover** | `prove_package`, `list_specs`, `prover_capabilities` | The `sui-prover` formal verification binary |
 
-### Slash commands
+### Claude slash commands / Codex skills
 
-| Command | Purpose |
+| Claude command / Codex skill | Purpose |
 |---|---|
-| `/sui-pilot` | Doc-first entry point; routes to the sui-pilot agent |
-| `/move-code-quality` | Move 2024 Edition compliance (50+ rules) |
-| `/move-code-review` | Security and architecture review (40 checks, 6 categories) |
-| `/oz-math` | OpenZeppelin math library recommendations |
-| `/specify` | Author `#[spec(prove)]` formal specs + verify via `sui-prover` |
-| `/verify` | Re-verify that authored specs still hold against current code |
+| `/sui-pilot` / `sui-pilot` | Doc-first entry point |
+| `/move-code-quality` / `move-code-quality` | Move 2024 Edition compliance (50+ rules) |
+| `/move-code-review` / `move-code-review` | Security and architecture review (40 checks, 6 categories) |
+| `/oz-math` / `oz-math` | OpenZeppelin math library recommendations |
+| `/specify` / `specify` | Author `#[spec(prove)]` formal specs + verify via `sui-prover` |
+| `/verify` / `verify` | Re-verify that authored specs still hold against current code |
 
 ### Specialized agent
 
@@ -55,6 +55,8 @@ The `sui-pilot-agent` enforces a doc-first workflow: consult documentation befor
 
 ## Install
 
+### Claude Code
+
 ```
 /plugin marketplace add contract-hero/plugin-marketplace
 /plugin install sui-pilot@contract-hero
@@ -62,13 +64,31 @@ The `sui-pilot-agent` enforces a doc-first workflow: consult documentation befor
 
 Then restart Claude Code — MCP servers launch at session start.
 
+### Codex
+
+The repo ships a native Codex manifest at `.codex-plugin/plugin.json`, MCP config at `.mcp.json`, and a single-plugin Codex marketplace at `.agents/plugins/marketplace.json`.
+
+```bash
+codex plugin marketplace add contract-hero/sui-pilot
+codex plugin add sui-pilot@sui-pilot
+```
+
+During local development, point Codex at the repo or adapter worktree instead:
+
+```bash
+codex plugin marketplace add /path/to/sui-pilot
+codex plugin add sui-pilot@sui-pilot
+```
+
+Codex 0.142 indexes marketplace entries from local plugin paths inside the marketplace snapshot. The multi-plugin Contract Hero marketplace can expose `sui-pilot@contract-hero` once it vendors or syncs this repo under `plugins/sui-pilot`.
+
 ### Requirements
 
 | Component | Version | Notes |
 |---|---|---|
 | suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
 | sui + move-analyzer | Same version | **Must match** — install both via suiup |
-| Claude Code | Latest | Plugin host environment |
+| Claude Code or Codex | Latest | Plugin host environment |
 
 ```bash
 suiup install sui
@@ -97,7 +117,7 @@ Check diagnostics for sources/my_module.move
 
 ## For Other AI Agents
 
-sui-pilot also works as a standalone documentation source for non-Claude Code environments. Clone the repo, point your agent at `agents/sui-pilot-agent.md`, and it will navigate the bundled `.<source>-docs/` corpora with `Glob` and `Grep`.
+sui-pilot also works as a standalone documentation source. Clone the repo, point your agent at `agents/sui-pilot-agent.md` or the Codex `sui-pilot` skill, and navigate the bundled `.<source>-docs/` corpora with the host's file-search tools (`rg` in Codex, `Glob`/`Grep` in Claude Code).
 
 ---
 

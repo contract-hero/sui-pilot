@@ -1,0 +1,39 @@
+{
+  "name": "sui-pilot",
+  "interface": {
+    "displayName": "Sui Pilot"
+  },
+  "plugins": [
+    {
+      "name": "sui-pilot",
+      "description": "Doc-first Sui Move development plugin with bundled Sui, Move, Walrus, Seal, DeepBook, TypeScript SDK, and Sui Prover docs; Move LSP integration; Sui Prover integration; and Codex skills for review, quality, specs, math safety, and verification.",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+        "products": [
+          "CODEX"
+        ]
+      },
+      "category": "Developer Tools",
+      "homepage": "https://github.com/contract-hero/sui-pilot",
+      "repository": "https://github.com/contract-hero/sui-pilot",
+      "license": "MIT",
+      "keywords": [
+        "sui",
+        "move",
+        "blockchain",
+        "smart-contracts",
+        "walrus",
+        "seal",
+        "deepbook",
+        "language-server",
+        "formal-verification",
+        "prover"
+      ]
+    }
+  ]
+}

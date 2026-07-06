@@ -374,7 +374,7 @@ export async function initializeBinaryOnStartup(): Promise<void> {
   }
 
   // Check VERSION.json compatibility at startup
-  const versionJsonPath = resolve(__dirname, '../../docs/VERSION.json');
+  const versionJsonPath = resolve(__dirname, '../../../docs/VERSION.json');
   const compatibility = checkVersionCompatibility(versionJsonPath);
   if (!compatibility.compatible && compatibility.warning) {
     log('warn', compatibility.warning, { event: 'version_check' });

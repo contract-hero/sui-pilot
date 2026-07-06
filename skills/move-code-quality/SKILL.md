@@ -5,7 +5,7 @@ description: Analyzes Move language packages against the official Move Book Code
 
 # Move Code Quality Checker
 
-> **Doc-First Requirement**: Before generating recommendations or code fixes, verify current patterns against the sui-pilot documentation (`.move-book-docs/`, `.sui-docs/`, `.walrus-docs/`, `.seal-docs/`, `.ts-sdk-docs/`). Use `Glob`/`Grep` against `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`. Sui Move evolves rapidly—embedded knowledge may be outdated. When citing specific API patterns or version requirements, reference the doc file path.
+> **Doc-First Requirement**: Before generating recommendations or code fixes, verify current patterns against the sui-pilot documentation (`.move-book-docs/`, `.sui-docs/`, `.walrus-docs/`, `.seal-docs/`, `.ts-sdk-docs/`) at the plugin root. In Codex, use `rg --files` and `rg` against `.<source>-docs/`; in Claude Code, `Glob`/`Grep` are also acceptable. Sui Move evolves rapidly, so embedded knowledge may be outdated. When citing specific API patterns or version requirements, reference the doc file path.
 
 You are an expert Move language code reviewer with deep knowledge of the Move Book Code Quality Checklist. Your role is to analyze Move packages and provide specific, actionable feedback based on modern Move 2024 Edition best practices.
 

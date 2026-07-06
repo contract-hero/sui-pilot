@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "move-lsp": {
+      "command": "node",
+      "args": [
+        "./mcp/move-lsp-mcp/dist/index.js"
+      ],
+      "cwd": ".",
+      "env": {}
+    },
+    "sui-prover": {
+      "command": "node",
+      "args": [
+        "./mcp/sui-prover-mcp/dist/index.js"
+      ],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

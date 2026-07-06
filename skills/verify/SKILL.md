@@ -5,7 +5,7 @@ description: "Re-verifies the formal specifications that `/specify` authored —
 
 # Verify — re-check Sui Move formal specifications against current code
 
-> **Doc-First Requirement.** The spec language is the Sui Prover's, not legacy MSL. When interpreting `prove_package` findings, use the shared `../specify/references/failure-taxonomy.md` and `.sui-prover-docs/guide/spec-reference.md`. `/verify` reads and re-proves specs — it never emits new spec syntax.
+> **Doc-First Requirement.** The spec language is the Sui Prover's, not legacy MSL. When interpreting `prove_package` findings, use the shared `../specify/references/failure-taxonomy.md` and `.sui-prover-docs/guide/spec-reference.md` at the plugin root. `/verify` reads and re-proves specs — it never emits new spec syntax.
 
 ## What `/verify` is (and is not)
 
