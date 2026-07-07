@@ -200,18 +200,25 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 
 ## Modules & visibility
 
-Modules are the unit of code organization, deployment, and visibility in Move.
+Modules are the unit of code organization and visibility in Move; packages are the
+unit of deployment (published on-chain at an address).
 Visibility ranges from private (default) → `public(package)` (intra-package) →
 `public` (cross-package callable). The `friend` keyword from pre-2024 Move is replaced
 by `public(package)` for the most common cases.
 
 ```
 MODULES                               📖 docs: .move-book-docs/book/move-basics/module.md
+├── ⊃ PACKAGE ⊃ modules               📖 docs: .move-book-docs/book/concepts/packages.md
 ├── module x::y;                      → file-level, Move 2024
 ├── public(package) fun ...           → callable only from same package
-├── public fun ...                    → callable from any package (entry points + library API)
-├── entry fun ...                     → callable as a transaction's top-level call
-└── #[allow(...)] / #[test_only]      → attribute-driven scope
+├── public fun ...                    → callable from any package AND from PTBs
+│   📖 docs: .move-book-docs/book/move-basics/visibility.md
+├── entry fun ...                     → PTB-callable but NOT callable from other packages
+│   (front-run-sensitive flows, e.g. randomness consumers — see § Cryptography)
+│   📖 docs: .sui-docs/develop/write-move/sui-move-concepts.mdx
+└── #[test_only] / #[mode(...)]       → compile-time inclusion filters; mode-annotated
+    code is unpublishable (#[test_only] = sugar for #[mode(test)])
+    📖 docs: .move-book-docs/book/move-advanced/modes.md
     ⤳ skill: move-code-quality
 ```
 
