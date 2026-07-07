@@ -127,21 +127,29 @@ on-chain object. Mismatched abilities are a compile-time error, not a runtime ch
 ABILITIES                             📖 docs: .move-book-docs/book/move-basics/abilities-introduction.md
 │
 ├── copy   — value can be duplicated (`let b = a;` doesn't move)
+│   📖 docs: .move-book-docs/book/move-basics/copy-ability.md
 │   ↔ drop  — usually paired; `copy + drop` ≈ "plain old data"
 │   ⇢ alternative: pass by reference (`&T`) when the value is expensive
 │
 ├── drop   — value can be silently dropped at end of scope
-│   ↔ Hot-potato pattern → values WITHOUT drop force the caller to consume them
+│   📖 docs: .move-book-docs/book/move-basics/drop-ability.md
+│   ↔ Hot-potato pattern → a struct with NO abilities must be consumed explicitly
 │   ⤳ skill: move-code-review (hot-potato is a load-bearing safety pattern)
 │
-├── key    — value may be stored as a top-level Sui object (requires UID as first field)
+├── key    — value may be stored as a top-level Sui object
+│   📖 docs: .move-book-docs/book/storage/key-ability.md
+│   → verifier rules: first field must be `id: UID`; all other fields need `store`;
+│     key types can never have `copy` or `drop` (bound `T: copy` excludes objects)
 │   → Sui object model § UID/ID
 │   ↔ store — `key + store` is the standard "owned object" combo
-│   ⊃ marker for `transfer::*` family (transfer/share/freeze/wrap)
+│   ⊃ transfer ops: transfer, share_object, freeze_object, party_transfer, receive
+│     (`public_*` variants additionally require `store`)
+│     📖 docs: .move-book-docs/book/appendix/transfer-functions.md
 │
-└── store  — value may be embedded inside another object's fields
+└── store  — value may be embedded inside another object's fields; also the "public
+    modifier" that unlocks `public_transfer`/`public_share_object`/wrapping
+    📖 docs: .move-book-docs/book/storage/store-ability.md
     → key   — store-only (no key) types are fields, not standalone objects
-    ⇢ alternative: `Option<T>` when the embedded value may be absent
 ```
 
 **Generics & phantom types**
@@ -168,20 +176,22 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 │
 ├── &T   immutable borrow — read-only, multiple coexist
 ├── &mut T mutable borrow — exclusive, no aliasing
-└── Ownership rules
+└── Ownership rules                   📖 docs: .move-book-docs/book/move-basics/ownership-and-scope.md
     ├── A function consuming a value by-move destroys the caller's binding
     ├── References cannot outlive their referent — borrow-checker enforced
     └── No `Drop`-equivalent destructor; types lacking `drop` MUST be consumed explicitly
         ⤳ skill: move-code-review (look for unconsumed hot-potatoes & resource leaks)
 ```
 
-**Move 2024 idioms** that the agent should *prefer over their pre-2024 equivalents*:
+**Move 2024 idioms** that the agent should *prefer over their pre-2024 equivalents*
+(📖 docs: .move-book-docs/book/guides/code-quality-checklist.md):
 
 - `module x::y;` (file-level form) over `module x::y { ... }`
 - Method-call syntax: `v.push_back(x)` over `vector::push_back(&mut v, x)`
 - Macros: `vector::do!`, `vector::fold!`, `option::destroy!` over hand-written loops
 - Implicit framework dependencies (Sui 1.45+) — drop explicit `Sui = { ... }` from `Move.toml` unless pinning a non-default version
 - `assert!(cond, code)` with named error constants — never magic numbers
+- `#[error]` const of `vector<u8>` for human-readable abort messages (Move 2024)
 - `package::Type::method(...)` qualified calls when the receiver is ambiguous
 
 ⤳ skill: move-code-quality (the canonical checklist for these)
