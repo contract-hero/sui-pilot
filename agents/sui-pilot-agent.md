@@ -506,26 +506,53 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 
 ## Onchain finance & math
 
-DeFi-shaped Move packages share a common toolkit: `Coin<T>` / `Balance<T>` for fungible
-value, closed-loop tokens for permissioned currencies, DeepBookV3 for orderbook
-liquidity, and fixed-point math primitives for price/share calculations.
+DeFi-shaped Move packages share a common toolkit: `Coin<T>` / `Balance<T>` for open-loop
+fungible value, closed-loop tokens and PAS for permissioned assets, DeepBookV3 for
+orderbook liquidity, and fixed-point math for price/share calculations.
 
 ```
 ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/
-├── Coin<T>, Balance<T>, TreasuryCap<T>  → standard fungible currency
-├── Closed-loop tokens                   → permissioned movement, action-request rules
-├── DeepBookV3 orderbook                 → permissionless / permissioned pools
-├── Coin standards: legacy `coin::create_currency` ⇢ newer Currency Standard via
-│   `sui::coin_registry` (new_currency / new_currency_with_otw, MetadataCap, supply states)
-│   📖 docs: .sui-docs/onchain-finance/fungible-tokens/currency.mdx
-├── Fixed-point math                     → std::fixed_point32; per-type integer modules
+│
+├── Coin<T>, Balance<T>, TreasuryCap<T> → standard open-loop currency (`key + store`: wrappable, freely transferable)
+│   📖 docs: .sui-docs/onchain-finance/fungible-tokens/index.mdx
+│   ⊃ Coin standards: legacy `coin::create_currency` ⇢ newer Currency Standard via `sui::coin_registry`
+│     (new_currency / new_currency_with_otw, MetadataCap, supply states)
+│     📖 docs: .sui-docs/onchain-finance/fungible-tokens/currency.mdx
+│
+├── Closed-loop tokens                📖 docs: .sui-docs/onchain-finance/closed-loop-token/index.mdx
+│   → `Token<T>` is `key`-only (no store): can't be wrapped, DOF-stored, or freely transferred
+│   ⊃ TokenPolicy + Rules → per-action programmable restrictions
+│     📖 docs: .sui-docs/onchain-finance/closed-loop-token/token-policy.mdx
+│   ⊃ ActionRequest → hot potato issued by protected actions (transfer/spend/to_coin/from_coin)
+│     ↔ § Authorization patterns § Hot potato   📖 docs: .sui-docs/onchain-finance/closed-loop-token/action-request.mdx
+│
+├── PAS (Permissioned Asset Standard) 📖 docs: .sui-docs/onchain-finance/pas/pas-architecture.mdx
+│   → per-address derived shared Accounts proxy ownership; every movement is a hot-potato
+│     Request that must collect approval-witness stamps per issuer Policies (TS pkg: @mysten/pas)
+│   ⇢ alternative to: Closed-loop tokens — for regulated assets needing issuer oversight
+│
+├── DeepBookV3                        📖 docs: .sui-docs/onchain-finance/deepbookv3/design.mdx
+│   → onchain CLOB; shared `Pool` (Book/State/Vault) + `PoolRegistry` + reusable `BalanceManager`
+│   ⊃ Pool types: volatile / stable / whitelisted (0-fee); fees payable in DEEP (20% cheaper than input token)
+│   ⊃ Flash loans → `FlashLoan` hot potato, repaid within the same PTB
+│     📖 docs: .sui-docs/onchain-finance/deepbookv3/contract-information/flash-loans.mdx
+│   ⊃ Margin — leveraged positions, onchain liquidation  📖 docs: .sui-docs/onchain-finance/deepbook-margin/deepbook-margin.mdx
+│   ⊃ Predict — prediction markets, oracle-driven pricing  📖 docs: .sui-docs/onchain-finance/deepbook-predict/deepbook-predict.mdx
+│
+├── Payments                          📖 docs: .sui-docs/onchain-finance/payment-kit.mdx
+│   ⊃ Payment Kit — receipts, registries, duplicate prevention, payment URIs
+│     ↔ TS SDK § payment-kit (📖 docs: .ts-sdk-docs/payment-kit/index.mdx)
+│   ⊃ Payment intents — heterogeneous payment ops batched in one atomic PTB
+│     → § Transactions § PTB structure   📖 docs: .sui-docs/onchain-finance/payment-intents.mdx
+│
+├── Fixed-point math                  → std::fixed_point32; per-type integer modules
 │   std::u8–u256 (max, diff, divide_and_round_up, sqrt, pow)
 │   📖 docs: .move-book-docs/book/move-basics/standard-library.md
+│   ↔ § Formal verification (Sui Prover) — spec-only Integer/Real types for overflow-free specs
+│
 └── ⤳ skill: oz-math (math safety audit)
    ⤳ skill: move-code-review (overflow, rounding bias, MEV exposure)
 ```
-
-Stub — flesh in v2 follow-up.
 
 ---
 
