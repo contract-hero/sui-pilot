@@ -7,11 +7,11 @@ Always search and read these docs before writing code for these ecosystems.
 
 | Topic | Directory | Files |
 |---|---|---|
-| Sui blockchain, objects, transactions, DeFi, framework | `.sui-docs/` | 369 |
+| Sui blockchain, objects, transactions, DeFi, framework | `.sui-docs/` | 374 |
 | Move language tutorial + reference: syntax, types, abilities, idioms | `.move-book-docs/` | 145 |
-| Walrus storage, blobs, Sites, operators | `.walrus-docs/` | 86 |
-| Seal secrets, encryption, key servers, access control | `.seal-docs/` | 14 |
-| TypeScript SDK, dapp-kit, React hooks, kiosk, payment-kit | `.ts-sdk-docs/` | 115 |
+| Walrus storage, blobs, Sites, operators | `.walrus-docs/` | 93 |
+| Seal secrets, encryption, key servers, access control | `.seal-docs/` | 15 |
+| TypeScript SDK, dapp-kit, React hooks, kiosk, payment-kit | `.ts-sdk-docs/` | 121 |
 | Sui Prover: formal verification, `#[spec(prove)]`, Boogie tuning | `.sui-prover-docs/` | 24 |
 | Nautilus off-chain compute, TEE enclaves, attestation, PCRs, on-chain verification | `.sui-docs/sui-stack/nautilus/` | 8 |
 
