@@ -240,16 +240,17 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 ├── UID (globally unique, 32-byte) — required first field of any `key`-able struct
 │   → Move type system § ABILITIES (key requires UID)
 │   ↔ object::new(ctx)               → construct fresh UID (consumes a counter)
-│   ↔ object::delete(uid)            → destroy when wrapping/unwrapping
+│   ↔ object::delete(uid)            → destroy an object (ID is retained across wrap/unwrap)
 │
 ├── Object ownership                  📖 docs: .sui-docs/develop/objects/object-ownership/
 │   ├── Address-owned                 ⤳ skill: move-code-review
 │   │   → fast-path execution; one writer at a time; no consensus needed
+│   │   → docs now recommend Party over fastpath for owned objects (versioning.mdx tip)
 │   │   ⇢ alternative: shared (when multi-writer is required)
 │   │
 │   ├── Shared                        → consensus-required; multi-writer; congestion-prone
 │   │   ⤳ skill: move-code-review (look for shared-object hot spots)
-│   │   ↔ Party objects               → opt-in shared ownership with explicit allowed-writer set
+│   │   ⇢ alternative: Party objects  → single-owner, consensus-sequenced (see below)
 │   │   ⇢ alternative: derived objects (parent-child) when ownership is hierarchical
 │   │
 │   ├── Immutable (frozen)            → freeze_object(); read-only by anyone
@@ -259,8 +260,11 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   │   → Move type system § store ability
 │   │   ↔ ParentObject { child: Child } pattern
 │   │
-│   └── Party                         📖 docs: .sui-docs/develop/objects/object-ownership/party.mdx
-│       → bounded-writer-set shared object; cheaper than full shared
+│   └── Party (ConsensusAddressOwner) 📖 docs: .sui-docs/develop/objects/object-ownership/party.mdx
+│       → single-address ownership sequenced by consensus; enables many concurrent
+│         inflight txns on one owned object (multi-member parties planned, not shipped)
+│       → created via transfer::party_transfer + sui::party::single_owner(addr)
+│       → caveat: a party Coin<SUI> cannot pay gas; docs recommend party over fastpath
 │
 ├── Dynamic fields                    📖 docs: .sui-docs/develop/objects/dynamic-fields.mdx
 │   ⊃ dynamic_field    — heterogeneous typed children at arbitrary keys
@@ -269,9 +273,11 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ⤳ skill: move-code-review (DOF lookups can hide gas costs; audit access patterns)
 │
 ├── Derived objects                   📖 docs: .sui-docs/develop/objects/derived-objects.mdx
-│   → object whose UID is deterministically derived from a parent UID + index
-│   ↔ replaces ad-hoc Table<address, Object> patterns
-│   ⊃ enables explicit parent-child ownership without dynamic fields
+│   → UID deterministically derived from (parent UID, key) — key need not be unique-typed
+│   → NOT children of the parent: independent top-level objects, so unrelated keys
+│     mutate in parallel (no parent sequencing bottleneck)
+│   ↔ replaces ad-hoc Table<address, Object> registry patterns
+│   ⊃ API: derived_object::claim / derive_address / exists
 │
 ├── Versioning                        📖 docs: .sui-docs/develop/objects/versioning.mdx
 │   ↔ Each mutation bumps the object version (used by consensus + replay)
@@ -282,7 +288,10 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
     ├── transfer::transfer(obj, addr)        → address-owned
     ├── transfer::share_object(obj)          → shared
     ├── transfer::freeze_object(obj)         → immutable
-    ├── transfer::public_transfer(obj, addr) → store-only types
+    ├── transfer::public_transfer(obj, addr) → `key + store` types, callable outside
+    │   the defining module (mirrors public_share_object / public_freeze_object)
+    ├── transfer::party_transfer(obj, party)  → party-owned (single_owner)
+    ├── transfer::receive(&mut parent.id, Receiving<T>) → transfer-to-object (TTO)
     └── ⤳ skill: move-code-review (blind transfers are a common SEC-AC bug class)
 ```
 
@@ -290,12 +299,12 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 
 | Use case | Pick | Why |
 |---|---|---|
-| User-owned NFT or coin | Address-owned | Fast path, no consensus, one user mutates |
+| User-owned NFT or coin | Address-owned (or Party — docs' newer recommendation) | Fast path; Party allows concurrent inflight txns |
 | Auction, AMM pool, registry | Shared | Multiple users mutate concurrently |
 | Configuration / on-chain constant | Immutable | Read-many, never write |
 | Inventory of children with shared state | Wrapped or DOF | Composition over reference |
-| Ordered collection at a parent | Derived objects | Deterministic addresses, no DOF gas |
-| Bounded multi-writer (committees, oracles) | Party | Cheaper than full shared, bounded set |
+| Registry / one-object-per-key slots (per-user config, soulbound) | Derived objects | Deterministic addresses, no parent bottleneck |
+| Owned object, many concurrent inflight txns | Party | Consensus versioning removes fastpath equivocation locks |
 
 ⤳ skill: move-code-review (the single most common review finding is "wrong ownership choice")
 
