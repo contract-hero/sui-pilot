@@ -29,6 +29,9 @@ jobs:
       - name: Pull upstream docs
         run: ./sync-docs.sh
 
+      - name: Check knowledge-graph doc pointers survive refresh
+        run: ./scripts/check-graph-pointers.sh
+
       - name: Skip bundler if nothing drifted
         id: drift
         # sync-sui-pilot-docs.sh always rewrites docs/VERSION.json with a fresh
