@@ -589,21 +589,39 @@ SUI PROVER                            📖 docs: .sui-prover-docs/guide/SKILL.md
 
 ## Walrus storage
 
-Walrus is a decentralized blob-storage protocol anchored on Sui. The on-chain object
-holds a commitment + availability proof; the blob bytes live in the Walrus storage
-network. Use Walrus when you need verifiable availability without paying Sui storage
-fees per byte.
+Walrus is a decentralized blob-storage protocol coordinated on Sui: blob bytes are
+erasure-coded (RedStuff) across storage nodes; registration, payment, and availability
+proofs live on Sui as objects and events.
 
 ```
-WALRUS                                📖 docs: .walrus-docs/system-overview/
-├── Blob model + Quilt                → small-blob bundling
-├── Walrus Sites                      → static-site hosting on Walrus
-├── HTTP API & TS SDK                 → publish/read paths
-└── Operator / publisher / aggregator → infrastructure roles
-   ↔ Sui § Sui object model (Walrus blob registration creates Sui objects)
+WALRUS                                📖 docs: .walrus-docs/system-overview/core-concepts.mdx
+│
+├── Blob lifecycle — encode → register (BlobRegistered) → upload slivers → certify
+│   → BlobCertified event = Proof of Availability (PoA); blob ID is content-derived
+│   ⊃ `Blob` / `Storage` structs are `key, store` Sui Move objects (↔ Sui § Sui object model)
+│   │  Move usage example  📖 docs: .walrus-docs/examples/move.mdx
+│   ⊃ deletable vs permanent — `deletable: bool` fixed at registration
+│
+├── Quilt — batch ≤666 small blobs into one blob to amortize per-blob overhead
+│   📖 docs: .walrus-docs/system-overview/quilt.mdx
+│   ⚠ QuiltPatchId depends on whole-quilt composition (NOT content-derived);
+│     no per-item delete/extend/share — whole-quilt only
+│
+├── Roles: storage nodes / aggregators (+ caches) / publishers / upload relay
+│   → relay: one POST vs ≈2200 direct-SDK requests per write  📖 docs: .walrus-docs/system-overview/relay.mdx
+│   → node/publisher/aggregator ops  📖 docs: .walrus-docs/operator-guide/
+│
+├── walrus CLI (+ JSON mode)          📖 docs: .walrus-docs/walrus-client/
+├── HTTP API (publisher/aggregator)   📖 docs: .walrus-docs/http-api/
+├── TS SDK — `@mysten/walrus` via client.$extend(walrus()); WalrusFile API
+│   📖 docs: .ts-sdk-docs/walrus/index.mdx   ↔ TS SDK § Core API / client extensions
+├── Walrus Sites — static-site hosting  📖 docs: .walrus-docs/sites/
+│
+└── ⚠ ALL Walrus blobs are PUBLIC; blob IDs are NOT secrets — encrypt before upload
+    📖 docs: .walrus-docs/data-security.mdx
+    ↔ Seal § (encrypt-before-upload; end-to-end tutorial
+      📖 docs: .walrus-docs/seal-encryption-tutorial.mdx)
 ```
-
-Stub — flesh in v2 follow-up. For operations questions consult the operator-guide subtree.
 
 ---
 
