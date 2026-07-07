@@ -380,6 +380,7 @@ before reviewing any transaction-building code (Move side or TS SDK side).
 ```
 TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/index.mdx
 ├── PTB structure                     📖 docs: .sui-docs/develop/transactions/ptbs/
+├── Transaction lifecycle             📖 docs: .sui-docs/develop/transactions/transaction-lifecycle.mdx
 ├── Transaction auth                  📖 docs: .sui-docs/develop/transactions/transaction-auth/
 ├── Gas model                         📖 docs: .sui-docs/develop/transaction-payment/gas-in-sui.mdx
 ├── Sponsored / gasless txns          📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
@@ -399,7 +400,9 @@ hands. Kiosk is the canonical marketplace primitive built on top.
 ```
 TRANSFER POLICIES                     📖 docs: .sui-docs/develop/objects/transfers/
 ├── transfer-policies                 → declare rules; policy is `T`-typed
-├── custom-rules                      → royalties, allowlist, time-locks
+├── custom-rules                      → omit `store` so only the defining module can
+│                                       transfer the type (module-gated transfer fns)
+├── rule variants (in transfer-policies) → royalty rules, time-based rules, witness/capability rules
 ├── Kiosk                             📖 docs: .sui-docs/onchain-finance/kiosk/
 └── ⤳ skill: move-code-review
 ```
@@ -437,6 +440,8 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │
 ├── Randomness                        📖 docs: .sui-docs/sui-stack/on-chain-primitives/randomness-onchain.mdx
 │   → consensus-driven on-chain RNG via `sui::random::Random` shared object
+│   → public fns taking &Random are compiler-REJECTED — expose private `entry` only
+│   → divide-logic pattern: commit random result in tx1, consume in tx2 (revert griefing)
 │   ⤳ skill: move-code-review (never use timestamps, tx hash, or coin balances as randomness)
 │   ⇢ alternative: commit-reveal with off-chain entropy when external sources are required
 │
@@ -466,7 +471,12 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/
 ├── Coin<T>, Balance<T>, TreasuryCap<T>  → standard fungible currency
 ├── Closed-loop tokens                   → permissioned movement, action-request rules
 ├── DeepBookV3 orderbook                 → permissionless / permissioned pools
-├── Fixed-point math                     → mul_div, rate calculations, share accounting
+├── Coin standards: legacy `coin::create_currency` ⇢ newer Currency Standard via
+│   `sui::coin_registry` (new_currency / new_currency_with_otw, MetadataCap, supply states)
+│   📖 docs: .sui-docs/onchain-finance/fungible-tokens/currency.mdx
+├── Fixed-point math                     → std::fixed_point32; per-type integer modules
+│   std::u8–u256 (max, diff, divide_and_round_up, sqrt, pow)
+│   📖 docs: .move-book-docs/book/move-basics/standard-library.md
 └── ⤳ skill: oz-math (math safety audit)
    ⤳ skill: move-code-review (overflow, rounding bias, MEV exposure)
 ```
@@ -545,12 +555,12 @@ Stub — flesh in v2 follow-up. The migration index is the load-bearing read her
 ```
 TOOLING
 ├── Sui CLI                           📖 docs: .sui-docs/references/cli/
-│   ⊃ sui client (network ops), sui move (build/test), sui keytool, sui ptb
+│   ⊃ sui client (network ops; `sui client ptb` for PTBs), sui move (build/test), sui keytool, sui replay
 ├── Move 2024 edition                 📖 docs: .move-book-docs/book/before-we-begin/move-2024.md
 │   ⤳ skill: move-code-quality
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
 │   ⊃ tools: move_diagnostics, move_hover, move_completions, move_goto_definition
-│   ⤳ skill: specify (LSP-driven spec authoring + verification)
+│   ⤳ skill: specify (spec authoring — driven by the sui-prover MCP server, not the LSP)
 └── sui-pilot plugin                  → this package; bundles all of the above
    ⤳ skill: move-code-review (security + architecture review)
 ```
