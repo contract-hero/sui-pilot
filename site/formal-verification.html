@@ -378,7 +378,7 @@
           remembers from training &mdash; <code>aborts_if</code>, <code>pragma</code>,
           <code>apply</code>, <code>assume</code>, <code>free axiom</code> &mdash; is not what the
           Sui Prover uses. That is exactly the failure mode sui-pilot exists to fix, so the plugin
-          bundles <code>.sui-prover-docs/</code> as its sixth doc corpus (24 files):
+          bundles <code>.sui-prover-docs/</code> as its sixth doc corpus (20 files):
           <code>guide/</code> with the canonical installation and spec-reference prose,
           <code>sources/</code> with the actual prover construct definitions specs import
           (<code>prover.move</code> with native <code>requires</code>/<code>ensures</code>/<code>asserts</code>
@@ -452,7 +452,7 @@
             <p>
               Pre-sharing cleanup registered <code>/verify</code> as a slash command
               (<code>commands/verify.md</code>), added it to the README and landing-page tables, and
-              corrected the Sui Prover doc count from 20 to 24.
+              revised the Sui Prover doc count to 24 (since re-standardized to 20, the sync-docs.sh md+move convention).
             </p>
           </div>
         </div>
@@ -751,7 +751,7 @@
             <span class="tag">Shipped</span>
             <h3>In the plugin today</h3>
             <p>
-              The <code>.sui-prover-docs/</code> corpus (24 files), the three-tool
+              The <code>.sui-prover-docs/</code> corpus (20 files), the three-tool
               <code>sui-prover-mcp</code> server, <code>/specify</code> with the sibling-package
               deliverable, invariant-driven HTML report and <code>spec-context.json</code> manifest,
               and <code>/verify</code> as a registered slash command with <code>--strict</code> for CI.
