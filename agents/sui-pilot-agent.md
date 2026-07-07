@@ -427,20 +427,31 @@ for fast-path vs. consensus, and `Authorization patterns` for entry-function gua
 
 ## Transfer policies & kiosk
 
-Transfer policies define rules a buyer/seller must satisfy before an object can change
-hands. Kiosk is the canonical marketplace primitive built on top.
+`TransferPolicy<T>` is the type-owner-controlled primitive gating how `T` changes hands;
+Kiosk is the framework marketplace built on it. Every kiosk purchase issues a
+`TransferRequest` hot potato that only the matching shared `TransferPolicy<T>` can confirm —
+unconfirmed request = failed transaction.
 
 ```
-TRANSFER POLICIES                     📖 docs: .sui-docs/develop/objects/transfers/
-├── transfer-policies                 → declare rules; policy is `T`-typed
-├── custom-rules                      → omit `store` so only the defining module can
-│                                       transfer the type (module-gated transfer fns)
-├── rule variants (in transfer-policies) → royalty rules, time-based rules, witness/capability rules
-├── Kiosk                             📖 docs: .sui-docs/onchain-finance/kiosk/
-└── ⤳ skill: move-code-review
+TRANSFER POLICIES                     📖 docs: .sui-docs/develop/objects/transfers/transfer-policies.mdx
+├── Rule anatomy: RuleWitness (drop) + Config (store, drop) + cap-gated add + action fn adds TransferReceipt
+│   ├── confirm_request → compares receipts (VecSet<TypeName>) against policy.rules; mismatch aborts
+│   ├── Rule variants → royalty (paid()/item()/from() getters), time-based (Clock), witness/capability-gated
+│   ├── TransferRequest               → § Authorization patterns § Hot potato (no abilities; must be confirmed)
+│   └── TransferPolicyCap<T>          → § Authorization patterns § Capability (rule install/removal is cap-gated)
+├── custom-rules                      📖 docs: .sui-docs/develop/objects/transfers/custom-rules.mdx
+│   → omit `store` so only the defining module can transfer the type (module-gated transfer fns)
+├── transfer-to-object                📖 docs: .sui-docs/develop/objects/transfers/transfer-to-object.mdx
+│   → send to a 32-byte object ID; receive via `Receiving<T>` PTB argument; NOT supported for party objects
+├── Kiosk                             📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-example.mdx
+│   ├── shared object (§ Sui object model § Shared); KioskOwnerCap (§ Capability) → place/take/list/lock/withdraw
+│   ├── trading T requires a shared TransferPolicy<T>; without one, assets can be stored but not sold
+│   ├── Kiosk apps                    📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-apps.mdx
+│   │   → basic: uid_mut_as_owner + dynamic fields (§ Sui object model § Dynamic fields)
+│   │   → permissioned: `kiosk_extension` module — witness-gated install, tamper-proof app storage
+│   └── ↔ TS SDK § kiosk SDK          📖 docs: .ts-sdk-docs/kiosk/index.mdx
+└── ⤳ skill: move-code-review (unconsumed TransferRequest paths; rule bypass via a second wrapped policy)
 ```
-
-Stub — flesh in follow-up when chunk extraction tests this section.
 
 ---
 
