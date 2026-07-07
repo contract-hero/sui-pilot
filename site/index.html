@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>sui-pilot — a Claude Code plugin for Sui/Move development</title>
-  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 772 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
+  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 766 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
   <style>
     :root {
       --bg: #fafaf7;
@@ -293,7 +293,7 @@
 
     .research-links {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
     }
     .research-link {
@@ -337,7 +337,6 @@
       .hero { padding-top: 48px; }
       .cards { grid-template-columns: 1fr; }
       .corpus-grid { grid-template-columns: 1fr 1fr; }
-      .research-links { grid-template-columns: 1fr; }
       .tools-table { display: block; overflow-x: auto; }
       nav.site-nav a { margin-left: 12px; font-size: 14px; }
       nav.site-nav a:first-child { margin-left: 0; }
@@ -361,6 +360,7 @@
         <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#start">Install</a>
+        <a href="formal-verification.html">Formal verification</a>
         <a href="https://github.com/contract-hero/sui-pilot">GitHub</a>
       </nav>
     </div>
@@ -373,7 +373,7 @@
         <span class="eyebrow">Claude Code Plugin</span>
         <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
         <p class="lede">
-          sui-pilot bundles 772 documentation files from six MystenLabs corpora, bridges the Move LSP
+          sui-pilot bundles 766 documentation files from six MystenLabs corpora, bridges the Move LSP
           and Sui Prover into Claude Code, and ships five specialized skills &mdash; all behind a
           doc-first agent that reads the docs before writing code. No hallucinated APIs, no deprecated
           patterns, no stale training data.
@@ -417,9 +417,10 @@
       <div class="wrap">
         <h2>How it works</h2>
         <p class="section-lede">
-          A slim always-loaded preamble tells the agent where the docs are. Skills invoke procedural
-          workflows. MCP servers provide real-time tooling. No hooks, no matchers, no precomputed
-          indexes &mdash; the agent navigates the corpora directly.
+          A slim always-loaded preamble routes topics to the right corpus and carries a compact
+          ecosystem concept map. Skills invoke procedural workflows. MCP servers provide real-time
+          tooling. No hooks, no matchers, no precomputed indexes &mdash; the agent navigates the
+          corpora directly.
         </p>
         <figure class="diagram">
           <svg viewBox="0 0 680 380" role="img" aria-label="Architecture: Claude Code loads sui-pilot, which provides doc corpora, MCP tools, and specialized skills.">
@@ -449,7 +450,7 @@
 
             <rect x="80" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
             <text x="170" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Doc corpora</text>
-            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">772 files &middot; 6 sources</text>
+            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">766 files &middot; 6 sources</text>
             <text x="170" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">Glob/Grep navigated</text>
 
             <rect x="270" y="214" width="140" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
@@ -488,10 +489,10 @@
         </p>
         <div class="corpus-grid">
           <div class="corpus-item"><strong>Sui</strong> <span>374 files &mdash; blockchain, objects, transactions, DeFi</span></div>
-          <div class="corpus-item"><strong>Move Book</strong> <span>145 files &mdash; language tutorial, syntax, types, abilities</span></div>
+          <div class="corpus-item"><strong>Move Book</strong> <span>143 files &mdash; language tutorial, syntax, types, abilities</span></div>
           <div class="corpus-item"><strong>TS SDK</strong> <span>121 files &mdash; TypeScript SDK, dapp-kit, React hooks</span></div>
           <div class="corpus-item"><strong>Walrus</strong> <span>93 files &mdash; blob storage, Walrus Sites, HTTP API</span></div>
-          <div class="corpus-item"><strong>Sui Prover</strong> <span>24 files &mdash; formal verification, specs, Boogie</span></div>
+          <div class="corpus-item"><strong>Sui Prover</strong> <span>20 files &mdash; formal verification, specs, Boogie</span></div>
           <div class="corpus-item"><strong>Seal</strong> <span>15 files &mdash; secrets, encryption, key servers</span></div>
         </div>
 
@@ -504,7 +505,7 @@
           <tbody>
             <tr>
               <td><strong>move-lsp</strong></td>
-              <td><code>diagnostics</code>, <code>hover</code>, <code>completions</code>, <code>goto_definition</code>, <code>find_references</code>, <code>document_symbols</code>, <code>type_definition</code>, <code>code_actions</code>, <code>inlay_hints</code>, <code>rename</code></td>
+              <td><code>move_diagnostics</code>, <code>move_hover</code>, <code>move_completions</code>, <code>move_goto_definition</code>, <code>move_find_references</code>, <code>move_document_symbols</code>, <code>move_type_definition</code>, <code>move_code_actions</code>, <code>move_inlay_hints</code>, <code>move_rename</code></td>
               <td>move-analyzer LSP</td>
             </tr>
             <tr>
@@ -520,7 +521,7 @@
           <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
           <tbody>
             <tr><td><code>/sui-pilot</code></td><td>Doc-first entry point &mdash; routes to the specialized agent</td></tr>
-            <tr><td><code>/move-code-quality</code></td><td>Move 2024 Edition compliance (50+ rules from the Move Book checklist)</td></tr>
+            <tr><td><code>/move-code-quality</code></td><td>Move 2024 Edition compliance (40+ rules from the Move Book checklist)</td></tr>
             <tr><td><code>/move-code-review</code></td><td>Security and architecture review (40 checks across 6 categories)</td></tr>
             <tr><td><code>/oz-math</code></td><td>OpenZeppelin math library recommendations for DeFi arithmetic</td></tr>
             <tr><td><code>/specify</code></td><td>Author <code>#[spec(prove)]</code> formal specs and verify via sui-prover</td></tr>
@@ -598,6 +599,14 @@ suiup install move-analyzer</code></pre>
           <a class="research-link" href="SUI_PILOT_TOUR.html">
             <h3>Context-window lab</h3>
             <p>Interactive walkthrough of what enters Claude's context during a real Sui workflow.</p>
+          </a>
+          <a class="research-link" href="formal-verification.html">
+            <h3>Formal verification</h3>
+            <p>The /specify + /verify investigation: spec authoring, drift detection, and the invariant-driven deliverable redesign.</p>
+          </a>
+          <a class="research-link" href="docs-fetching-investigation.html">
+            <h3>Doc-fetching investigation</h3>
+            <p>Behavioral notes from a 2026-05-19 eval run on how the agent actually discovers and reads the bundled docs.</p>
           </a>
         </div>
       </div>
