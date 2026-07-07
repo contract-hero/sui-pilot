@@ -378,22 +378,49 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 
 ## Transactions & lifecycle
 
-Sui transactions are *programmable transaction blocks* (PTBs) — composable command
-chains that can move objects, call entry functions, and split/merge in one signed
-batch. Understanding PTB structure, gas model, and authentication paths is required
-before reviewing any transaction-building code (Move side or TS SDK side).
+Sui transactions are *programmable transaction blocks* (PTBs) — ordered command
+chains that can move objects, call Move functions (public or entry), and manage
+coins in one signed, atomic batch. Understanding PTB structure, the consensus
+lifecycle, gas, and authentication paths is required before reviewing any
+transaction-building code (Move side or TS SDK side).
 
 ```
-TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/index.mdx
-├── PTB structure                     📖 docs: .sui-docs/develop/transactions/ptbs/
-├── Transaction lifecycle             📖 docs: .sui-docs/develop/transactions/transaction-lifecycle.mdx
-├── Transaction auth                  📖 docs: .sui-docs/develop/transactions/transaction-auth/
+TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/txn-overview.mdx
+│  → two kinds: PTBs (user-submitted) + system transactions (validator-only, sender 0x0)
+│
+├── PTB structure                     📖 docs: .sui-docs/develop/transactions/ptbs/prog-txn-blocks.mdx
+│   ├── Commands: splitCoins / mergeCoins / transferObjects / moveCall / makeMoveVec / publish / upgrade
+│   ├── Arguments: Input(i) / GasCoin / Result(i) / NestedResult(i,j)
+│   │   → GasCoin restrictions: no `&`/`&mut` use; by value only via TransferObjects (SplitCoins first for an owned Coin<SUI>)
+│   ├── ≤ 1,024 commands per PTB; atomic (one failure reverts all); no loops
+│   ├── moveCall targets any `public` fn or any `entry` fn (incl. private / `public(package)` entry)
+│   │   ↔ Authorization § Hot potato — non-public `entry` args must not be in a "hot" clique
+│   └── ⊃ siblings: inputs-and-results.mdx, building-ptb.mdx
+│
+├── Lifecycle                         📖 docs: .sui-docs/develop/transactions/transaction-lifecycle.mdx
+│   → sign → full-node *Transaction Driver* submits to a validator → Mysticeti consensus sequencing
+│     → parallel execution (non-conflicting inputs) → effects → settlement finality (~400–700 ms) → checkpoints
+│
+├── Transaction auth                  📖 docs: .sui-docs/develop/transactions/transaction-auth/auth-overview.mdx
+│   ⊃ siblings: intent-signing, multisig, offline-signing, address-aliases (.mdx)
+│   ↔ Cryptography & primitives § Signing & verification
+│
+├── Soft bundles (SIP-19)             📖 docs: .sui-docs/develop/transactions/soft-bundles.mdx
+│   ⇢ alternative to: single PTB — multi-signer, per-tx revert; best-effort ordering, NOT atomic
+│
 ├── Gas model                         📖 docs: .sui-docs/develop/transaction-payment/gas-in-sui.mdx
-├── Sponsored / gasless txns          📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
+│   ├── Sponsored txns                📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
+│   │   → sponsor / gas station supplies the gas payment object on the user's behalf
+│   ├── Gasless stablecoin transfers  📖 docs: .sui-docs/develop/transaction-payment/gasless-stablecoin-transfers.mdx
+│   │   → protocol allowlist, sender holds no SUI; deprioritized under congestion — distinct mechanism from sponsorship
+│   └── Local fee markets             📖 docs: .sui-docs/develop/transaction-payment/local-fee-markets.mdx
+│       → per-shared-object rate limit (ExecutionCancelledDueToSharedObjectCongestion); gas price is the only priority lever
+│       ↔ Sui object model § Shared (avoid a single hot shared object; split state per pair/user)
+│
 └── ⤳ skill: move-code-review
 ```
 
-Stub — fleshed in v2 follow-up. Cross-reference `Sui object model § Object ownership`
+Cross-reference `Sui object model § Object ownership`
 for fast-path vs. consensus, and `Authorization patterns` for entry-function guards.
 
 ---
