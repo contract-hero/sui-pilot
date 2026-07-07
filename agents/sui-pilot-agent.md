@@ -184,6 +184,13 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
         ⤳ skill: move-code-review (look for unconsumed hot-potatoes & resource leaks)
 ```
 
+**Enums & match**                     📖 docs: .move-book-docs/book/move-basics/enum-and-match.md
+
+- `enum` variants (≤100, no recursion) unify shapes under one type; internal to the defining
+  module — construct/read/unpack only there (export `is_variant`-style accessors for callers)
+- `match` arms are compiler-checked exhaustive; `_` wildcard as default arm
+  📖 docs: .move-book-docs/reference/control-flow/pattern-matching.md
+
 **Move 2024 idioms** that the agent should *prefer over their pre-2024 equivalents*
 (📖 docs: .move-book-docs/book/guides/code-quality-checklist.md):
 
@@ -196,6 +203,9 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 - `package::Type::method(...)` qualified calls when the receiver is ambiguous
 
 ⤳ skill: move-code-quality (the canonical checklist for these)
+
+> When `book/` prose is insufficient, `.move-book-docs/reference/` is the authoritative
+> language-semantics tree (abilities, generics, enums, pattern matching, modes).
 
 ---
 
@@ -228,6 +238,22 @@ MODULES                               📖 docs: .move-book-docs/book/move-basic
     code is unpublishable (#[test_only] = sugar for #[mode(test)])
     📖 docs: .move-book-docs/book/move-advanced/modes.md
     ⤳ skill: move-code-quality
+```
+
+**Package lifecycle**
+
+```
+PACKAGE LIFECYCLE
+├── Publish                           📖 docs: .sui-docs/develop/publish-upgrade-packages/deploy.mdx
+├── Upgrade                           📖 docs: .sui-docs/develop/publish-upgrade-packages/upgrade.mdx
+│   → layout-compatible only: public fn signatures + struct layouts/abilities frozen;
+│     `init` does NOT re-run on upgrade; old package versions stay callable on-chain forever
+│   → versioned-shared-object pattern: `VERSION` const + `version: u64` field + AdminCap-gated
+│     migrate fn; guard entry points with assert!(obj.version == VERSION)
+├── Custom upgrade policies           📖 docs: .sui-docs/develop/publish-upgrade-packages/custom-policies.mdx
+│   → UpgradeCap → § Authorization § Capability; package::make_immutable burns upgradeability
+└── Upgradeability practices          📖 docs: .move-book-docs/book/guides/upgradeability-practices.md
+    → public structs/fns can never change signature; public(package)/entry/private CAN
 ```
 
 ---
@@ -275,8 +301,16 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 ├── Dynamic fields                    📖 docs: .sui-docs/develop/objects/dynamic-fields.mdx
 │   ⊃ dynamic_field    — heterogeneous typed children at arbitrary keys
 │   ⊃ dynamic_object_field — children that are themselves Sui objects (preserve UID)
-│   ⇢ alternative to: VecMap, Table — when you need unbounded growth or rare access
+│   ⊃ Table/Bag (+ Object* variants) are built ON dynamic fields — not peers (see Collections)
+│   ⚠ deleting a parent with live dynamic fields orphans them forever (even non-`drop` values)
 │   ⤳ skill: move-code-review (DOF lookups can hide gas costs; audit access patterns)
+│
+├── Collections
+│   ├── in-memory: vector / VecSet / VecMap → struct-embedded, bounded by object size limit
+│   │   📖 docs: .move-book-docs/book/programmability/collections.md
+│   └── dynamic: Bag/Table + ObjectBag/ObjectTable/LinkedTable → DF-backed objects (`key + store`),
+│       unbounded; size-tracked so non-empty destruction aborts (no orphaned fields)
+│       📖 docs: .move-book-docs/book/programmability/dynamic-collections.md
 │
 ├── Derived objects                   📖 docs: .sui-docs/develop/objects/derived-objects.mdx
 │   → UID deterministically derived from (parent UID, key) — key need not be unique-typed
@@ -287,8 +321,14 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │
 ├── Versioning                        📖 docs: .sui-docs/develop/objects/versioning.mdx
 │   ↔ Each mutation bumps the object version (used by consensus + replay)
-│   ↔ Package upgrades — `version: u64` field convention for upgradeable structs
+│   ↔ Package upgrades — `version: u64` guard convention → § Modules & visibility § Package
+│     lifecycle  📖 docs: .sui-docs/develop/publish-upgrade-packages/upgrade.mdx
 │   ⤳ skill: move-code-review (version mismatch = silent foot-gun)
+│
+├── Events                            📖 docs: .move-book-docs/book/programmability/events.md
+│   → sui::event::emit<T: copy + drop>(event); verifier requires T internal to the emitting module
+│   → stored in transaction effects, not on-chain state; sender + timestamp come free in metadata
+│   ↔ § Accessing on-chain data (query/index)  ↔ TS SDK (event queries)
 │
 └── Transfer functions                📖 docs: .move-book-docs/book/appendix/transfer-functions.md
     ├── transfer::transfer(obj, addr)        → address-owned
@@ -488,6 +528,13 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │   → divide-logic pattern: commit random result in tx1, consume in tx2 (revert griefing)
 │   ⤳ skill: move-code-review (never use timestamps, tx hash, or coin balances as randomness)
 │   ⇢ alternative: commit-reveal with off-chain entropy when external sources are required
+│
+├── Time                              📖 docs: .sui-docs/sui-stack/on-chain-primitives/access-time.mdx
+│   → sui::clock::Clock — shared singleton at 0x6; accept `&Clock` ONLY (entry fns taking
+│     `&mut Clock`/value fail to publish); timestamp_ms updates per checkpoint (~1/4 s); consensus-only
+│   → tx_context::epoch_timestamp_ms() — epoch-start time, fastpath-compatible, ~24h granularity
+│     📖 docs: .move-book-docs/book/programmability/epoch-and-time.md
+│   ⤳ skill: move-code-review (⚠ timestamps are NOT randomness — see Randomness above)
 │
 └── Threshold/aggregation
     ↔ Seal § threshold encryption (off-chain peer to this on-chain primitive set)
@@ -709,6 +756,58 @@ TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui
 
 ⤳ Always read the 2.0 migration index when editing `@mysten/*` code — it is the
 load-bearing read; per-package guides live beside it.
+
+---
+
+## Accessing on-chain data
+
+Off-chain read paths for txns/objects/events/checkpoints. JSON-RPC is deprecated
+(deactivation planned July 2026) — new code picks gRPC or GraphQL.
+
+```
+ACCESSING DATA                        📖 docs: .sui-docs/develop/accessing-data/data-serving.mdx
+├── gRPC          → fast, type-safe full-node access + tx execution
+│   📖 docs: .sui-docs/develop/accessing-data/grpc/what-is-grpc.mdx
+├── GraphQL RPC   → indexed, filterable reads; pagination + service limits
+│   📖 docs: .sui-docs/develop/accessing-data/graphql/graphql-rpc.mdx
+│   ⊃ JSON-RPC → gRPC/GraphQL method mapping  📖 docs: .sui-docs/develop/accessing-data/json-rpc-migration.mdx
+├── Custom indexers → sui-indexer-alt-framework (Rust): ingest/process/store your own pipeline
+│   📖 docs: .sui-docs/develop/accessing-data/custom-indexer/custom-indexers.mdx
+├── Archival Store  → historical point lookups beyond full-node retention/pruning
+│   📖 docs: .sui-docs/develop/accessing-data/archival-store/what-is-archival-store.mdx
+├── Querying events                   📖 docs: .sui-docs/develop/accessing-data/using-events.mdx
+│   └── Authenticated events → light-client-verifiable event stream (MMR proofs)
+│       📖 docs: .sui-docs/develop/accessing-data/authenticated-events.mdx
+└── ↔ TS SDK § Clients (SuiGrpcClient / SuiGraphQLClient)  ↔ Sui object model § Events
+```
+
+---
+
+## Testing Move packages
+
+Tests are Move functions run by the compiler's built-in framework (`sui move test`);
+same VM semantics as production, but network/storage behavior is simulated.
+
+```
+TESTING                               📖 docs: .move-book-docs/book/testing/index.md
+├── #[test] / #[test, expected_failure] → auto-discovered; unexpected abort = failure
+│   📖 docs: .move-book-docs/book/testing/testing-basics.md
+├── assert! (abort code optional in tests); assert_eq!/assert_ref_eq! from std::unit_test
+│   📖 docs: .move-book-docs/book/testing/test-utilities.md
+├── test_scenario → multi-tx simulation: begin/next_tx/end (one scenario per test);
+│   objects transferred in tx N are only takeable after next_tx
+│   📖 docs: .move-book-docs/book/testing/test-scenario.md
+├── System-object helpers: coin::mint_for_testing / balance::create_for_testing /
+│   clock::create_for_testing (+ burn/destroy `_for_testing` counterparts)
+│   📖 docs: .move-book-docs/book/testing/using-system-objects.md
+├── #[random_test] → property-based random inputs (compiler feature, NOT sui::random)
+│   📖 docs: .move-book-docs/book/testing/random-test.md
+├── Coverage & gas: `sui move test --coverage` (+ `sui move coverage summary`); `-s` stats
+│   (computation units only) + `sui analyze-trace`
+│   📖 docs: .move-book-docs/book/testing/coverage.md, .move-book-docs/book/testing/gas-profiling.md
+└── Sui-side testing & debugging docs 📖 docs: .sui-docs/develop/testing-debugging/
+    ↔ § Formal verification (Sui Prover) — proofs complement, never replace, tests
+```
 
 ---
 
