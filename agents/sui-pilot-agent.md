@@ -556,6 +556,37 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/
 
 ---
 
+## Formal verification (Sui Prover)
+
+The Sui Prover proves `#[spec(prove)]` specifications against Move code (Boogie/Z3).
+A spec is a Move function with the target's signature: `requires` (preconditions),
+`asserts` (abort conditions — must be exhaustive, and placed *before* the call),
+call the target, `ensures` (postconditions); `clone!(ref)` snapshots `&mut` pre-state.
+Specs named `<fn>_spec` compose: used as opaque summaries when proving callers.
+
+```
+SUI PROVER                            📖 docs: .sui-prover-docs/guide/SKILL.md
+│
+├── Spec packages                     → specs live in a sibling `<pkg>_specs` package; `target = pkg::mod::fn` binds cross-module
+│   ⤳ skill: specify (authors specs)  ⤳ skill: verify (re-proves against current code)
+├── Math types (spec-only)            📖 docs: .sui-prover-docs/guide/spec-reference.md
+│   ⊃ `Integer`/`Real` (unbounded — `.to_int()`/`.to_real()`), `Q32`/`Q64`/`Q128` fixed-point
+│   ↔ Onchain finance § Fixed-point math — prove mul_div/share-price invariants without width limits
+├── Ghost variables (prover::ghost)   📖 docs: .sui-prover-docs/sources/ghost.move
+│   → spec-only globals (`declare_global`/`global`) — verify event emission, propagate state between specs
+│   ↔ Sui object model § Transfer functions — any spec touching `public_transfer` MUST declare SpecTransferAddress/-Exists ghosts
+├── Loop & datatype invariants        → `invariant!(|| {...})` inline before loop, or external `#[spec_only(loop_inv(target = ...))]`;
+│   `#[spec_only(inv_target = Struct)]` checks a datatype invariant on construction/mutation
+├── Quantifiers & vector iterators    📖 docs: .sui-prover-docs/sources/vector.move
+│   → `forall!`/`exists!` — lambda must call a named `#[ext(pure)]` predicate; `all!`/`any!`/`count!`/`sum`
+│   ⚠ timeout-prone: keep loop-bearing specs with `requires(forall!(...))` opaque
+└── ⊃ examples                        📖 docs: .sui-prover-docs/examples/ (amm pool spec, showcase container specs, integer-mate real bug)
+```
+
+⤳ skill: specify (authoring workflow) · ⤳ skill: verify (drift detection + re-verification)
+
+---
+
 ## Walrus storage
 
 Walrus is a decentralized blob-storage protocol anchored on Sui. The on-chain object
