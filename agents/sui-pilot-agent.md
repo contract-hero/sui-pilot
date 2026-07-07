@@ -663,26 +663,52 @@ SEAL                                  📖 docs: .seal-docs/index.mdx → .seal-
 
 ## TypeScript SDK & 2.0 migration
 
-Any TypeScript code that imports `@mysten/*` should be assumed potentially on the
-1.x API; SDK 2.0 (March 2026) introduces breaking changes that pre-cutoff training
-data does not know. The 2.0 split client paths — `@mysten/sui/jsonRpc` vs.
-`@mysten/sui/grpc` — and removed several legacy helpers in favor of client-extension
-plug-ins.
+Any TypeScript code importing `@mysten/*` may still be on the 1.x API; SDK 2.0
+(current major) has extensive breaking changes pre-cutoff training does not know:
+packages are ESM-only, every client constructor requires an explicit `network`
+param, 1.x `SuiClient` is REMOVED, and `core.getObject` THROWS on missing objects
+(v1 returned `null`).
 
 ```
-TS SDK                                📖 docs: .ts-sdk-docs/sui/
-├── Clients                           → SuiJsonRpcClient, SuiGrpcClient (2.0)
-│   ⇢ alternative to: 1.x SuiClient (deprecated)
-├── Transactions builder              → tx, tx.moveCall, tx.transferObjects, ...
-├── BCS serialization                 → on-chain types via bcs.struct(...)
-├── dapp-kit (React)                  📖 docs: .ts-sdk-docs/dapp-kit/
-├── kiosk SDK
-├── payment-kit
-└── SDK 2.0 migration                 📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/
-   ⤳ Always read the 2.0 migration index when editing `@mysten/*` code
+TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/index.mdx
+│
+├── Clients (3 transports)            📖 docs: .ts-sdk-docs/sui/clients/index.mdx
+│   ├── SuiGrpcClient (`@mysten/sui/grpc`) — recommended default
+│   ├── SuiGraphQLClient — advanced query patterns full nodes can't serve directly
+│   ├── SuiJsonRpcClient — deprecated, decommission pending; migrate to gRPC
+│   └── 1.x SuiClient — REMOVED in 2.0 (not merely deprecated)
+│
+├── Core API — `client.core` / ClientWithCoreApi, transport-agnostic common ops
+│   📖 docs: .ts-sdk-docs/sui/clients/core.mdx
+│   ⊃ `$extend(...)` client extensions — walrus, seal, kiosk, suins, deepbook-v3,
+│     zksend all ship as extensions
+│
+├── Transactions builder              📖 docs: .ts-sdk-docs/sui/transactions/
+│   ⊃ Serial/ParallelTransactionExecutor — queue/parallelize same-sender txns,
+│     cache gas coins + object versions  📖 docs: .ts-sdk-docs/sui/executors.mdx
+│
+├── Signing — keypairs + external Signers (AWS/GCP KMS, Ledger, WebCrypto,
+│   passkey, multisig)                📖 docs: .ts-sdk-docs/sui/cryptography/signers/index.mdx
+│   ↔ Cryptography & primitives § Signing & verification
+│
+├── BCS — `bcs.struct(...)`           📖 docs: .ts-sdk-docs/bcs/index.mdx
+│   ⊃ Sui pre-defined schemas (`@mysten/sui/bcs`)  📖 docs: .ts-sdk-docs/sui/bcs.mdx
+│   ⇢ alternative: `@mysten/codegen` — typed bindings generated from Move packages
+│     (in development, may break)     📖 docs: .ts-sdk-docs/codegen/
+│
+├── dapp-kit                          📖 docs: .ts-sdk-docs/dapp-kit/index.mdx
+│   ├── @mysten/dapp-kit-core (framework-agnostic) + @mysten/dapp-kit-react (hooks)
+│   └── legacy @mysten/dapp-kit — deprecated, JSON-RPC-only, no gRPC/GraphQL ever
+│       📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/dapp-kit.mdx (migration guide)
+│
+├── kiosk SDK                         📖 docs: .ts-sdk-docs/kiosk/
+├── payment-kit                       📖 docs: .ts-sdk-docs/payment-kit/
+├── sponsor (experimental incubation) 📖 docs: .ts-sdk-docs/sponsor/
+└── zksend claim links                📖 docs: .ts-sdk-docs/zksend/
 ```
 
-Stub — flesh in v2 follow-up. The migration index is the load-bearing read here.
+⤳ Always read the 2.0 migration index when editing `@mysten/*` code — it is the
+load-bearing read; per-package guides live beside it.
 
 ---
 
