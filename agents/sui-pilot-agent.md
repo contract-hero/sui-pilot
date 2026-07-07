@@ -318,12 +318,16 @@ runtime checks. The toolkit below is what idiomatic Sui packages use to express
 pattern that expresses your intent.
 
 ```
-AUTHORIZATION                         📖 docs: .move-book-docs/book/programmability/authorization-patterns.md
+AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best-practices.mdx (§ Access control)
+│   (the Move Book authorization-patterns.md index is currently empty — route to the
+│    per-pattern chapters below)
 │
 ├── Capability                        📖 docs: .move-book-docs/book/programmability/capability.md
 │   → owning a `XxxCap` object proves the right to perform privileged ops
 │   ↔ TreasuryCap<T>, UpgradeCap, Publisher are the canonical examples
-│   ⊃ Object capability — capability *is* the object, not a field of it
+│   ⊃ capabilities ARE objects (capability.md § "Capability is an Object");
+│     common DeFi caps: PoolAdminCap, OracleSourceCap, BridgeOperatorCap
+│   ⚠ anti-pattern: tx_context::sender() as the only guard — use a Capability
 │   ⤳ skill: move-code-review (assert holder; never accept by-ref a cap from untrusted caller)
 │   ⇢ alternative: address allowlist when multiple operators rotate frequently
 │
@@ -340,27 +344,25 @@ AUTHORIZATION                         📖 docs: .move-book-docs/book/programmab
 │   ↔ coin::create_currency<T>(otw, ...)
 │
 ├── Hot potato pattern                📖 docs: .move-book-docs/book/programmability/hot-potato-pattern.md
-│   → struct WITHOUT drop ability; caller MUST consume via specific function
+│   → struct with NO abilities at all (a no-drop-but-store struct could be stashed); caller MUST consume via specific function
 │   ↔ flash loans, transient receipts, in-progress trade objects
+│   ↔ framework hot potatoes: transfer_policy::TransferRequest, token::ActionRequest
 │   ⤳ skill: move-code-review (every hot-potato needs an exhaustive consume function)
 │   ⇢ alternative: Option-wrapped builder when the consume step is optional
 │
-├── Publisher                         📖 docs: .move-book-docs/book/programmability/publisher.md
-│   → struct evidencing original package authorship (`from_package<T>(pub)` at OTW init)
-│   ↔ Display, transfer-policy: gated by Publisher
-│   ⤳ skill: move-code-quality (idiomatic packages own a Publisher per type family)
-│
-└── Object capability                 📖 docs: .move-book-docs/book/programmability/object-capability.md
-    → cap is itself a `key`-able object, not just a struct field
-    ↔ Address-owned ownership keeps the cap isolated to one user
-    ⊃ Common in DeFi: PoolAdminCap, OracleSourceCap, BridgeOperatorCap
+└── Publisher                         📖 docs: .move-book-docs/book/programmability/publisher.md
+    → struct evidencing package authorship; claimed via `package::claim(otw, ctx)` in init
+    → authority checked later via `from_module<T>(&pub)` / `from_package<T>(&pub)` —
+      every gated function must perform the check (publisher.md security warning)
+    ↔ Display, transfer-policy: gated by Publisher
+    ⤳ skill: move-code-quality (idiomatic packages own a Publisher per type family)
 ```
 
 **When to use what — quick decision flow:**
 
 - Need to gate a function on caller identity, no transferable proof? → **Witness**
 - Privileged op tied to a one-shot module init? → **OTW**
-- Privileged op tied to a transferable, long-lived role? → **Capability** (probably Object Capability)
+- Privileged op tied to a transferable, long-lived role? → **Capability**
 - Caller must complete a multi-step protocol or pay/refund? → **Hot potato**
 - Authorship-of-a-package check (Display/policy ops)? → **Publisher**
 
