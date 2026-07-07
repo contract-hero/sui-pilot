@@ -627,21 +627,37 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 
 ## Seal secrets
 
-Seal is a threshold-encryption / decentralized key-management protocol on Sui.
-Use Seal when application data must be *encrypted at rest* and decryption authority
-is policy-gated (committee threshold, time-lock, access-control).
+Seal is decentralized secrets management (DSM) on Sui: identity-based encryption (IBE)
+where the Move package at `PkgId` owns the `[PkgId]*` identity namespace and its code
+decides who gets decryption keys. NOT a KMS, and not for wallet keys or regulated data
+(📖 docs: .seal-docs/index.mdx § Non-goals).
 
 ```
-SEAL                                  📖 docs: .seal-docs/Design.mdx
-├── Key servers (committees)
-├── Aggregation protocol              → threshold-decryption
-├── Access-policy patterns
+SEAL                                  📖 docs: .seal-docs/index.mdx → .seal-docs/Design.mdx (architecture)
+│
+├── seal_approve* policy functions    📖 docs: .seal-docs/UsingSeal.mdx (§ Access control)
+│   → non-public `entry`; first param = identity bytes SANS PkgId prefix; abort to deny;
+│     side-effect free; evaluated via full-node dry_run_transaction_block — non-atomic
+│     across key servers, so never gate on fast-changing state (§ Limitations)
+│   ↔ Modules & visibility § entry; version shared objects for upgrade safety
+├── Access-policy patterns            📖 docs: .seal-docs/ExamplePatterns.mdx
+│   ⊃ private data, allowlist, subscription, time-lock (TLE), secure voting
+├── Key servers — t-out-of-n threshold; server set FROZEN at encryption time
+│   📖 docs: .seal-docs/Design.mdx (§ Decentralization and trust model)
+│   ├── independent (Open/Permissioned) 📖 docs: .seal-docs/KeyServerOps.mdx
+│   └── decentralized committee mode (MPC, Testnet-only) 📖 docs: .seal-docs/KeyServerCommitteeOps.mdx
+│       ⊃ Aggregator Server — trustless gateway, committee mode only 📖 docs: .seal-docs/Aggregator.mdx
+├── SessionKey — wallet-signed message grants per-package, time-limited key access
+│   📖 docs: .seal-docs/Design.mdx (§ User confirmation and sessions)
+│   ↔ TS SDK: `@mysten/seal` SealClient encrypt/decrypt/fetchKeys 📖 docs: .ts-sdk-docs/seal/
+├── KEM/DEM — Boneh-Franklin IBE on BLS12-381; DEM chosen AT ENCRYPTION TIME (irreversible):
+│   AES-256-GCM default, HMAC-CTR only for onchain decryption (seal::bf_hmac_encryption)
+│   📖 docs: .seal-docs/Design.mdx (§ Cryptographic primitives)
 └── Security best practices           📖 docs: .seal-docs/SecurityBestPractices.mdx
-   ↔ Sui § Authorization patterns (policy gates often use Capability or Witness)
+   ↔ Walrus § blobs — encrypt BEFORE upload; envelope encryption for large/immutable blobs
+     (Seal wraps the symmetric key; rotate policies without re-encrypting the blob)
    ↔ Cryptography & primitives § Threshold/aggregation
 ```
-
-Stub — flesh in v2 follow-up.
 
 ---
 
