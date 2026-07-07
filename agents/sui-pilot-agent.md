@@ -203,27 +203,32 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 
 Modules are the unit of code organization and visibility in Move; packages are the
 unit of deployment (published on-chain at an address).
-Visibility ranges from private (default) → `public(package)` (intra-package) →
-`public` (cross-package callable). The `friend` keyword from pre-2024 Move is replaced
-by `public(package)` for the most common cases.
 
 ```
 MODULES                               📖 docs: .move-book-docs/book/move-basics/module.md
 ├── ⊃ PACKAGE ⊃ modules               📖 docs: .move-book-docs/book/concepts/packages.md
 ├── module x::y;                      → file-level, Move 2024
-├── public(package) fun ...           → callable only from same package
+├── use pkg::mod::{Self, Member}      → imports; only public/public(package) members are
+│   importable; `as` renames conflicts
+│   📖 docs: .move-book-docs/book/move-basics/importing-modules.md
+├── public(package) fun ...           → callable only from same package; replaces the
+│   deprecated `friend`/`public(friend)` (`sui move migrate` auto-rewrites)
+│   📖 docs: .move-book-docs/book/guides/2024-migration-guide.md
 ├── public fun ...                    → callable from any package AND from PTBs
 │   📖 docs: .move-book-docs/book/move-basics/visibility.md
+│   📖 docs: .move-book-docs/reference/functions.md (authoritative visibility semantics)
 ├── entry fun ...                     → PTB-callable but NOT callable from other packages
 │   (front-run-sensitive flows, e.g. randomness consumers — see § Cryptography)
 │   📖 docs: .sui-docs/develop/write-move/sui-move-concepts.mdx
+├── struct pack/unpack privilege      → construction, destruction, and field access stay
+│   internal to the defining module — the invariant behind witness & hot potato
+│   📖 docs: .move-book-docs/book/move-basics/struct.md
+│   → § Authorization patterns
 └── #[test_only] / #[mode(...)]       → compile-time inclusion filters; mode-annotated
     code is unpublishable (#[test_only] = sugar for #[mode(test)])
     📖 docs: .move-book-docs/book/move-advanced/modes.md
     ⤳ skill: move-code-quality
 ```
-
-Stub — flesh out further when chunk-extraction tests start asking for this section.
 
 ---
 
@@ -556,16 +561,31 @@ Stub — flesh in v2 follow-up. The migration index is the load-bearing read her
 ```
 TOOLING
 ├── Sui CLI                           📖 docs: .sui-docs/references/cli/
-│   ⊃ sui client (network ops; `sui client ptb` for PTBs), sui move (build/test), sui keytool, sui replay
-├── Move 2024 edition                 📖 docs: .move-book-docs/book/before-we-begin/move-2024.md
-│   ⤳ skill: move-code-quality
+│   ⊃ sui client (network ops; `sui client ptb` for PTBs), sui move (build/test/migrate),
+│     sui keytool, sui replay
+├── Move 2024 edition                 📖 docs: .move-book-docs/book/guides/2024-migration-guide.md
+│   ⤳ skill: move-code-quality       📖 docs: .move-book-docs/book/guides/code-quality-checklist.md
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
-│   ⊃ tools: move_diagnostics, move_hover, move_completions, move_goto_definition
-│   ⤳ skill: specify (spec authoring — driven by the sui-prover MCP server, not the LSP)
+│   ⊃ tools (10): move_diagnostics, move_hover, move_completions, move_goto_definition,
+│     move_find_references, move_rename, move_document_symbols, move_type_definition,
+│     move_code_actions, move_inlay_hints
+├── sui-prover (MCP)                  📖 docs: .sui-prover-docs/guide/
+│   ⊃ tools: prove_package, list_specs, prover_capabilities
+│   ⤳ skill: specify (author specs — driven by this MCP server, not the LSP) · ⤳ skill: verify
+│   → § Formal verification (Sui Prover)
+├── Debugging                         → `sui replay --digest <d> [--trace]` re-executes locally
+│   📖 docs: .sui-docs/references/cli/replay.mdx
+│   ⊃ Move Trace Debugger (VS Code)   📖 docs: .sui-docs/references/ide/debugger.mdx
+│   ⊃ trace analysis (gas profiling)  📖 docs: .sui-docs/references/cli/trace-analysis.mdx
+├── Testing & troubleshooting         📖 docs: .sui-docs/develop/testing-debugging/
+│   ⊃ testing.mdx, common-errors.mdx (tx/object/package error triage)
+│   ↔ § Testing Move packages
+├── Package management (new system, Sui CLI 1.63+)
+│   📖 docs: .sui-docs/references/package-managers/manifest-reference.mdx
+│   ⊃ `git` / `local` / `r.mvr` (Move Registry) deps; [addresses] section removed
+│   ⊃ migration guide                 📖 docs: .sui-docs/references/package-managers/package-manager-migration.mdx
 └── sui-pilot plugin                  → this package; bundles all of the above
-   ⤳ skill: move-code-review (security + architecture review)
+    ⤳ skill: move-code-review (security + architecture review)
 ```
 
-Stub — flesh in v2 follow-up. The LSP integration is the single most useful tool for
-the agent's day-to-day Move editing; prefer `move_diagnostics` over re-running
-`sui move build` for tight iteration loops.
+Prefer `move_diagnostics` over re-running `sui move build` for tight iteration loops.
