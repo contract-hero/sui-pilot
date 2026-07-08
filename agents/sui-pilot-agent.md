@@ -110,6 +110,7 @@ If `move-analyzer` is not available, continue without MCP tools and note that la
 - `⊃ contains` — parent/child or whole/part relationship
 - `⤳ skill:` — pointer to a bundled skill that provides actionable guidance
 - `📖 docs:` — entry point in the bundled corpora (search root: `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`)
+- `⚠ warning` — a foot-gun or anti-pattern to avoid
 
 Cross-reference sections by `Glob`/`Grep` when an edge suggests you should — this map orients,
 the corpora are authoritative.

@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 FILE="${1:-agents/sui-pilot-agent.md}"
+[ -r "$FILE" ] || { echo "MISS: cannot read $FILE" >&2; exit 2; }
 fail=0
 while IFS= read -r p; do
   if [ -e "$p" ]; then
