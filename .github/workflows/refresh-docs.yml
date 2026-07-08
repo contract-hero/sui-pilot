@@ -30,6 +30,10 @@ jobs:
         run: ./sync-docs.sh
 
       - name: Check knowledge-graph doc pointers survive refresh
+        # Soft-warn here so a broken pointer does not suppress the whole refresh
+        # PR (which is what surfaces the drift). The PR's own CI run of this same
+        # script (ci.yml, pull_request) hard-fails and blocks the merge.
+        continue-on-error: true
         run: ./scripts/check-graph-pointers.sh
 
       - name: Skip bundler if nothing drifted
