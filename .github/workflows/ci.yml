@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check knowledge-graph doc pointers
+        run: ./scripts/check-graph-pointers.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
