@@ -316,7 +316,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 ├── Events                            📖 docs: .move-book-docs/book/programmability/events.md
 │   → sui::event::emit<T: copy + drop>(event); verifier requires T internal to the emitting module
 │   → stored in transaction effects, not on-chain state; sender + timestamp come free in metadata
-│   ↔ § Accessing on-chain data (query/index)  ↔ TS SDK (event queries)
+│   ↔ § Accessing on-chain data (query/index)  ↔ TS SDK § Clients (event queries)
 │
 └── Transfer functions                📖 docs: .move-book-docs/book/appendix/transfer-functions.md
     ├── transfer::transfer(obj, addr)        → address-owned
@@ -609,7 +609,7 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 │   ⚠ QuiltPatchId depends on whole-quilt composition (NOT content-derived);
 │     no per-item delete/extend/share — whole-quilt only
 ├── Roles: storage nodes / aggregators (+ caches) / publishers / upload relay
-│   → relay: one POST vs ≈2200 direct-SDK requests per write  📖 docs: .walrus-docs/system-overview/relay.mdx
+│   → relay: one POST vs ≈2200 direct-SDK requests per write  📖 docs: .ts-sdk-docs/walrus/index.mdx, .walrus-docs/system-overview/relay.mdx
 │   → node/publisher/aggregator ops  📖 docs: .walrus-docs/operator-guide/
 ├── walrus CLI (+ JSON mode)          📖 docs: .walrus-docs/walrus-client/
 ├── HTTP API (publisher/aggregator)   📖 docs: .walrus-docs/http-api/
@@ -674,8 +674,8 @@ TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui
 │   ↔ § Accessing on-chain data (gRPC/GraphQL read paths, event queries)
 ├── Core API — `client.core` / ClientWithCoreApi, transport-agnostic common ops
 │   📖 docs: .ts-sdk-docs/sui/clients/core.mdx
-│   ⊃ `$extend(...)` client extensions — walrus, seal, kiosk, suins, deepbook-v3,
-│     zksend all ship as extensions
+│   ⊃ `$extend(...)` client extensions — walrus (↔ § Walrus storage), seal (↔ § Seal
+│     secrets), kiosk (↔ § Transfer policies), suins, deepbook-v3, zksend
 ├── Transactions builder              📖 docs: .ts-sdk-docs/sui/transactions/
 │   ⊃ Serial/ParallelTransactionExecutor — queue/parallelize same-sender txns,
 │     cache gas coins + object versions  📖 docs: .ts-sdk-docs/sui/executors.mdx
