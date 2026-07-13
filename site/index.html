@@ -1,627 +1,111 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>sui-pilot — a Claude Code plugin for Sui/Move development</title>
-  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 766 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>sui-pilot — follow the whale</title>
+  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move expert — 766 bundled docs, Move LSP, formal verification. Scroll to dive in." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="sui-pilot — follow the whale" />
+  <meta property="og:description" content="A Claude Code plugin that turns Claude into a Sui/Move expert — 766 bundled docs, Move LSP, formal verification. Scroll to dive in." />
+  <meta property="og:url" content="https://contract-hero.github.io/sui-pilot/" />
+  <meta property="og:image" content="https://contract-hero.github.io/sui-pilot/assets/stills/hero.webp" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23050805'/%3E%3Ctext x='16' y='23' font-size='17' text-anchor='middle'%3E%F0%9F%90%B3%3C/text%3E%3C/svg%3E" />
   <style>
-    :root {
-      --bg: #fafaf7;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --muted: #475569;
-      --border: #e5e7eb;
-      --accent: #0a4a8a;
-      --accent-soft: #e6eef4;
-      --code-bg: #f1f5f9;
-      --warn: #92400e;
-      --warn-soft: #fef3c7;
+    /* Matrix theme over the scroll-world engine tokens */
+    :root, .sw-root {
+      --sw-bg: #050805;          /* abyss black — matches the scenes' background */
+      --sw-ink: #eaf6ec;
+      --sw-ink-soft: #8fae97;
+      --sw-accent: #39ff6a;      /* neon matrix green */
+      --sw-font-display: "SF Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 17px;
-      line-height: 1.55;
-      color: var(--text);
-      background: var(--bg);
-      -webkit-font-smoothing: antialiased;
-    }
-    .wrap {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 24px;
-    }
-    header.site {
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-    header.site .wrap {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 16px;
-      padding-bottom: 16px;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      color: var(--text);
-      text-decoration: none;
-      letter-spacing: -0.01em;
-    }
-    .brand-mark {
-      width: 28px;
-      height: 28px;
-      flex: none;
-    }
-    nav.site-nav a {
-      color: var(--muted);
-      text-decoration: none;
-      margin-left: 20px;
-      font-size: 15px;
-    }
-    nav.site-nav a:hover { color: var(--accent); }
-
-    section { padding: 56px 0; }
-    section + section { border-top: 1px solid var(--border); }
-
-    .hero {
-      padding-top: 72px;
-      padding-bottom: 48px;
-    }
-    .hero-banner {
-      display: block;
-      width: 100%;
-      height: auto;
-      border-radius: 10px;
-      margin: 0 0 32px 0;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-    }
-    .eyebrow {
-      display: inline-block;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent);
-      background: var(--accent-soft);
-      padding: 4px 10px;
-      border-radius: 999px;
-      margin-bottom: 18px;
-    }
-    h1 {
-      font-size: clamp(28px, 4.2vw, 42px);
-      line-height: 1.15;
-      letter-spacing: -0.02em;
-      margin: 0 0 18px 0;
-      max-width: 24ch;
-    }
-    h1 em {
-      font-style: normal;
-      color: var(--accent);
-    }
-    .lede {
-      font-size: 19px;
-      color: var(--muted);
-      max-width: 62ch;
-      margin: 0 0 28px 0;
-    }
-    .cta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
-    }
-    .btn {
-      display: inline-block;
-      padding: 10px 18px;
-      border-radius: 6px;
-      font-weight: 500;
-      font-size: 15px;
-      text-decoration: none;
-      border: 1px solid transparent;
-      transition: background 120ms ease, border-color 120ms ease;
-    }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: #083a6e; }
-    .btn-secondary {
-      background: transparent;
-      color: var(--accent);
-      border-color: var(--border);
-    }
-    .btn-secondary:hover { border-color: var(--accent); }
-
-    h2 {
-      font-size: clamp(22px, 2.4vw, 28px);
-      letter-spacing: -0.015em;
-      margin: 0 0 12px 0;
-    }
-    h2 + p.section-lede {
-      color: var(--muted);
-      margin: 0 0 32px 0;
-      max-width: 60ch;
-    }
-
-    figure.diagram {
-      margin: 0 auto;
-      max-width: 720px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
-    }
-    figure.diagram svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-    figcaption {
-      color: var(--muted);
-      font-size: 14px;
-      margin-top: 16px;
-      text-align: center;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 22px;
-    }
-    .card h3 {
-      margin: 0 0 6px 0;
-      font-size: 17px;
-      letter-spacing: -0.01em;
-    }
-    .card .tag {
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      display: block;
-      margin-bottom: 8px;
-    }
-    .card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
-
-    .corpus-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 24px;
-    }
-    .corpus-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-    }
-    .corpus-item strong {
-      display: block;
-      font-size: 15px;
-      margin-bottom: 2px;
-    }
-    .corpus-item span {
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      overflow-x: auto;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 14px;
-      line-height: 1.5;
-      margin: 0 0 16px 0;
-    }
-    code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
-    p code, li code {
-      background: var(--code-bg);
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 0.92em;
-    }
-
-    .step {
-      display: grid;
-      grid-template-columns: 32px 1fr;
-      gap: 14px;
-      margin-bottom: 18px;
-    }
-    .step .n {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .step h3 {
-      margin: 2px 0 4px 0;
-      font-size: 16px;
-    }
-    .step p {
-      margin: 0 0 6px 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
-
-    .tools-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 16px;
-    }
-    .tools-table th {
-      text-align: left;
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      padding: 8px 12px;
-      border-bottom: 2px solid var(--border);
-    }
-    .tools-table td {
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      font-size: 15px;
-    }
-    .tools-table code {
-      font-size: 13px;
-    }
-
-    .research-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .research-link {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
-      text-decoration: none;
-      color: var(--text);
-      transition: border-color 120ms ease;
-    }
-    .research-link:hover { border-color: var(--accent); }
-    .research-link h3 {
-      margin: 0 0 6px 0;
-      font-size: 16px;
-    }
-    .research-link p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    footer.site {
-      border-top: 1px solid var(--border);
-      padding: 28px 0 40px 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-    footer.site .wrap {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: space-between;
-      align-items: center;
-    }
-    footer.site a { color: var(--accent); text-decoration: none; }
-    footer.site a:hover { text-decoration: underline; }
-
-    @media (max-width: 720px) {
-      section { padding: 40px 0; }
-      .hero { padding-top: 48px; }
-      .cards { grid-template-columns: 1fr; }
-      .corpus-grid { grid-template-columns: 1fr 1fr; }
-      .tools-table { display: block; overflow-x: auto; }
-      nav.site-nav a { margin-left: 12px; font-size: 14px; }
-      nav.site-nav a:first-child { margin-left: 0; }
-      .lede { font-size: 17px; }
-    }
+    html, body { margin: 0; background: #050805; }
   </style>
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <a class="brand" href="#top">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-          <rect x="2" y="2" width="28" height="28" rx="6" fill="#0a4a8a"/>
-          <path d="M8 23 L16 7 L24 23" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="16" cy="18" r="3" fill="#fff" opacity="0.9"/>
-        </svg>
-        <span>sui-pilot</span>
-      </a>
-      <nav class="site-nav" aria-label="Page contents">
-        <a href="#problem">Why</a>
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#start">Install</a>
-        <a href="formal-verification.html">Formal verification</a>
-        <a href="https://github.com/contract-hero/sui-pilot">GitHub</a>
-      </nav>
-    </div>
-  </header>
+  <div id="top"></div>
+  <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap">sui-pilot — a Claude Code plugin for Sui/Move development</h1>
+  <div id="world"></div>
+  <noscript>
+    <p style="color:#eaf6ec;font-family:monospace;padding:2rem">
+      This page needs JavaScript for the scroll flight.
+      <a style="color:#39ff6a" href="classic.html">Read the classic page instead.</a>
+    </p>
+  </noscript>
 
-  <main>
-    <section class="hero" id="top">
-      <div class="wrap">
-        <img class="hero-banner" src="sui-pilot.jpg" alt="sui-pilot banner">
-        <span class="eyebrow">Claude Code Plugin</span>
-        <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
-        <p class="lede">
-          sui-pilot bundles 766 documentation files from six MystenLabs corpora, bridges the Move LSP
-          and Sui Prover into Claude Code, and ships five specialized skills &mdash; all behind a
-          doc-first agent that reads the docs before writing code. No hallucinated APIs, no deprecated
-          patterns, no stale training data.
-        </p>
-        <div class="cta-row">
-          <a class="btn btn-primary" href="#start">Get started</a>
-          <a class="btn btn-secondary" href="https://github.com/contract-hero/sui-pilot">View on GitHub</a>
-          <a class="btn btn-secondary" href="https://github.com/contract-hero/plugin-marketplace">Marketplace</a>
-        </div>
-      </div>
-    </section>
-
-    <section id="problem">
-      <div class="wrap">
-        <h2>The problem</h2>
-        <p class="section-lede">
-          Sui Move evolves rapidly. LLM training data goes stale fast &mdash; and agents confidently
-          generate outdated patterns, deprecated APIs, and syntax that no longer compiles.
-        </p>
-        <div class="cards">
-          <article class="card">
-            <span class="tag">Before sui-pilot</span>
-            <h3>Stale training data</h3>
-            <p>Claude's knowledge cutoff means it doesn't know about new framework methods, changed APIs, or Move 2024 syntax. It writes code that looks right but doesn't compile.</p>
-          </article>
-          <article class="card">
-            <span class="tag">Before sui-pilot</span>
-            <h3>No real-time feedback</h3>
-            <p>Without LSP integration, Claude can't check whether the code it generates actually type-checks, has the right abilities, or matches the current framework signatures.</p>
-          </article>
-          <article class="card">
-            <span class="tag">With sui-pilot</span>
-            <h3>Doc-first, LSP-verified</h3>
-            <p>Current docs are always in context. The Move LSP catches errors in real time. Every answer is grounded in what works today, not what worked six months ago.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section id="how">
-      <div class="wrap">
-        <h2>How it works</h2>
-        <p class="section-lede">
-          A slim always-loaded preamble routes topics to the right corpus and carries a compact
-          ecosystem concept map. Skills invoke procedural workflows. MCP servers provide real-time
-          tooling. No hooks, no matchers, no precomputed indexes &mdash; the agent navigates the
-          corpora directly.
-        </p>
-        <figure class="diagram">
-          <svg viewBox="0 0 680 380" role="img" aria-label="Architecture: Claude Code loads sui-pilot, which provides doc corpora, MCP tools, and specialized skills.">
-            <defs>
-              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
-              </marker>
-            </defs>
-
-            <text x="20" y="32" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">RUNTIME</text>
-            <text x="20" y="132" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">PLUGIN</text>
-            <text x="20" y="252" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">LAYERS</text>
-
-            <rect x="240" y="14" width="200" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="340" y="42" font-size="14" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Claude Code session</text>
-
-            <line x1="340" y1="62" x2="340" y2="92" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-
-            <rect x="140" y="96" width="400" height="78" rx="8" fill="#e6eef4" stroke="#0a4a8a"/>
-            <text x="340" y="120" font-size="14" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0a4a8a">sui-pilot</text>
-            <text x="340" y="142" font-size="12" text-anchor="middle" font-family="system-ui" fill="#475569">doc-first agent &middot; 5 skills &middot; 2 MCP servers</text>
-            <text x="340" y="158" font-size="12" text-anchor="middle" font-family="system-ui" fill="#475569">topic &rarr; corpus routing table (always loaded)</text>
-
-            <line x1="170" y1="178" x2="170" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="340" y1="178" x2="340" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="510" y1="178" x2="510" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-
-            <rect x="80" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="170" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Doc corpora</text>
-            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">766 files &middot; 6 sources</text>
-            <text x="170" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">Glob/Grep navigated</text>
-
-            <rect x="270" y="214" width="140" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="340" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">MCP tools</text>
-            <text x="340" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">move-analyzer LSP</text>
-            <text x="340" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">sui-prover binary</text>
-
-            <rect x="420" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="510" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Skills</text>
-            <text x="510" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">code-quality &middot; review</text>
-            <text x="510" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">oz-math &middot; specify &middot; verify</text>
-
-            <rect x="80" y="310" width="520" height="50" rx="8" fill="#ffffff" stroke="#0a4a8a"/>
-            <text x="340" y="332" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Result: doc-grounded code &middot; LSP-verified &middot; formally specified</text>
-            <text x="340" y="348" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">No hallucinated APIs &middot; No deprecated patterns &middot; No stale training data</text>
-
-            <line x1="170" y1="282" x2="170" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="340" y1="282" x2="340" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="510" y1="282" x2="510" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-          </svg>
-          <figcaption>Slim plugin, three layers: documentation, tooling, procedural skills.</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section id="features">
-      <div class="wrap">
-        <h2>What ships with sui-pilot</h2>
-        <p class="section-lede">
-          Everything Claude needs for Sui/Move development, bundled as a single Claude Code plugin.
-        </p>
-
-        <h3 style="margin-top: 32px; margin-bottom: 8px; font-size: 18px;">Bundled documentation</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
-          Six corpora synced from the official MystenLabs repos. Local, searchable, always current.
-        </p>
-        <div class="corpus-grid">
-          <div class="corpus-item"><strong>Sui</strong> <span>374 files &mdash; blockchain, objects, transactions, DeFi</span></div>
-          <div class="corpus-item"><strong>Move Book</strong> <span>143 files &mdash; language tutorial, syntax, types, abilities</span></div>
-          <div class="corpus-item"><strong>TS SDK</strong> <span>121 files &mdash; TypeScript SDK, dapp-kit, React hooks</span></div>
-          <div class="corpus-item"><strong>Walrus</strong> <span>93 files &mdash; blob storage, Walrus Sites, HTTP API</span></div>
-          <div class="corpus-item"><strong>Sui Prover</strong> <span>20 files &mdash; formal verification, specs, Boogie</span></div>
-          <div class="corpus-item"><strong>Seal</strong> <span>15 files &mdash; secrets, encryption, key servers</span></div>
-        </div>
-
-        <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">MCP tools</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 8px 0;">
-          Two MCP servers bridge external tooling into Claude Code.
-        </p>
-        <table class="tools-table">
-          <thead><tr><th>Server</th><th>Tools</th><th>What it wraps</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><strong>move-lsp</strong></td>
-              <td><code>move_diagnostics</code>, <code>move_hover</code>, <code>move_completions</code>, <code>move_goto_definition</code>, <code>move_find_references</code>, <code>move_document_symbols</code>, <code>move_type_definition</code>, <code>move_code_actions</code>, <code>move_inlay_hints</code>, <code>move_rename</code></td>
-              <td>move-analyzer LSP</td>
-            </tr>
-            <tr>
-              <td><strong>sui-prover</strong></td>
-              <td><code>prove_package</code>, <code>list_specs</code>, <code>prover_capabilities</code></td>
-              <td>sui-prover binary</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">Slash commands</h3>
-        <table class="tools-table">
-          <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
-          <tbody>
-            <tr><td><code>/sui-pilot</code></td><td>Doc-first entry point &mdash; routes to the specialized agent</td></tr>
-            <tr><td><code>/move-code-quality</code></td><td>Move 2024 Edition compliance (40+ rules from the Move Book checklist)</td></tr>
-            <tr><td><code>/move-code-review</code></td><td>Security and architecture review (40 checks across 6 categories)</td></tr>
-            <tr><td><code>/oz-math</code></td><td>OpenZeppelin math library recommendations for DeFi arithmetic</td></tr>
-            <tr><td><code>/specify</code></td><td>Author <code>#[spec(prove)]</code> formal specs and verify via sui-prover</td></tr>
-            <tr><td><code>/verify</code></td><td>Re-verify that authored specs still hold against current code</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="start">
-      <div class="wrap">
-        <h2>Quick start</h2>
-        <p class="section-lede">
-          sui-pilot is a Claude Code plugin. Install it from the marketplace and start asking Sui/Move questions.
-        </p>
-
-        <div class="step">
-          <div class="n">1</div>
-          <div>
-            <h3>Install the plugin</h3>
-            <p>From any Claude Code session:</p>
-            <pre><code>/plugin marketplace add contract-hero/plugin-marketplace
-/plugin install sui-pilot@contract-hero</code></pre>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="n">2</div>
-          <div>
-            <h3>Install the Sui toolchain</h3>
-            <p>The Move LSP requires <code>move-analyzer</code>; formal verification requires <code>sui-prover</code>.</p>
-            <pre><code>curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
-suiup install sui
-suiup install move-analyzer</code></pre>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="n">3</div>
-          <div>
-            <h3>Restart Claude Code</h3>
-            <p>MCP servers launch at session start. Close and reopen Claude Code to activate the plugin.</p>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="n">4</div>
-          <div>
-            <h3>Try it</h3>
-            <p>Ask a question, run a skill, or get diagnostics:</p>
-            <pre><code>What are shared objects in Sui and when should I use them?
-/move-code-quality
-/move-code-review</code></pre>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="research">
-      <div class="wrap">
-        <h2>How we built this</h2>
-        <p class="section-lede">
-          sui-pilot's architecture was shaped by empirical evaluation. These artifacts document
-          the methodology and findings.
-        </p>
-        <div class="research-links">
-          <a class="research-link" href="EVAL_FRAMEWORK.html">
-            <h3>Eval methodology</h3>
-            <p>The 27-task A/B eval that shaped v2: scoring rubric, baselines, and the framing axis.</p>
-          </a>
-          <a class="research-link" href="POINT_VS_INDEX.html">
-            <h3>Pointing vs. mapping</h3>
-            <p>Should the docs be pointed at on demand or always-loaded as a concept map?</p>
-          </a>
-          <a class="research-link" href="SUI_PILOT_TOUR.html">
-            <h3>Context-window lab</h3>
-            <p>Interactive walkthrough of what enters Claude's context during a real Sui workflow.</p>
-          </a>
-          <a class="research-link" href="formal-verification.html">
-            <h3>Formal verification</h3>
-            <p>The /specify + /verify investigation: spec authoring, drift detection, and the invariant-driven deliverable redesign.</p>
-          </a>
-          <a class="research-link" href="docs-fetching-investigation.html">
-            <h3>Doc-fetching investigation</h3>
-            <p>Behavioral notes from a 2026-05-19 eval run on how the agent actually discovers and reads the bundled docs.</p>
-          </a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site">
-    <div class="wrap">
-      <div>sui-pilot &middot; open source</div>
-      <div>
-        <a href="https://github.com/contract-hero/sui-pilot">Source</a> &middot;
-        <a href="https://github.com/contract-hero/plugin-marketplace">Marketplace</a> &middot;
-        <a href="https://github.com/contract-hero/sui-pilot/blob/main/CHANGELOG.md">Changelog</a>
-      </div>
-    </div>
-  </footer>
+  <script src="assets/scrub-engine.js"></script>
+  <script>
+    mountScrollWorld(document.getElementById('world'), {
+      brand: { name: 'sui-pilot', href: '#top' },
+      cta: { label: 'Get started', href: 'https://github.com/contract-hero/sui-pilot' },
+      hint: 'scroll to dive in',
+      diveScroll: 1.35,
+      crossfade: 0.08,
+      connectors: [],           /* architecture A: the legs ARE the journey */
+      sections: [
+        {
+          id: 'hero', label: 'The Signal',
+          still: 'assets/stills/hero.webp',
+          clip: 'assets/vid/leg0.mp4',
+          accent: '#39ff6a',
+          scroll: 1.5, linger: 0.35,
+          eyebrow: 'A Claude Code plugin',
+          title: 'Follow the whale.',
+          body: 'sui-pilot turns Claude into a Sui/Move expert — grounded in current docs, not stale training data.',
+          tags: ['766 docs', 'Move LSP', 'Sui Prover'],
+        },
+        {
+          id: 'docs', label: 'The Docs Reef',
+          still: 'assets/stills/leg1.webp',
+          clip: 'assets/vid/leg1.mp4',
+          accent: '#7cff9b',
+          scroll: 1.45, linger: 0.4,
+          eyebrow: '766 files · 6 corpora',
+          title: 'Grounded in current docs.',
+          body: 'Sui, Move Book, TS SDK, Walrus, Seal and Sui Prover corpora — local, searchable, synced weekly from upstream MystenLabs repos.',
+          tags: ['Sui · 374', 'Move Book · 143', 'TS SDK · 121'],
+        },
+        {
+          id: 'lsp', label: 'The Grid',
+          still: 'assets/stills/leg2.webp',
+          clip: 'assets/vid/leg2.mp4',
+          accent: '#34d399',
+          scroll: 1.35, linger: 0.4,
+          eyebrow: 'Real-time diagnostics',
+          title: 'Code that checks itself.',
+          body: 'A Move LSP bridge gives Claude live diagnostics, hover types, references and completions while it writes your Move code.',
+          tags: ['move-analyzer', '10 LSP tools', 'MCP'],
+        },
+        {
+          id: 'prover', label: 'The Vault',
+          still: 'assets/stills/leg3.webp',
+          clip: 'assets/vid/leg3.mp4',
+          accent: '#a7f3d0',
+          scroll: 1.45, linger: 0.4,
+          eyebrow: 'Formal verification',
+          title: 'Proven, not promised.',
+          body: '/specify authors #[spec(prove)] specifications and the Sui Prover verifies them — /verify keeps the proofs honest as your code evolves.',
+          tags: ['sui-prover', '#[spec(prove)]', '/verify'],
+        },
+        {
+          id: 'plug', label: 'Plug In',
+          still: 'assets/stills/leg4.webp',
+          clip: 'assets/vid/leg4.mp4',
+          accent: '#39ff6a',
+          scroll: 1.8, linger: 0.5,
+          eyebrow: 'Free your code',
+          title: 'Plug in.',
+          body: 'Two commands in Claude Code, and every Sui/Move answer is doc-grounded, LSP-checked and provable.',
+          tags: ['/move-code-review', '/move-code-quality', '/oz-math'],
+          cta: {
+            primary:   { label: 'Get started on GitHub', href: 'https://github.com/contract-hero/sui-pilot' },
+            secondary: { label: 'Read the full story',   href: 'classic.html' },
+          },
+        },
+      ],
+    });
+  </script>
 </body>
 </html>

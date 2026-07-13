@@ -8,7 +8,7 @@
 
 sui-pilot bundles **766 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
 
-**[Read the full story](https://contract-hero.github.io/sui-pilot/)**
+**[Dive into the landing page](https://contract-hero.github.io/sui-pilot/)** · [read the full story](https://contract-hero.github.io/sui-pilot/classic.html)
 
 ---
 
