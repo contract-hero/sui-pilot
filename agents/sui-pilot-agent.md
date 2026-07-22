@@ -534,7 +534,7 @@ The DeFi toolkit: open-loop `Coin<T>`/`Balance<T>`, closed-loop tokens and PAS f
 permissioned assets, DeepBookV3 orderbook, and fixed-point math.
 
 ```
-ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/
+ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · 📖 docs: .sui-docs/onchain-finance.mdx
 ├── Coin<T>, Balance<T>, TreasuryCap<T> → standard open-loop currency (`key + store`: wrappable, freely transferable)
 │   📖 docs: .sui-docs/onchain-finance/fungible-tokens/index.mdx
 │   ⊃ Coin standards: legacy `coin::create_currency` ⇢ newer Currency Standard via `sui::coin_registry`
@@ -639,7 +639,7 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 ├── Walrus Sites — static-site hosting  📖 docs: .walrus-docs/sites/
 └── ⚠ ALL Walrus blobs are PUBLIC; blob IDs are NOT secrets — encrypt before upload
     📖 docs: .walrus-docs/data-security.mdx
-    ↔ Seal § (encrypt-before-upload; envelope pattern 📖 docs: .seal-docs/ExamplePatterns.mdx)
+    ↔ Seal § (encrypt-before-upload; envelope pattern 📖 docs: .seal-docs/UsingSeal.mdx (§ envelope encryption) · 📖 docs: .seal-docs/SecurityBestPractices.mdx)
 ```
 
 ---
@@ -842,7 +842,7 @@ TOOLING
 │   exchange integration              📖 docs: .sui-docs/operators/ · 📖 docs: .sui-docs/operators.mdx
 ├── References — API specs, framework docs, glossary, PTB commands, research papers,
 │   Rust SDK, contributing            📖 docs: .sui-docs/references/ · 📖 docs: .sui-docs/references.mdx
-├── Section landing stubs             📖 docs: .sui-docs/develop.mdx · 📖 docs: .sui-docs/onchain-finance.mdx
+├── Section landing stubs             📖 docs: .sui-docs/develop.mdx
 └── sui-pilot plugin                  → this package; bundles all of the above
     ⤳ skill: move-code-review (security + architecture review)
 ```

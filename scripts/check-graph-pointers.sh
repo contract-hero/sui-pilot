@@ -32,7 +32,13 @@ else
 fi
 
 # ── Phase 1: every pointer resolves ──────────────────────────────────────────
-ptrs=$(grep -oE '📖 docs: [^ ,)]+' "$FILE" | sed 's/📖 docs: //' | sort -u)
+# The regex also captures ", .path" continuations so comma-separated pointer
+# lists check every path, not just the first; tr splits them back apart.
+ptrs=$(grep -oE '📖 docs: [^ ,)]+(, \.[^ ,)]+)*' "$FILE" | sed 's/📖 docs: //' | tr ',' '\n' | sed 's/^ *//' | sort -u || true)
+if [ -z "$ptrs" ]; then
+  echo "FAIL no '📖 docs:' pointers found in $FILE"
+  exit 1
+fi
 dir_ptrs=()
 file_ptrs=()
 while IFS= read -r p; do
@@ -49,6 +55,11 @@ while IFS= read -r p; do
 done <<< "$ptrs"
 
 # ── Phase 2: every corpus doc is covered ─────────────────────────────────────
+# Fail closed if a corpus root is missing — otherwise find silently scans
+# nothing and coverage passes vacuously.
+for c in "${CORPORA[@]}"; do
+  [ -d "$c" ] || { echo "FAIL corpus dir missing: $c"; exit 1; }
+done
 # Empty-array expansions use the ${arr[@]+...} guard: macOS's default bash 3.2
 # treats "${arr[@]}" of an empty array as unbound under `set -u`.
 # Build the coverage prefix list: directory pointers minus bare corpus roots.
@@ -61,8 +72,10 @@ for d in ${dir_ptrs[@]+"${dir_ptrs[@]}"}; do
   $root_hit || cover_dirs+=("$d")
 done
 
+# NUL-delimited so a crafted path containing a newline can't split into
+# fragments that each dodge the coverage check.
 uncovered=0
-while IFS= read -r f; do
+while IFS= read -r -d '' f; do
   case "$f" in
     */snippets/*|*/legal/*|*/_*|*/404.md|*/TermsOfService.md) continue ;;
   esac
@@ -80,7 +93,7 @@ while IFS= read -r f; do
     uncovered=$((uncovered + 1))
     fail=1
   fi
-done < <(find "${CORPORA[@]}" -type f \( -name '*.mdx' -o -name '*.md' -o -name '*.move' \) | sort)
+done < <(find "${CORPORA[@]}" -type f \( -name '*.mdx' -o -name '*.md' -o -name '*.move' \) -print0 | sort -z)
 
 if [ "$uncovered" -gt 0 ]; then
   echo "FAIL $uncovered corpus docs are not on the graph (iron rule: all docs on the graph)"
