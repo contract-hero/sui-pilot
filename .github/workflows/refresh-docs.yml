@@ -30,9 +30,10 @@ jobs:
         run: ./sync-docs.sh
 
       - name: Check knowledge-graph doc pointers survive refresh
-        # Soft-warn here so a broken pointer does not suppress the whole refresh
-        # PR (which is what surfaces the drift). The PR's own CI run of this same
-        # script (ci.yml, pull_request) hard-fails and blocks the merge.
+        # Soft-warn only: a refresh legitimately renames upstream paths, so the
+        # graph is expected to lag until it's rebuilt. This surfaces the drift
+        # in the run log without blocking anything (the old hard-fail in ci.yml
+        # kept turning main red on every merged refresh PR and was removed).
         continue-on-error: true
         run: ./scripts/check-graph-pointers.sh
 
