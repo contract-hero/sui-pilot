@@ -49,9 +49,11 @@ while IFS= read -r p; do
 done <<< "$ptrs"
 
 # ── Phase 2: every corpus doc is covered ─────────────────────────────────────
+# Empty-array expansions use the ${arr[@]+...} guard: macOS's default bash 3.2
+# treats "${arr[@]}" of an empty array as unbound under `set -u`.
 # Build the coverage prefix list: directory pointers minus bare corpus roots.
 cover_dirs=()
-for d in "${dir_ptrs[@]}"; do
+for d in ${dir_ptrs[@]+"${dir_ptrs[@]}"}; do
   root_hit=false
   for c in "${CORPORA[@]}"; do
     [ "$d" = "$c/" ] && root_hit=true
@@ -65,11 +67,11 @@ while IFS= read -r f; do
     */snippets/*|*/legal/*|*/_*|*/404.md|*/TermsOfService.md) continue ;;
   esac
   covered=false
-  for p in "${file_ptrs[@]}"; do
+  for p in ${file_ptrs[@]+"${file_ptrs[@]}"}; do
     [ "$f" = "$p" ] && { covered=true; break; }
   done
   if ! $covered; then
-    for d in "${cover_dirs[@]}"; do
+    for d in ${cover_dirs[@]+"${cover_dirs[@]}"}; do
       [[ "$f" == "$d"* ]] && { covered=true; break; }
     done
   fi
