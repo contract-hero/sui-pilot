@@ -198,6 +198,23 @@ sync_repo       "MystenLabs"      "sui"        "docs/content"             ".sui-
 sync_repo       "MystenLabs"      "walrus"     "docs/content"             ".walrus-docs"            "Walrus"
 sync_repo       "MystenLabs"      "seal"       "docs/content"             ".seal-docs"              "Seal"
 sync_repo       "MystenLabs"      "ts-sdks"    "packages/docs/content"    ".ts-sdk-docs"            "TS SDK"
+
+# Hashi (@mysten/hashi — Bitcoin collateralization SDK) ships in
+# packages/hashi but has no pages under packages/docs/content yet, so the
+# TS SDK sync above misses it. Pull its README as the corpus entry until
+# upstream adds real docs pages. Runs after the TS SDK sync because that
+# step replaces .ts-sdk-docs/ wholesale.
+if $DRY_RUN; then
+    echo "[TS SDK] DRY RUN — would add .ts-sdk-docs/hashi/README.md"
+else
+    mkdir -p .ts-sdk-docs/hashi
+    gh api -H "Accept: application/vnd.github.raw+json" \
+        "repos/MystenLabs/ts-sdks/contents/packages/hashi/README.md" \
+        > "$TMPDIR_BASE/hashi-readme.md"
+    [ -s "$TMPDIR_BASE/hashi-readme.md" ] || { echo "[TS SDK] ERROR: fetched hashi README is empty" >&2; exit 1; }
+    mv "$TMPDIR_BASE/hashi-readme.md" .ts-sdk-docs/hashi/README.md
+    echo "[TS SDK] Added hashi README -> .ts-sdk-docs/hashi/README.md"
+fi
 sync_repo_multi "MystenLabs"      "move-book"  "book,reference,packages"  ".move-book-docs"         "Move Book"
 sync_repo       "asymptotic-code" "sui-prover" ".claude/skills/sui-prover" ".sui-prover-docs/guide"   "Sui Prover Guide"
 sync_repo       "asymptotic-code" "sui-prover" "packages/prover/sources"   ".sui-prover-docs/sources" "Sui Prover Sources"
@@ -232,6 +249,7 @@ if ! $DRY_RUN; then
     "seal": "MystenLabs/seal@main",
     "ts-sdks": "MystenLabs/ts-sdks@main",
     "move-book": "MystenLabs/move-book@main",
+    "ts-sdks-hashi": "MystenLabs/ts-sdks@main:packages/hashi/README.md",
     "sui-prover-guide": "asymptotic-code/sui-prover@main:.claude/skills/sui-prover",
     "sui-prover-sources": "asymptotic-code/sui-prover@main:packages/prover/sources",
     "sui-prover-examples": "asymptotic-code/sui-kit@main:examples"

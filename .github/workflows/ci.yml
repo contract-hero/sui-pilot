@@ -18,6 +18,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Check knowledge-graph doc pointers
+        # pull_request only, and not the weekly refresh PR: a refresh
+        # legitimately renames upstream paths, so its graph lags until
+        # rebuilt (soft-warned in refresh-docs.yml). Skipping the push
+        # trigger keeps main green after a refresh PR merges.
+        if: github.event_name == 'pull_request' && github.head_ref != 'chore/refresh-docs'
         run: ./scripts/check-graph-pointers.sh
 
       - name: Setup Node.js
