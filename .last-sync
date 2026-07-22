@@ -1,5 +1,5 @@
 {
-  "syncTimestamp": "2026-07-13T09:37:55Z",
+  "syncTimestamp": "2026-07-20T09:25:41Z",
   "sources": {
     "sui": "MystenLabs/sui@main",
     "walrus": "MystenLabs/walrus@main",
@@ -11,7 +11,7 @@
     "sui-prover-examples": "asymptotic-code/sui-kit@main:examples"
   },
   "fileCounts": {
-    "sui": 375,
+    "sui": 376,
     "walrus": 93,
     "seal": 15,
     "ts-sdks": 121,
