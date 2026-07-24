@@ -22,7 +22,7 @@
                           // (exactly where the copy peaks) and moves quicker at the
                           // edges. 0 = linear (default). Keep ≤ 0.6; 1 = full pause.
            eyebrow, title, body, tags:[…],
-           code: ['$ cmd one', '$ cmd two'],  // optional terminal-style block after body
+           code: ['$ cmd one', '$ cmd two'],  // optional terminal-style block between body and tags; one escaped line per string
            cta:{ primary:{label,href}, secondary:{label,href} } }, // last section only
          …
        ],
@@ -387,7 +387,7 @@ function injectCSS() {
   .sw-copy__eyebrow{display:block;margin-top:18px;font-family:var(--sw-font-display);font-weight:700;font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;color:var(--sw-accent);}
   .sw-copy__title{font-family:var(--sw-font-display);font-weight:700;color:var(--sw-ink);font-size:clamp(2rem,4.4vw,3.5rem);line-height:1.03;margin:12px 0 0;letter-spacing:-.01em;text-shadow:0 2px 20px color-mix(in srgb,var(--sw-bg) 70%,transparent);}
   .sw-copy__body{margin-top:18px;font-size:clamp(1rem,1.25vw,1.14rem);line-height:1.55;color:color-mix(in srgb,var(--sw-ink) 78%,var(--sw-ink-soft));max-width:40ch;text-shadow:0 1px 12px color-mix(in srgb,var(--sw-bg) 90%,transparent);}
-  .sw-copy__code{margin:20px 0 0;padding:14px 18px;border-radius:12px;font-family:ui-monospace,Menlo,monospace;font-size:.86rem;line-height:1.7;color:var(--sw-ink);background:color-mix(in srgb,var(--sw-ink) 7%,var(--sw-bg));border:1px solid color-mix(in srgb,var(--sw-accent) 30%,transparent);overflow-x:auto;user-select:all;pointer-events:auto;}
+  .sw-copy__code{margin:20px 0 0;padding:14px 18px;border-radius:12px;font-family:ui-monospace,Menlo,monospace;font-size:.86rem;line-height:1.7;color:var(--sw-ink);background:color-mix(in srgb,var(--sw-ink) 7%,var(--sw-bg));border:1px solid color-mix(in srgb,var(--sw-accent) 30%,transparent);overflow-x:auto;-webkit-user-select:all;user-select:all;}
   .sw-copy__tags{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 0;padding:0;}
   .sw-copy__tags li{font-size:.82rem;font-weight:600;color:color-mix(in srgb,var(--sw-accent) 70%,#000);padding:7px 14px;border-radius:999px;background:color-mix(in srgb,var(--sw-accent) 14%,#fff);border:1px solid color-mix(in srgb,var(--sw-accent) 30%,transparent);}
   .sw-copy__cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px;pointer-events:auto;}
