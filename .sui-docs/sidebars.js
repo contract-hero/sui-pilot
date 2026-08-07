@@ -102,6 +102,7 @@ export default {
         items: [
             'develop/manage-packages/move-package-management',
             'develop/manage-packages/automated-address-management',
+            'develop/manage-packages/source-verification',
         ]
       },      
       {
@@ -129,6 +130,7 @@ export default {
             'develop/transactions/ptbs/building-ptb',
             'develop/transactions/ptbs/inputs-and-results',
             'develop/transactions/ptbs/ts-sdk-ptb-template',
+            'develop/transactions/ptbs/ptb-cookbook',
           ],
         },
         {
@@ -183,6 +185,7 @@ export default {
           items: [
             'develop/accessing-data/graphql/graphql-rpc',
             'develop/accessing-data/graphql/query-with-graphql',
+            'develop/accessing-data/graphql/graphql-migration-cookbook',
           ],
         },
         {
@@ -289,6 +292,8 @@ export default {
             'getting-started/examples/lootbox-ctf',
             'getting-started/examples/merchant-ctf',
             'getting-started/examples/staking-ctf',
+            'getting-started/examples/consumer-app-zklogin',
+            'getting-started/examples/defi-trading-zklogin',
           ],
         },
         'getting-started/examples/event-indexer',
@@ -331,6 +336,7 @@ export default {
               'onchain-finance/asset-custody/wallets/suilink',
             ],
           },
+          'onchain-finance/asset-custody/address-aliases',
         ],
       },
       {
@@ -370,6 +376,17 @@ export default {
           'onchain-finance/tokenized-assets/create-nft',
         ],
       },
+    {
+      type: 'category',
+      label: 'Payments',
+      link: { type: 'doc', id: 'onchain-finance/payments' },
+      items: [
+        'onchain-finance/choose-payments-model',
+        'onchain-finance/payment-kit',
+        'onchain-finance/payment-intents',
+        'onchain-finance/funding-wallets',
+      ],
+    },
       {
         type: 'category',
         label: 'Example Asset Patterns',
@@ -379,6 +396,7 @@ export default {
           'onchain-finance/examples-patterns/loyalty-tokens',
           'onchain-finance/examples-patterns/in-game-currency',
           'onchain-finance/examples-patterns/soulbound-tokens',
+          'onchain-finance/examples-patterns/staking-rewards',
           'onchain-finance/examples-patterns/nft-rental',
           'onchain-finance/examples-patterns/kiosk',
           'onchain-finance/examples-patterns/wasm-template',
@@ -412,6 +430,8 @@ export default {
       link: { type: 'doc', id: 'onchain-finance/deepbook/index' },
       items: [
         'onchain-finance/deepbook/deepbookv3/design',
+        'onchain-finance/deepbook/deepbookv3/fees-and-funding',
+        'onchain-finance/deepbook/deepbookv3/spot-workflow',
         {
           type: 'category',
           label: 'DeepBookV3',
@@ -444,6 +464,8 @@ export default {
                 'onchain-finance/deepbook/deepbookv3-sdk/flash-loans',
                 'onchain-finance/deepbook/deepbookv3-sdk/swaps',
                 'onchain-finance/deepbook/deepbookv3-sdk/staking-governance',
+                'onchain-finance/deepbook/deepbookv3-sdk/ptb-cli-cookbook',
+                'onchain-finance/deepbook/deepbookv3-sdk/composing-transactions',
               ],
             },
           ],
@@ -455,6 +477,8 @@ export default {
           items: [
             'onchain-finance/deepbook/deepbook-margin/design',
             'onchain-finance/deepbook/deepbook-margin/margin-risks',
+            'onchain-finance/deepbook/deepbook-margin/leveraged-workflow',
+            'onchain-finance/deepbook/deepbook-margin/margin-integration',
             {
               type: 'category',
               label: 'Contract Information',
@@ -489,6 +513,7 @@ export default {
           label: 'Predict',
           link: { type: 'doc', id: 'onchain-finance/deepbook/deepbook-predict/deepbook-predict' },
           items: [
+            'onchain-finance/deepbook/deepbook-predict/tutorial',
             'onchain-finance/deepbook/deepbook-predict/design',
             {
               type: 'category',
@@ -517,6 +542,17 @@ export default {
     },
     {
       type: 'category',
+      label: 'Oracles',
+      link: { type: 'doc', id: 'onchain-finance/oracles/index' },
+      items: [
+        'onchain-finance/oracles/consuming-price-feeds',
+        'onchain-finance/oracles/move-adapter',
+        'onchain-finance/oracles/oracle-safety',
+        'onchain-finance/oracles/resolution-patterns',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Kiosk',
       link: { type: 'doc', id: 'onchain-finance/kiosk/index' },
       items: [
@@ -524,8 +560,6 @@ export default {
         'onchain-finance/kiosk/kiosk-apps',
       ],
     },
-    'onchain-finance/payment-kit',
-	'onchain-finance/payment-intents',
   ],
 
 suiStackSidebar: [
@@ -633,12 +667,34 @@ suiStackSidebar: [
       label: 'SuiNS',
       link: { type: 'doc', id: 'sui-stack/suins/index' },
       items: [
+        'sui-stack/suins/user',
+        'sui-stack/suins/communities',
+        'sui-stack/suins/developer',
         {
-          type: 'link',
-          label: 'SuiNS Docs',
-          href: 'https://docs.suins.io',
+          type: 'category',
+          label: 'SDK',
+          link: { type: 'doc', id: 'sui-stack/suins/developer/sdk' },
+          items: [
+            'sui-stack/suins/developer/sdk/querying',
+            'sui-stack/suins/developer/sdk/transactions',
+            'sui-stack/suins/developer/sdk/subnames',
+          ],
         },
+        'sui-stack/suins/node-operator',
+        'sui-stack/suins/dao',
         'sui-stack/suins/sui-stack-suins',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Move Registry (MVR)',
+      link: { type: 'doc', id: 'sui-stack/mvr/move-registry' },
+      items: [
+        'sui-stack/mvr/mvr-names',
+        'sui-stack/mvr/managing-package-info',
+        'sui-stack/mvr/maintainer-practices',
+        'sui-stack/mvr/tooling/mvr-cli',
+        'sui-stack/mvr/tooling/typescript-sdk',
       ],
     },
     {
@@ -694,9 +750,10 @@ suiStackSidebar: [
       label: 'zkLogin',
       link: { type: 'doc', id: 'sui-stack/zklogin-integration/index' },
       items: [
-        'sui-stack/zklogin-integration/zklogin',
+        'sui-stack/zklogin-integration/integration-guide',
         'sui-stack/zklogin-integration/developer-account',
         'sui-stack/zklogin-integration/zklogin-demo',
+        'sui-stack/zklogin-integration/zklogin',
       ],
     },
     {

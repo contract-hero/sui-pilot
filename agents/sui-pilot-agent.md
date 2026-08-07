@@ -318,6 +318,8 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │
 ├── Display — off-chain rendering templates per type; Publisher-gated (§ Authorization § Publisher)
 │   📖 docs: .sui-docs/develop/objects/display/
+│   → Display V2 is the CURRENT standard: registry-backed, one deterministic `Display<T>` per type
+│     via `sui::display_registry`; V1 event-discovery is legacy (`migrate_v1_to_v2`)
 ├── Events                            📖 docs: .move-book-docs/book/programmability/events.md
 │   → sui::event::emit<T: copy + drop>(event); verifier requires T internal to the emitting module
 │   → stored in transaction effects, not on-chain state; sender + timestamp come free in metadata
@@ -427,7 +429,9 @@ TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/
 │   ├── ≤ 1,024 commands per PTB; atomic (one failure reverts all); no loops
 │   ├── moveCall targets any `public` fn or any `entry` fn (incl. private / `public(package)` entry)
 │   │   ↔ Authorization § Hot potato — non-public `entry` args must not be in a "hot" clique
-│   └── ⊃ siblings: inputs-and-results.mdx, building-ptb.mdx
+│   ├── ⊃ siblings: inputs-and-results.mdx, building-ptb.mdx
+│   └── PTB cookbook — TS examples: sponsored txns, kiosk borrow/return, coin selection,
+│       multi-recipient transfers  📖 docs: .sui-docs/develop/transactions/ptbs/ptb-cookbook.mdx
 ├── Lifecycle                         📖 docs: .sui-docs/develop/transactions/transaction-lifecycle.mdx
 │   → sign → full-node *Transaction Driver* submits to a validator → Mysticeti consensus sequencing
 │     → parallel execution (non-conflicting inputs) → effects → settlement finality (~400–700 ms) → checkpoints
@@ -513,7 +517,7 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │
 ├── Time                              📖 docs: .sui-docs/sui-stack/on-chain-primitives/access-time.mdx
 │   → sui::clock::Clock — shared singleton at 0x6; accept `&Clock` ONLY (entry fns taking
-│     `&mut Clock`/value fail to publish); timestamp_ms updates per checkpoint (~1/4 s); consensus-only
+│     `&mut Clock`/value fail to publish); timestamp_ms advances per CONSENSUS COMMIT (~1/4 s); consensus-only
 │   → tx_context::epoch_timestamp_ms() — epoch-start time, fastpath-compatible, ~24h granularity
 │     📖 docs: .move-book-docs/book/programmability/epoch-and-time.md
 │   ⤳ skill: move-code-review (⚠ timestamps are NOT randomness — see Randomness above)
@@ -541,8 +545,14 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │     (new_currency / new_currency_with_otw, MetadataCap, supply states)
 │     📖 docs: .sui-docs/onchain-finance/fungible-tokens/currency.mdx
 ├── Address balances (SIP-58)         📖 docs: .sui-docs/onchain-finance/asset-custody/address-balances/index.mdx
-│   → canonical per-address balance per currency T; coexists with Coin<T> (total = coins + address balance);
-│     TS SDK coinWithBalance/tx.coin() draw from it first; tx.setGasPayment([]) pays gas from it
+│   → protocol-maintained ACCUMULATOR value per (address, coin type) — not an object you own;
+│     deposits merge automatically, withdrawals split, so tx construction is stateless (no coin selection)
+│   → coexists with Coin<T>: total = sum of Coin<T> objects + address balance;
+│     TS SDK coinWithBalance/tx.coin() draw from both sources automatically; tx.setGasPayment([]) pays gas from it
+│   ⚠ Move functions still take `Coin<T>` — withdraw to a Coin first before calling DeFi code
+├── Address aliases                   📖 docs: .sui-docs/onchain-finance/asset-custody/address-aliases.mdx
+│   → several keys act as one Sui address: key rotation + account abstraction with NO asset migration
+│   ↔ § Transactions § Transaction auth (📖 docs: .sui-docs/develop/transactions/transaction-auth/address-aliases.mdx)
 ├── Closed-loop tokens                📖 docs: .sui-docs/onchain-finance/closed-loop-token/index.mdx
 │   → `Token<T>` is `key`-only (no store): can't be wrapped, DOF-stored, or freely transferred
 │   ⊃ TokenPolicy + Rules → per-action programmable restrictions
@@ -555,16 +565,55 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │   ⇢ alternative to: Closed-loop tokens — for regulated assets needing issuer oversight
 ├── DeepBookV3                        📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/design.mdx
 │   → onchain CLOB; shared `Pool` (Book/State/Vault) + `PoolRegistry` + reusable `BalanceManager`
+│   → Move dep `deepbook = { mvr = "@deepbook/core" }`; ALL `Pool` trading endpoints are `public`
+│     (not `entry`), so you call them directly — no wrapper module needed
+│   ⇢ swap endpoints take and return coins, so routers/aggregators skip `BalanceManager` entirely
 │   ⊃ Pool types: volatile / stable / whitelisted (0-fee); fees payable in DEEP (20% cheaper than input token)
 │   ⊃ Flash loans → `FlashLoan` hot potato, repaid within the same PTB
 │     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/contract-information/flash-loans.mdx
+│   ⊃ Spot walkthrough (Testnet): BalanceManager → deposit → limit order → fills → cancel → withdraw
+│     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/spot-workflow.mdx
+│   ⊃ Fees & funding — DEEP vs input-token fees, floating DEEP price, maker/taker/staking fees
+│     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/fees-and-funding.mdx
+│   ⊃ SDK/PTB recipes — fund+order, flash-loan borrow/repay, lend+trade+stake in one PTB
+│     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3-sdk/composing-transactions.mdx ·
+│     `sui client ptb` CLI templates + TS equivalents 📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3-sdk/ptb-cli-cookbook.mdx
 │   ⊃ Margin — leveraged positions, onchain liquidation  📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-margin/deepbook-margin.mdx
+│     ⊃ MarginManager/MarginPool/MarginRegistry, isolated per-asset pools, pool-proxy trading path,
+│       permissionless liquidation, events to index
+│       📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-margin/margin-integration.mdx ·
+│       📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-margin/leveraged-workflow.mdx
 │   ⊃ Predict — prediction markets, oracle-driven pricing  📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-predict/deepbook-predict.mdx
-├── Payments                          📖 docs: .sui-docs/onchain-finance/payment-kit.mdx
+│     ⊃ Testnet workflow: PredictManager, binary + vertical-range positions, redemption/settlement, LP vault
+│       📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-predict/tutorial.mdx
+├── Oracles                           📖 docs: .sui-docs/onchain-finance/oracles/
+│   → price data lives in SHARED objects; you update and read the feed in the SAME transaction
+│   ⊃ Pyth — pull model: fetch a signed update from Hermes, apply it to a PriceInfoObject,
+│     read it with a built-in staleness gate
+│   ⊃ Switchboard ⇢ Pyth — on-demand: pull a fresh response into your tx, read an
+│     Aggregator, check freshness yourself
+│     📖 docs: .sui-docs/onchain-finance/oracles/consuming-price-feeds.mdx
+│   ⊃ Move adapter pattern — one internal price interface, staleness/confidence/deviation guards,
+│     non-aborting fallback  📖 docs: .sui-docs/onchain-finance/oracles/move-adapter.mdx
+│   ⊃ Resolution patterns — price-based settlement for parametric outcomes; optimistic dispute for
+│     subjective ones (illustrative interface, no canonical Sui protocol)
+│     📖 docs: .sui-docs/onchain-finance/oracles/resolution-patterns.mdx
+│   ⚠ a stale or wrong price drains a lending pool or liquidates a healthy position; liquidation,
+│     collateral valuation, and expiry settlement each need extra guards
+│     📖 docs: .sui-docs/onchain-finance/oracles/oracle-safety.mdx
+├── Payments                          📖 docs: .sui-docs/onchain-finance/payments.mdx
+│   ⊃ Choose a payment model — axes: basic transfer vs Payment Kit · address balances vs coin objects
+│     → § Transactions § Gas model (user-pays / gasless stablecoin / sponsored)
+│     📖 docs: .sui-docs/onchain-finance/choose-payments-model.mdx
 │   ⊃ Payment Kit — receipts, registries, duplicate prevention, payment URIs
+│     📖 docs: .sui-docs/onchain-finance/payment-kit.mdx
 │     ↔ TS SDK § payment-kit (📖 docs: .ts-sdk-docs/payment-kit/index.mdx)
 │   ⊃ Payment intents — heterogeneous payment ops batched in one atomic PTB
 │     → § Transactions § PTB structure   📖 docs: .sui-docs/onchain-finance/payment-intents.mdx
+├── Funding wallets — exchanges, bridges, faucets  📖 docs: .sui-docs/onchain-finance/funding-wallets.mdx
+├── Example patterns — fixed supply, in-game currency, loyalty tokens, soulbound, NFT rental,
+│   kiosk, WASM template, staking rewards (reward-per-token accumulator, O(1) gas regardless of
+│   staker count)  📖 docs: .sui-docs/onchain-finance/examples-patterns/
 ├── Fixed-point math                  → std::fixed_point32; per-type integer modules
 │   std::u8–u256 (max, diff, divide_and_round_up, sqrt, pow)
 │   📖 docs: .move-book-docs/book/move-basics/standard-library.md
@@ -617,6 +666,12 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 │   ⊃ `Blob` / `Storage` structs are `key, store` Sui Move objects (↔ Sui § Sui object model)
 │   │  Move usage example  📖 docs: .walrus-docs/examples/move.mdx · all examples 📖 docs: .walrus-docs/examples/
 │   ⊃ deletable vs permanent — `deletable: bool` fixed at registration
+├── RedStuff encoding — erasure coding on RaptorQ fountain codes; primary/secondary slivers
+│   📖 docs: .walrus-docs/system-overview/red-stuff.mdx
+│   ⊃ properties & parameters: blob size limits, sliver-pair-to-shard mapping, sliver authentication,
+│     metadata overhead  📖 docs: .walrus-docs/system-overview/red-stuff-parameters.mdx
+│   ⊃ worked examples: encode 📖 docs: .walrus-docs/system-overview/red-stuff-details.mdx ·
+│     recovery after shard failure 📖 docs: .walrus-docs/system-overview/red-stuff-recovery.mdx
 ├── Quilt — batch ≤666 small blobs into one blob to amortize per-blob overhead
 │   📖 docs: .walrus-docs/system-overview/quilt.mdx
 │   ⚠ QuiltPatchId depends on whole-quilt composition (NOT content-derived);
@@ -631,10 +686,12 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 │   📖 docs: .walrus-docs/http-api/
 ├── TS SDK — `@mysten/walrus` via client.$extend(walrus()); WalrusFile API
 │   📖 docs: .ts-sdk-docs/walrus/index.mdx · 📖 docs: .walrus-docs/typescript-sdk/sdks.mdx
-│   ↔ TS SDK § Core API / client extensions
+│   ↔ TS SDK § Clients / client extensions
 ├── Large uploads (>10 MiB strategies) 📖 docs: .walrus-docs/large-uploads.mdx
 ├── Troubleshooting                   📖 docs: .walrus-docs/troubleshooting/
-├── Reference — glossary 📖 docs: .walrus-docs/glossary.mdx · release notes 📖 docs: .walrus-docs/release-notes.mdx ·
+├── Reference — glossary 📖 docs: .walrus-docs/glossary.mdx ·
+│   release notes: the per-product pages (platform / Sites / Memory+MCP+SDKs) hold the content —
+│   📖 docs: .walrus-docs/release-notes/ ; 📖 docs: .walrus-docs/release-notes.mdx is only an index ·
 │   Tusky migration 📖 docs: .walrus-docs/tusky-migration-guide.mdx
 ├── Walrus Sites — static-site hosting  📖 docs: .walrus-docs/sites/
 └── ⚠ ALL Walrus blobs are PUBLIC; blob IDs are NOT secrets — encrypt before upload
@@ -672,6 +729,10 @@ SEAL                                  📖 docs: .seal-docs/index.mdx → .seal-
 │   AES-256-GCM default, HMAC-CTR only for onchain decryption (seal::bf_hmac_encryption)
 │   📖 docs: .seal-docs/Design.mdx (§ Cryptographic primitives)
 └── Security best practices           📖 docs: .seal-docs/SecurityBestPractices.mdx
+   ⚠ a FETCHED key is permanent for its id — the key server derives one fixed key per id, and it
+     opens everything ever encrypted to that id, including content that does not exist yet. Onchain
+     revocation stops future key REQUESTS only; scope key ids (e.g. a revocation counter in the id)
+     when past holders must not read future content.
    ↔ Walrus § blobs — encrypt BEFORE upload; envelope encryption for large/immutable blobs
      (Seal wraps the symmetric key; rotate policies without re-encrypting the blob)
    ↔ Cryptography & primitives § Threshold/aggregation
@@ -689,18 +750,30 @@ REMOVED, `core.getObject` THROWS on missing objects (v1 returned `null`).
 TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/index.mdx · 📖 docs: .ts-sdk-docs/sui/index.mdx
 ├── Migration guides (all majors + per-package 2.0 guides)  📖 docs: .ts-sdk-docs/sui/migrations/
 ├── Clients (3 transports)            📖 docs: .ts-sdk-docs/sui/clients/index.mdx · 📖 docs: .ts-sdk-docs/sui/clients/
-│   ├── SuiGrpcClient (`@mysten/sui/grpc`) — recommended default
-│   ├── SuiGraphQLClient — advanced query patterns full nodes can't serve directly
-│   ├── SuiJsonRpcClient — deprecated, decommission pending; migrate to gRPC
+│   ├── SuiGrpcClient (`@mysten/sui/grpc`) — recommended default; most complete top-level surface
+│   ├── SuiGraphQLClient — indexed queries, historical data, custom GraphQL selection sets
+│   ├── SuiJsonRpcClient — deprecated; its top-level methods keep legacy JSON-RPC names/shapes
 │   └── 1.x SuiClient — REMOVED in 2.0 (not merely deprecated)
-│   ↔ § Accessing on-chain data (gRPC/GraphQL read paths, event queries)
-├── Core API — `client.core` / ClientWithCoreApi, transport-agnostic common ops
-│   📖 docs: .ts-sdk-docs/sui/clients/core.mdx
 │   ⊃ `$extend(...)` client extensions — walrus (↔ § Walrus storage), seal (↔ § Seal
 │     secrets), kiosk (↔ § Transfer policies), hashi, suins, deepbook-v3, zksend
+│   ↔ § Accessing on-chain data (gRPC/GraphQL read paths, event queries)
+├── Three API surfaces — pick by caller  📖 docs: .ts-sdk-docs/sui/clients/index.mdx
+│   📖 docs: .ts-sdk-docs/sui/clients/core.mdx
+│   ├── top-level methods = APP code: getObject/getObjects/listOwnedObjects/listCoins/getBalance/
+│   │   getTransaction/listTransactions/listEvents/simulateTransaction/signAndExecuteTransaction/
+│   │   waitForTransaction/getMoveFunction/mvr.resolvePackage (↔ Sui stack § MVR)
+│   ├── `client.core` = SDK/library code accepting `ClientWithCoreApi` (shared contract, all 3 transports)
+│   └── native API = transport escape hatch (grpc `ledgerService`/`stateService`, graphql `query()`)
+│   ⚠ old JSON-RPC method names are renamed: getCoins→listCoins, queryTransactionBlocks→
+│     listTransactions, queryEvents→listEvents, getTransactionBlock→getTransaction; `options`→`include`;
+│     listOwnedObjects takes a flat `type:`, not `filter: { StructType }`
+│     📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/json-rpc-migration.mdx
 ├── Transactions builder              📖 docs: .ts-sdk-docs/sui/transactions/
 │   ⊃ Serial/ParallelTransactionExecutor — queue/parallelize same-sender txns,
 │     cache gas coins + object versions  📖 docs: .ts-sdk-docs/sui/executors.mdx
+│     → `gasMode: 'coins' | 'addressBalance'` (↔ Onchain finance § Address balances);
+│       `defaultGasBudget`; results are a `$kind` union — handle `FailedTransaction` before
+│       reading `result.Transaction.digest`
 ├── Signing — keypairs + external Signers (AWS/GCP KMS, Ledger, WebCrypto,
 │   passkey, multisig)                📖 docs: .ts-sdk-docs/sui/cryptography/signers/index.mdx
 │   📖 docs: .ts-sdk-docs/sui/cryptography/ · zkLogin 📖 docs: .ts-sdk-docs/sui/zklogin.mdx
@@ -714,6 +787,9 @@ TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui
 │   └── legacy @mysten/dapp-kit — deprecated, JSON-RPC-only, no gRPC/GraphQL ever
 │       📖 docs: .ts-sdk-docs/sui/migrations/sui-2.0/dapp-kit.mdx (migration guide)
 ├── kiosk SDK                         📖 docs: .ts-sdk-docs/kiosk/  ↔ § Transfer policies & kiosk
+│   ⚠ the corpora DISAGREE on gRPC support: .ts-sdk-docs/kiosk/index.mdx says `$extend(kiosk())`
+│     takes any `ClientWithCoreApi` incl. `SuiGrpcClient`; .sui-docs/develop/accessing-data/
+│     json-rpc-migration.mdx says the published Kiosk SDK rejects it. Check the installed version.
 ├── payment-kit                       📖 docs: .ts-sdk-docs/payment-kit/  ↔ Onchain finance § Payments
 ├── hashi (`@mysten/hashi`)           📖 docs: .ts-sdk-docs/hashi/README.md
 │   → BTC collateralization: deposit BTC → mint hBTC, request/cancel withdrawal, via
@@ -732,16 +808,23 @@ load-bearing read; per-package guides live beside it.
 
 ## Accessing on-chain data
 
-Off-chain read paths for txns/objects/events/checkpoints. JSON-RPC is deprecated
-(deactivation planned July 2026) — new code picks gRPC or GraphQL.
+Off-chain read paths for txns/objects/events/checkpoints. JSON-RPC is deprecated on a published
+timeline — disabled on Sui Foundation mainnet full nodes the week of 2026-07-27, snapshots stop end
+of August 2026, archival fallback ends end of September 2026, code removed mid-October 2026. New code picks
+gRPC or GraphQL.
 
 ```
 ACCESSING DATA                        📖 docs: .sui-docs/develop/accessing-data/data-serving.mdx · 📖 docs: .sui-docs/develop/accessing-data/
 ├── gRPC          → fast, type-safe full-node access + tx execution
 │   📖 docs: .sui-docs/develop/accessing-data/grpc/what-is-grpc.mdx
+│   ⊃ LedgerService.List{Checkpoints,Transactions,Events} → paginated FILTERED queries over a
+│     checkpoint range · SubscriptionService.Subscribe{...} → live streams, same server-side filters
 │   ⊃ JSON-RPC → gRPC cookbook (per-method recipes)  📖 docs: .sui-docs/develop/accessing-data/grpc/grpc-migration-cookbook.mdx
-├── GraphQL RPC   → indexed, filterable reads; pagination + service limits
+├── GraphQL RPC   → SAME filtered tx/event queries as gRPC, plus multi-resource joins in one
+│   request, historical data, custom selection sets; pagination + service limits
 │   📖 docs: .sui-docs/develop/accessing-data/graphql/graphql-rpc.mdx
+│   ⊃ JSON-RPC → GraphQL cookbook (tx lookups, event queries, checkpoint pagination, balances)
+│     📖 docs: .sui-docs/develop/accessing-data/graphql/graphql-migration-cookbook.mdx
 │   ⊃ JSON-RPC → gRPC/GraphQL method mapping  📖 docs: .sui-docs/develop/accessing-data/json-rpc-migration.mdx
 ├── Custom indexers → sui-indexer-alt-framework (Rust): ingest/process/store your own pipeline
 │   📖 docs: .sui-docs/develop/accessing-data/custom-indexer/custom-indexers.mdx
@@ -767,11 +850,27 @@ SUI STACK                             📖 docs: .sui-docs/sui-stack.mdx
 │   📖 docs: .sui-docs/sui-stack/enoki/  ↔ § Transactions § Sponsored txns
 ├── Messaging SDK — E2E-encrypted group messaging: AES-GCM client-side, Seal-managed
 │   keys, ciphertext archived to Walrus  📖 docs: .sui-docs/sui-stack/messaging/
+├── MVR (Move Registry) — uniform `@org/app` names for packages and types across networks (Mainnet + Testnet)
+│   📖 docs: .sui-docs/sui-stack/mvr/move-registry.mdx · 📖 docs: .sui-docs/sui-stack/mvr/
+│   ⊃ names: SuiNS-backed apps + AppCap, metadata, package attachment per network
+│     📖 docs: .sui-docs/sui-stack/mvr/mvr-names.mdx
+│   ⊃ PackageInfo objects — source-code info + reverse resolution
+│     📖 docs: .sui-docs/sui-stack/mvr/managing-package-info.mdx ·
+│     maintainer practices 📖 docs: .sui-docs/sui-stack/mvr/maintainer-practices.mdx
+│   ⊃ tooling: MVR CLI (deps + build) · TS SDK PTB plugin (names resolve to addresses/types)
+│     📖 docs: .sui-docs/sui-stack/mvr/tooling/
+│   ↔ Tooling § Package management (`r.mvr` dependency kind)  ↔ SuiNS (names are SuiNS-owned)
 ├── SuiNS — onchain naming            📖 docs: .sui-docs/sui-stack/suins/  ↔ TS SDK $extend(suins)
+│   ⊃ siblings: user, developer, node-operator, dao, communities (.mdx) ·
+│     developer/sdk: querying, subnames, transactions (.mdx)
 ├── Sagat — multisig management platform (web UI + SDK)  📖 docs: .sui-docs/sui-stack/sagat.mdx
 │   ↔ § Transactions § Transaction auth (multisig)
 ├── SuiPlay0x1 — gaming handheld integration  📖 docs: .sui-docs/sui-stack/suiplay0x1/
 ├── zkLogin integration guides        📖 docs: .sui-docs/sui-stack/zklogin-integration/
+│   ⊃ step-by-step: ephemeral keys, JWT handling, salt management, ZK proofs, signature assembly
+│     📖 docs: .sui-docs/sui-stack/zklogin-integration/integration-guide.mdx
+│   ⊃ end-to-end app examples: consumer-app-zklogin.mdx, defi-trading-zklogin.mdx
+│     📖 docs: .sui-docs/getting-started/examples/
 ├── On-chain primitives index (randomness, time)  📖 docs: .sui-docs/sui-stack/on-chain-primitives/
 └── Bridge pages into sibling corpora 📖 docs: .sui-docs/sui-stack/walrus/ · 📖 docs: .sui-docs/sui-stack/seal/
 ```
@@ -789,6 +888,8 @@ TESTING                               📖 docs: .move-book-docs/book/testing/in
 │   📖 docs: .move-book-docs/book/testing/testing-basics.md
 ├── assert! (abort code optional in tests); assert_eq!/assert_ref_eq! from std::unit_test
 │   📖 docs: .move-book-docs/book/testing/test-utilities.md
+│   ⚠ cleanup: use `std::unit_test::destroy` — `sui::test_utils::destroy` is DEPRECATED
+│     📖 docs: .sui-docs/develop/testing-debugging/testing.mdx
 ├── test_scenario → multi-tx simulation: begin/next_tx/end (one scenario per test);
 │   objects transferred in tx N are only takeable after next_tx
 │   📖 docs: .move-book-docs/book/testing/test-scenario.md
@@ -826,7 +927,8 @@ TOOLING
 │   ⊃ tools: prove_package, list_specs, prover_capabilities
 │   ⤳ skill: specify (author specs — driven by this MCP server, not the LSP) · ⤳ skill: verify
 │   → § Formal verification (Sui Prover)
-├── Debugging                         → `sui replay --digest <d> [--trace]` re-executes locally
+├── Debugging                         → `sui replay --digest <d> [--trace]` re-executes locally;
+│   `sui move test --trace` generates traces from tests
 │   📖 docs: .sui-docs/references/cli/replay.mdx
 │   ⊃ Move Trace Debugger (VS Code)   📖 docs: .sui-docs/references/ide/debugger.mdx
 │   ⊃ trace analysis (gas profiling)  📖 docs: .sui-docs/references/cli/trace-analysis.mdx
@@ -835,9 +937,20 @@ TOOLING
 │   ↔ § Testing Move packages
 ├── Package management (new system, Sui CLI 1.63+)
 │   📖 docs: .sui-docs/references/package-managers/manifest-reference.mdx
-│   ⊃ `git` / `local` / `r.mvr` (Move Registry) deps; [addresses] section removed
+│   ⊃ 4 dep types: `r.mvr` (Move Registry, recommended) / `git` / `local` / system;
+│     extra fields on any dep: `rename-from`, `override`, `modes`; [addresses] section removed
+│   ⊃ manifest sections: [package] (`edition`, `implicit-dependencies = false`) · [dependencies] ·
+│     [environments] (custom name → chain ID, Hex short form or Base58 full form, compared by bytes;
+│     mainnet/testnet implicit) · [dep-replacements.<env>] for per-env overrides
+│   ⊃ `sui move update-deps` repins deps without touching the manifest
 │   ⊃ migration guide                 📖 docs: .sui-docs/references/package-managers/package-manager-migration.mdx
 │   ⊃ address management & manifests  📖 docs: .sui-docs/develop/manage-packages/
+│   ⊃ source verification — `sui client verify-source` checks the ROOT package's source compiles to
+│     the onchain bytecode + linkage table  📖 docs: .sui-docs/develop/manage-packages/source-verification.mdx
+│   ⊃ publish record: `Published.toml` (packages published before CLI 1.63: `Move.lock`)
+│   ⚠ `sui client faucet` = Devnet/Localnet ONLY — Testnet uses the web faucet or Discord
+│     📖 docs: .sui-docs/references/cli/cheatsheet.mdx
+│   ↔ Sui stack § MVR (`r.mvr` named dependencies)
 ├── Node operators — full node, validator, data management, snapshots, bridge node,
 │   exchange integration              📖 docs: .sui-docs/operators/ · 📖 docs: .sui-docs/operators.mdx
 ├── References — API specs, framework docs, glossary, PTB commands, research papers,
