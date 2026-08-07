@@ -545,7 +545,7 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 ├── Address balances (SIP-58)         📖 docs: .sui-docs/onchain-finance/asset-custody/address-balances/index.mdx
 │   → protocol-maintained ACCUMULATOR value per (address, coin type) — not an object you own;
 │     deposits merge automatically, withdrawals split, so tx construction is stateless (no coin selection)
-│   → coexists with Coin<T> (total = sum of Coin<T> objects + address balance value);
+│   → coexists with Coin<T>: total = sum of Coin<T> objects + address balance;
 │     TS SDK coinWithBalance/tx.coin() draw from it first; tx.setGasPayment([]) pays gas from it
 │   ⚠ Move functions still take `Coin<T>` — withdraw to a Coin first before calling DeFi code
 ├── Address aliases                   📖 docs: .sui-docs/onchain-finance/asset-custody/address-aliases.mdx
@@ -570,10 +570,9 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/spot-workflow.mdx
 │   ⊃ Fees & funding — DEEP vs input-token fees, floating DEEP price, maker/taker/staking fees
 │     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3/fees-and-funding.mdx
-│   ⊃ SDK/PTB recipes — compose fund+order, flash-loan borrow/repay, lend+trade+stake in one PTB;
-│     `sui client ptb` CLI templates beside their TS Transaction equivalents
+│   ⊃ SDK/PTB recipes — fund+order, flash-loan borrow/repay, lend+trade+stake in one PTB
 │     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3-sdk/composing-transactions.mdx ·
-│     📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3-sdk/ptb-cli-cookbook.mdx
+│     `sui client ptb` CLI templates + TS equivalents 📖 docs: .sui-docs/onchain-finance/deepbook/deepbookv3-sdk/ptb-cli-cookbook.mdx
 │   ⊃ Margin — leveraged positions, onchain liquidation  📖 docs: .sui-docs/onchain-finance/deepbook/deepbook-margin/deepbook-margin.mdx
 │     ⊃ MarginManager/MarginPool/MarginRegistry, isolated per-asset pools, pool-proxy trading path,
 │       permissionless liquidation, events to index
@@ -607,8 +606,8 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │     → § Transactions § PTB structure   📖 docs: .sui-docs/onchain-finance/payment-intents.mdx
 ├── Funding wallets — exchanges, bridges, faucets  📖 docs: .sui-docs/onchain-finance/funding-wallets.mdx
 ├── Example patterns — fixed supply, in-game currency, loyalty tokens, soulbound, NFT rental,
-│   kiosk, WASM template, staking rewards (reward-per-token accumulator, O(1) gas per staker count)
-│   📖 docs: .sui-docs/onchain-finance/examples-patterns/
+│   kiosk, WASM template, staking rewards (reward-per-token accumulator, O(1) gas regardless of
+│   staker count)  📖 docs: .sui-docs/onchain-finance/examples-patterns/
 ├── Fixed-point math                  → std::fixed_point32; per-type integer modules
 │   std::u8–u256 (max, diff, divide_and_round_up, sqrt, pow)
 │   📖 docs: .move-book-docs/book/move-basics/standard-library.md
@@ -661,11 +660,12 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 │   ⊃ `Blob` / `Storage` structs are `key, store` Sui Move objects (↔ Sui § Sui object model)
 │   │  Move usage example  📖 docs: .walrus-docs/examples/move.mdx · all examples 📖 docs: .walrus-docs/examples/
 │   ⊃ deletable vs permanent — `deletable: bool` fixed at registration
-├── RedStuff encoding — primary/secondary slivers; properties & parameters (blob size limits,
-│   sliver-to-shard mapping, sliver authentication, metadata overhead), worked encode + recovery
-│   📖 docs: .walrus-docs/system-overview/red-stuff-parameters.mdx ·
-│   📖 docs: .walrus-docs/system-overview/red-stuff-details.mdx ·
-│   📖 docs: .walrus-docs/system-overview/red-stuff-recovery.mdx
+├── RedStuff encoding — erasure coding on RaptorQ fountain codes; primary/secondary slivers
+│   📖 docs: .walrus-docs/system-overview/red-stuff.mdx
+│   ⊃ properties & parameters: blob size limits, sliver-to-shard mapping, sliver authentication,
+│     metadata overhead  📖 docs: .walrus-docs/system-overview/red-stuff-parameters.mdx
+│   ⊃ worked examples: encode 📖 docs: .walrus-docs/system-overview/red-stuff-details.mdx ·
+│     recovery after shard failure 📖 docs: .walrus-docs/system-overview/red-stuff-recovery.mdx
 ├── Quilt — batch ≤666 small blobs into one blob to amortize per-blob overhead
 │   📖 docs: .walrus-docs/system-overview/quilt.mdx
 │   ⚠ QuiltPatchId depends on whole-quilt composition (NOT content-derived);
@@ -744,7 +744,7 @@ TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui
 │   ├── SuiJsonRpcClient — deprecated; its top-level methods keep legacy JSON-RPC names/shapes
 │   └── 1.x SuiClient — REMOVED in 2.0 (not merely deprecated)
 │   ↔ § Accessing on-chain data (gRPC/GraphQL read paths, event queries)
-├── Three surfaces, pick by who you are writing for
+├── Three API surfaces — pick by caller
 │   📖 docs: .ts-sdk-docs/sui/clients/core.mdx
 │   ├── top-level methods = APP code: getObject/getObjects/listOwnedObjects/listCoins/getBalance/
 │   │   getTransaction/listTransactions/listEvents/simulateTransaction/signAndExecuteTransaction/
@@ -836,7 +836,8 @@ SUI STACK                             📖 docs: .sui-docs/sui-stack.mdx
 │   ⊃ names: SuiNS-backed apps + AppCap, metadata, package attachment per network
 │     📖 docs: .sui-docs/sui-stack/mvr/mvr-names.mdx
 │   ⊃ PackageInfo objects — source-code info + reverse resolution
-│     📖 docs: .sui-docs/sui-stack/mvr/managing-package-info.mdx · practices .sui-docs/sui-stack/mvr/maintainer-practices.mdx
+│     📖 docs: .sui-docs/sui-stack/mvr/managing-package-info.mdx ·
+│     maintainer practices 📖 docs: .sui-docs/sui-stack/mvr/maintainer-practices.mdx
 │   ⊃ tooling: MVR CLI (deps + build) · TS SDK PTB plugin (names resolve to addresses/types)
 │     📖 docs: .sui-docs/sui-stack/mvr/tooling/
 │   ↔ Tooling § Package management (`r.mvr` dependency kind)  ↔ SuiNS (names are SuiNS-owned)
