@@ -246,8 +246,9 @@ PACKAGE LIFECYCLE                     📖 docs: .sui-docs/develop/publish-upgra
 │   → UpgradeCap → § Authorization § Capability; package::make_immutable burns upgradeability
 ├── Upgradeability practices          📖 docs: .move-book-docs/book/guides/upgradeability-practices.md
 │   → public structs/fns can never change signature; public(package)/entry/private CAN
-└── Production readiness — Mainnet launch checklist: contract security, key management,
-    upgrade policy, infra & monitoring  📖 docs: .sui-docs/develop/production-readiness.mdx
+└── Production readiness              📖 docs: .sui-docs/develop/production-readiness.mdx
+    → Mainnet launch checklist: contract security, key management, infra & monitoring
+    ↔ § Authorization (security best practices, capability management)
 ```
 
 ---
