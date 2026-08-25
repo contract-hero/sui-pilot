@@ -794,7 +794,7 @@ TS SDK                                📖 docs: .ts-sdk-docs/sui/migrations/sui
 │     takes any `ClientWithCoreApi` incl. `SuiGrpcClient`; .sui-docs/develop/accessing-data/
 │     json-rpc-migration.mdx says the published Kiosk SDK rejects it. Check the installed version.
 ├── payment-kit                       📖 docs: .ts-sdk-docs/payment-kit/  ↔ Onchain finance § Payments
-├── hashi (`@mysten/hashi`)           📖 docs: .ts-sdk-docs/hashi/README.md
+├── hashi (`@mysten/hashi`)           📖 docs: .ts-sdk-docs/hashi/README.md  ↔ Sui stack § Hashi
 │   → BTC collateralization: deposit BTC → mint hBTC, request/cancel withdrawal, via
 │     client.$extend(hashi()); ⚠ pre-1.0, testnet/devnet only (README is the canonical doc)
 ├── sponsor (experimental incubation) 📖 docs: .ts-sdk-docs/sponsor/
@@ -852,7 +852,7 @@ SUI STACK                             📖 docs: .sui-docs/sui-stack.mdx
 ├── Enoki — sponsored txns + zkLogin as a service (solitaire, ticketing PoCs)
 │   📖 docs: .sui-docs/sui-stack/enoki/  ↔ § Transactions § Sponsored txns
 ├── Hashi — native BTC orchestrator: deposit/withdraw BTC as fungible hBTC Coin on Sui
-│   via threshold cryptography  📖 docs: .sui-docs/sui-stack/hashi/  ↔ TS SDK hashi package
+│   via threshold cryptography; ⚠ Testnet only today  📖 docs: .sui-docs/sui-stack/hashi/  ↔ TS SDK hashi package
 ├── Messaging SDK — E2E-encrypted group messaging: AES-GCM client-side, Seal-managed
 │   keys, ciphertext archived to Walrus  📖 docs: .sui-docs/sui-stack/messaging/
 ├── MVR (Move Registry) — uniform `@org/app` names for packages and types across networks (Mainnet + Testnet)

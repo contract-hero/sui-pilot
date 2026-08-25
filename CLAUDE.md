@@ -26,6 +26,7 @@ Always search and read these docs before writing code for these ecosystems.
 ## Keeping Docs Up to Date
 
 ```bash
-./sync-docs.sh            # Pull latest from upstream MystenLabs repos
+./sync-docs.sh                  # Pull latest from upstream MystenLabs repos
+./scripts/check-doc-counts.sh   # Verify embedded doc counts still match .last-sync
 ```
 

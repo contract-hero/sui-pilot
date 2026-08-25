@@ -37,6 +37,12 @@ jobs:
         continue-on-error: true
         run: ./scripts/check-graph-pointers.sh
 
+      - name: Check embedded doc counts survive refresh
+        # Soft-warn here so the refresh PR still opens; ci.yml hard-fails the
+        # same check on the PR itself, so the drift cannot merge unnoticed.
+        continue-on-error: true
+        run: ./scripts/check-doc-counts.sh
+
       - name: Skip bundler if nothing drifted
         id: drift
         # sync-sui-pilot-docs.sh always rewrites docs/VERSION.json with a fresh
