@@ -234,11 +234,13 @@ export default {
         'develop/security/best-practices',
       ],
     },
+    'develop/production-readiness',
   ],
 
   gettingStartedSidebar: [
     'getting-started',
     { type: 'link', label: 'Skills', href: '/skills' },
+    'getting-started/sui-mcp-server',
     {
       type: 'category',
       label: 'Hello, World!',
@@ -337,6 +339,8 @@ export default {
             ],
           },
           'onchain-finance/asset-custody/address-aliases',
+          'onchain-finance/asset-custody/fiat-on-ramps',
+          'onchain-finance/asset-custody/fiat-off-ramps',
         ],
       },
       {
@@ -360,7 +364,6 @@ export default {
                 'onchain-finance/fungible-tokens/create-a-fungible-token',
             ],
           },
-          'onchain-finance/fungible-tokens/integrating-with-stablecoins',
           'onchain-finance/fungible-tokens/regulated-tokens',
           'onchain-finance/fungible-tokens/token-vesting-strategies',
           'onchain-finance/fungible-tokens/sui-bridging',
@@ -588,17 +591,31 @@ suiStackSidebar: [
       label: 'Seal',
       link: { type: 'doc', id: 'sui-stack/seal/index' },
       items: [
+        'sui-stack/seal/server-overview',
+        'sui-stack/seal/getting-started',
         {
-          type: 'link',
-          label: 'Seal Docs',
-          href: 'https://seal-docs.wal.app',
+          type: 'category',
+          label: 'Developer guide',
+          items: [
+            'sui-stack/seal/design',
+            'sui-stack/seal/using-seal',
+            'sui-stack/seal/example-patterns',
+            'sui-stack/seal/security-best-practices',
+          ],
         },
+        {
+          type: 'category',
+          label: 'Operator guide',
+          items: [
+            'sui-stack/seal/key-server-ops',
+            'sui-stack/seal/key-server-committee-ops',
+            'sui-stack/seal/aggregator',
+            'sui-stack/seal/seal-cli',
+          ],
+        },
+        'sui-stack/seal/pricing',
+        'sui-stack/seal/terms-of-service',
         'sui-stack/seal/sui-stack-seal',
-        {
-          type: 'link',
-          label: 'Messaging SDK Chat App Example →',
-          href: '/sui-stack/messaging/chat-app',
-        },
       ],
     },
     {
@@ -758,6 +775,18 @@ suiStackSidebar: [
     },
     {
       type: 'category',
+      label: 'Hashi',
+      link: { type: 'doc', id: 'sui-stack/hashi/index' },
+      items: [
+        {
+          type: 'link',
+          label: 'Hashi Docs',
+          href: 'https://mystenlabs.github.io/hashi/design/',
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'SuiPlay0X1',
       link: { type: 'doc', id: 'sui-stack/suiplay0x1/index' },
       items: [
@@ -789,6 +818,7 @@ suiStackSidebar: [
       link: { type: 'doc', id: 'operators/data-management/index', },
       items: [
         'operators/data-management/managing-data',
+        'operators/data-management/available-data-stores',
         'operators/data-management/indexer-stack-setup',
         'operators/data-management/remote-store-setup',
         'operators/data-management/archival-stack-setup',

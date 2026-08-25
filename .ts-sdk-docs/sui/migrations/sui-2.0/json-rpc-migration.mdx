@@ -2,16 +2,35 @@
 title: Migrating from JSON-RPC
 description: Migrate deprecated JSON-RPC code to shared gRPC and GraphQL top-level methods
 keywords:
-  [
-    migration,
-    JSON-RPC,
-    Core API,
-    SuiGrpcClient,
-    SuiGraphQLClient,
-    deprecated,
-    Sui client,
-    transport,
-  ]
+  - migration
+  - JSON-RPC
+  - Core API
+  - SuiGrpcClient
+  - SuiGraphQLClient
+  - deprecated
+  - Sui client
+  - transport
+questions:
+  - What changed in the Migrating from JSON-RPC migration?
+  - How do I migrate to Migrating from JSON-RPC?
+  - How does Choosing a target client work?
+  - How does Quick migration to gRPC work?
+answer: Migrate deprecated JSON-RPC code to shared gRPC and GraphQL top-level methods
+goal:
+  description: >-
+    Reader can migrate deprecated JSON-RPC code to shared gRPC and GraphQL top-level methods
+  requires:
+    - has_frontmatter:
+        - title
+        - description
+        - keywords
+      label: Has required frontmatter fields
+    - min_words: 30
+      label: Needs content depth
+    - has_questions: true
+      label: Needs questions for AI search visibility
+    - has_answer: true
+      label: Needs answer summary for AI citation
 ---
 
 JSON-RPC APIs are deprecated in the Sui TypeScript SDK. For most application code, migrate from
@@ -122,7 +141,7 @@ use the same replacement under `client.core`.
 | `queryEvents`                | `listEvents`                                                          |
 | `getNormalizedMoveFunction`  | `getMoveFunction`                                                     |
 | `getMoveFunctionArgTypes`    | No direct equivalent; `getMoveFunction` returns normalized signatures |
-| `resolveNameServiceAddress`  | `nameService.lookupName` or GraphQL query                             |
+| `resolveNameServiceAddress`  | `resolveNameServiceAddress` (returns `{ address }`)                   |
 | `resolveNameServiceNames`    | No direct equivalent for listing every name assigned to an address    |
 
 `getMoveFunction` exposes normalized parameter signatures, but it does not reproduce the legacy
@@ -130,6 +149,12 @@ use the same replacement under `client.core`.
 `defaultNameServiceName` and raw gRPC `nameService.reverseLookupName` return only the configured
 default name; they do not replace the paginated list returned by `resolveNameServiceNames`. Keep a
 legacy endpoint or use an application indexer when those exact results are required.
+
+```typescript
+const { address } = await client.resolveNameServiceAddress({
+	name: 'example.sui',
+});
+```
 
 Some composed helpers are currently exposed through `client.core` rather than as top-level gRPC or
 GraphQL methods:
@@ -445,7 +470,8 @@ Common event filter mappings:
 
 The top-level query methods handle pagination and cursor normalization. For richer filters, such as
 combined predicates, affected addresses, affected objects, or checkpoint ranges, use the raw
-[`ledgerService`](/sui/clients/grpc#ledger-service) on `SuiGrpcClient` or a custom GraphQL query.
+[`ledgerService`](/sui/clients/grpc#using-service-clients) on `SuiGrpcClient` or a custom GraphQL
+query.
 
 Use `after: result.endCursor` to continue an ascending query and `before: result.endCursor` to
 continue a descending query. `startCursor` identifies the first item in a page and can be used with
@@ -643,5 +669,6 @@ await client.suins.getNameRecord('example.sui');
 
 - [SuiGrpcClient](/sui/clients/grpc)
 - [SuiGraphQLClient](/sui/clients/graphql)
+- [Querying data](/sui/clients/querying)
 - [Core API](/sui/clients/core)
 - [Building SDKs](/sui/sdk-building)

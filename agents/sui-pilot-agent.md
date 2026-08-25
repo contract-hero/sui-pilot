@@ -244,8 +244,10 @@ PACKAGE LIFECYCLE                     📖 docs: .sui-docs/develop/publish-upgra
 │     migrate fn; guard entry points with assert!(obj.version == VERSION)
 ├── Custom upgrade policies           📖 docs: .sui-docs/develop/publish-upgrade-packages/custom-policies.mdx
 │   → UpgradeCap → § Authorization § Capability; package::make_immutable burns upgradeability
-└── Upgradeability practices          📖 docs: .move-book-docs/book/guides/upgradeability-practices.md
-    → public structs/fns can never change signature; public(package)/entry/private CAN
+├── Upgradeability practices          📖 docs: .move-book-docs/book/guides/upgradeability-practices.md
+│   → public structs/fns can never change signature; public(package)/entry/private CAN
+└── Production readiness — Mainnet launch checklist: contract security, key management,
+    upgrade policy, infra & monitoring  📖 docs: .sui-docs/develop/production-readiness.mdx
 ```
 
 ---
@@ -848,6 +850,8 @@ SUI STACK                             📖 docs: .sui-docs/sui-stack.mdx
 │   📖 docs: .sui-docs/sui-stack/nautilus/   ↔ Seal § (nautilus/seal.mdx pairing)
 ├── Enoki — sponsored txns + zkLogin as a service (solitaire, ticketing PoCs)
 │   📖 docs: .sui-docs/sui-stack/enoki/  ↔ § Transactions § Sponsored txns
+├── Hashi — native BTC orchestrator: deposit/withdraw BTC as fungible hBTC Coin on Sui
+│   via threshold cryptography  📖 docs: .sui-docs/sui-stack/hashi/  ↔ TS SDK hashi package
 ├── Messaging SDK — E2E-encrypted group messaging: AES-GCM client-side, Seal-managed
 │   keys, ciphertext archived to Walrus  📖 docs: .sui-docs/sui-stack/messaging/
 ├── MVR (Move Registry) — uniform `@org/app` names for packages and types across networks (Mainnet + Testnet)
