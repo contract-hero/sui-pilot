@@ -12,6 +12,39 @@ sui-pilot bundles **812 documentation files** from six upstream MystenLabs corpo
 
 ---
 
+## Install
+
+From inside Claude Code:
+
+```
+/plugin marketplace add contract-hero/plugin-marketplace
+/plugin install sui-pilot@contract-hero
+```
+
+Or straight from the terminal:
+
+```bash
+claude plugin marketplace add contract-hero/plugin-marketplace
+claude plugin install sui-pilot@contract-hero
+```
+
+Then restart Claude Code — MCP servers launch at session start.
+
+### Requirements
+
+| Component | Version | Notes |
+|---|---|---|
+| suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
+| sui + move-analyzer | Same version | **Must match** — install both via suiup |
+| Claude Code | Latest | Plugin host environment |
+
+```bash
+suiup install sui
+suiup install move-analyzer
+```
+
+---
+
 ## What Ships
 
 ### Bundled documentation (812 files, 6 corpora)
@@ -50,30 +83,6 @@ Two MCP servers provide real-time tooling from within Claude Code:
 ### Specialized agent
 
 The `sui-pilot-agent` enforces a doc-first workflow: consult documentation before writing code, use LSP for real-time validation. Its always-loaded preamble is a topic-to-corpus routing table that navigates the bundled docs via `Glob`/`Grep`.
-
----
-
-## Install
-
-```
-/plugin marketplace add contract-hero/plugin-marketplace
-/plugin install sui-pilot@contract-hero
-```
-
-Then restart Claude Code — MCP servers launch at session start.
-
-### Requirements
-
-| Component | Version | Notes |
-|---|---|---|
-| suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
-| sui + move-analyzer | Same version | **Must match** — install both via suiup |
-| Claude Code | Latest | Plugin host environment |
-
-```bash
-suiup install sui
-suiup install move-analyzer
-```
 
 ---
 
