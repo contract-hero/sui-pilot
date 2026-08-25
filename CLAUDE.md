@@ -7,11 +7,11 @@ Always search and read these docs before writing code for these ecosystems.
 
 | Topic | Directory | Files |
 |---|---|---|
-| Sui blockchain, objects, transactions, DeFi, framework | `.sui-docs/` | 413 |
+| Sui blockchain, objects, transactions, DeFi, framework | `.sui-docs/` | 416 |
 | Move language tutorial + reference: syntax, types, abilities, idioms | `.move-book-docs/` | 149 |
-| Walrus storage, blobs, Sites, operators | `.walrus-docs/` | 105 |
+| Walrus storage, blobs, Sites, operators | `.walrus-docs/` | 108 |
 | Seal secrets, encryption, key servers, access control | `.seal-docs/` | 15 |
-| TypeScript SDK, dapp-kit, React hooks, kiosk, payment-kit, hashi | `.ts-sdk-docs/` | 122 |
+| TypeScript SDK, dapp-kit, React hooks, kiosk, payment-kit, hashi | `.ts-sdk-docs/` | 104 |
 | Sui Prover: formal verification, `#[spec(prove)]`, Boogie tuning | `.sui-prover-docs/` | 20 |
 | Nautilus off-chain compute, TEE enclaves, attestation, PCRs, on-chain verification | `.sui-docs/sui-stack/nautilus/` | 8 |
 
@@ -26,6 +26,7 @@ Always search and read these docs before writing code for these ecosystems.
 ## Keeping Docs Up to Date
 
 ```bash
-./sync-docs.sh            # Pull latest from upstream MystenLabs repos
+./sync-docs.sh                  # Pull latest from upstream MystenLabs repos
+./scripts/check-doc-counts.sh   # Verify embedded doc counts still match .last-sync
 ```
 

@@ -49,3 +49,4 @@ mcp/sui-prover-mcp/test/fixtures/**/Move.lock
 
 # Stray sui-prover debug logs that the binary drops in cwd
 sui-prover.log.*
+.impeccable/

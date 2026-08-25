@@ -25,6 +25,12 @@ jobs:
         if: github.event_name == 'pull_request' && github.head_ref != 'chore/refresh-docs'
         run: ./scripts/check-graph-pointers.sh
 
+      - name: Check embedded doc counts match .last-sync
+        # No chore/refresh-docs exclusion here: count drift starts in the
+        # refresh PR, so that PR is exactly the one this gate must cover.
+        if: github.event_name == 'pull_request'
+        run: ./scripts/check-doc-counts.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
