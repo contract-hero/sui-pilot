@@ -122,6 +122,7 @@ ABILITIES                             📖 docs: .move-book-docs/book/move-basic
 ├── drop   — value can be silently dropped at end of scope
 │   📖 docs: .move-book-docs/book/move-basics/drop-ability.md
 │   ↔ Hot-potato pattern → a struct with NO abilities must be consumed explicitly
+│   ⚠ hot-potato is a load-bearing safety pattern
 │
 ├── key    — value may be stored as a top-level Sui object
 │   📖 docs: .move-book-docs/book/storage/key-ability.md
@@ -146,6 +147,7 @@ GENERIC TYPES                         📖 docs: .move-book-docs/book/move-basic
 │
 ├── Constrained generics: `<T: store + drop>`  → propagate ability requirements
 │   → ABILITIES (compile-time check)
+│   → proper bounds = idiomatic Move 2024
 │
 ├── Phantom type parameters: `<phantom T>`     → carry brand without storage cost
 │   ↔ One-time-witness pattern (§ Authorization patterns)
@@ -166,6 +168,7 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
     ├── A function consuming a value by-move destroys the caller's binding
     ├── References cannot outlive their referent — borrow-checker enforced
     └── No `Drop`-equivalent destructor; types lacking `drop` MUST be consumed explicitly
+        ⚠ look for unconsumed hot-potatoes & resource leaks
 ```
 
 **Enums & match**                     📖 docs: .move-book-docs/book/move-basics/enum-and-match.md
@@ -185,6 +188,8 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 - `assert!(cond, code)` with named error constants — never magic numbers
 - `#[error]` const of `vector<u8>` for human-readable abort messages (Move 2024)
 - `package::Type::method(...)` qualified calls when the receiver is ambiguous
+
+📖 docs: .move-book-docs/book/guides/code-quality-checklist.md — the canonical checklist for these
 
 > When `book/` prose is insufficient, the reference tree is the authoritative
 > language-semantics source (abilities, generics, enums, pattern matching, modes).
@@ -266,6 +271,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   │   ⇢ alternative: shared (when multi-writer is required)
 │   │
 │   ├── Shared                        → consensus-required; multi-writer; congestion-prone
+│   │   ⚠ look for shared-object hot spots
 │   │   ↔ Transactions § Local fee markets (per-object congestion pricing)
 │   │   ⇢ alternative: Party objects  → single-owner, consensus-sequenced (see below)
 │   │   ⇢ alternative: derived objects (parent-child) when ownership is hierarchical
@@ -288,6 +294,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ⊃ dynamic_object_field — children that are themselves Sui objects (preserve UID)
 │   ⊃ Table/Bag (+ Object* variants) are built ON dynamic fields — not peers (see Collections)
 │   ⚠ deleting a parent with live dynamic fields orphans them forever (even non-`drop` values)
+│   ⚠ DOF lookups can hide gas costs; audit access patterns
 │
 ├── Collections
 │   ├── in-memory: vector / VecSet / VecMap → struct-embedded, bounded by object size limit
@@ -307,6 +314,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ↔ Each mutation bumps the object version (used by consensus + replay)
 │   ↔ Package upgrades — `version: u64` guard convention → § Modules & visibility § Package
 │     lifecycle  📖 docs: .sui-docs/develop/publish-upgrade-packages/upgrade.mdx
+│   ⚠ version mismatch = silent foot-gun
 │
 ├── Display — off-chain rendering templates per type; Publisher-gated (§ Authorization § Publisher)
 │   📖 docs: .sui-docs/develop/objects/display/
@@ -325,7 +333,8 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
     │   the defining module (mirrors public_share_object / public_freeze_object)
     ├── transfer::party_transfer(obj, party)  → party-owned (single_owner)
     ├── transfer::receive(&mut parent.id, Receiving<T>) → transfer-to-object (TTO)
-    └── ↔ Formal verification § Ghost variables (public_transfer specs need ghosts)
+    ├── ↔ Formal verification § Ghost variables (public_transfer specs need ghosts)
+    └── ⚠ blind transfers are a common SEC-AC bug class
 ```
 
 **Decision matrix — which ownership do I pick?**
@@ -338,6 +347,8 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 | Inventory of children with shared state | Wrapped or DOF | Composition over reference |
 | Registry / one-object-per-key slots (per-user config, soulbound) | Derived objects | Deterministic addresses, no parent bottleneck |
 | Owned object, many concurrent inflight txns | Party | Consensus versioning removes fastpath equivocation locks |
+
+⚠ the single most common design error here is the wrong ownership choice
 
 ---
 
@@ -357,6 +368,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 │   ⊃ capabilities ARE objects (capability.md § "Capability is an Object");
 │     common DeFi caps: PoolAdminCap, OracleSourceCap, BridgeOperatorCap
 │   ⚠ anti-pattern: tx_context::sender() as the only guard — use a Capability
+│   ⚠ assert holder; never accept by-ref a cap from untrusted caller
 │   ⇢ alternative: address allowlist when multiple operators rotate frequently
 │
 ├── Witness pattern                   📖 docs: .move-book-docs/book/programmability/witness-pattern.md
@@ -368,6 +380,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 ├── One-time witness (OTW)            📖 docs: .move-book-docs/book/programmability/one-time-witness.md
 │   → witness type whose name == module name (uppercase); guaranteed instantiated once
 │   → consumed in module init; commonly used to construct singleton coins/treasuries
+│   ⚠ audit OTW consumption — must be by-value, drop-only
 │   ↔ coin::create_currency<T>(otw, ...)
 │
 ├── Hot potato pattern                📖 docs: .move-book-docs/book/programmability/hot-potato-pattern.md
@@ -376,6 +389,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 │   ↔ framework hot potatoes: transfer_policy::TransferRequest, token::ActionRequest,
 │     PAS Request, deepbook FlashLoan (§ Transfer policies, § Onchain finance)
 │   ↔ Transactions § PTB structure — hot values can't flow into non-public `entry` calls
+│   ⚠ every hot-potato needs an exhaustive consume function
 │   ⇢ alternative: Option-wrapped builder when the consume step is optional
 │
 └── Publisher                         📖 docs: .move-book-docs/book/programmability/publisher.md
@@ -383,6 +397,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
     → authority checked later via `from_module<T>(&pub)` / `from_package<T>(&pub)` —
       every gated function must perform the check (publisher.md security warning)
     ↔ Display, transfer-policy: gated by Publisher
+    → idiomatic packages own a Publisher per type family
 ```
 
 **When to use what — quick decision flow:**
@@ -392,6 +407,8 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 - Privileged op tied to a transferable, long-lived role? → **Capability**
 - Caller must complete a multi-step protocol or pay/refund? → **Hot potato**
 - Authorship-of-a-package check (Display/policy ops)? → **Publisher**
+
+⚠ every authorization choice should match this flow; deviations are usually bugs
 
 ---
 
@@ -458,7 +475,8 @@ TRANSFER POLICIES                     📖 docs: .sui-docs/develop/objects/trans
     ├── Kiosk apps                    📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-apps.mdx
     │   → basic: uid_mut_as_owner + dynamic fields (§ Sui object model § Dynamic fields)
     │   → permissioned: `kiosk_extension` module — witness-gated install, tamper-proof app storage
-    └── ↔ TS SDK § kiosk SDK          📖 docs: .ts-sdk-docs/kiosk/index.mdx
+    ├── ↔ TS SDK § kiosk SDK          📖 docs: .ts-sdk-docs/kiosk/index.mdx
+    └── ⚠ unconsumed TransferRequest paths; rule bypass via a second wrapped policy
 ```
 
 ---
@@ -475,6 +493,7 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │   ├── std::hash::sha2_256            → general-purpose
 │   ├── std::hash::sha3_256
 │   └── sui::hash::keccak256, blake2b256  → Ethereum-compatibility & Merkle proofs
+│   ⚠ commit-reveal needs domain-separation; never raw-hash user input
 │
 ├── Signing & verification             📖 docs: .sui-docs/develop/cryptography/signing.mdx
 │   ├── ed25519, secp256k1, secp256r1  → on-chain verify primitives
@@ -486,11 +505,13 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │   ├── Groth16 verifier               📖 docs: .sui-docs/develop/cryptography/groth16.mdx
 │   ├── ECVRF                          📖 docs: .sui-docs/develop/cryptography/ecvrf.mdx
 │   └── zkLogin                        📖 docs: .sui-docs/sui-stack/zklogin-integration/
+│       ⚠ audit circuit-input encoding, never trust caller-supplied verifier params
 │
 ├── Randomness                        📖 docs: .sui-docs/sui-stack/on-chain-primitives/randomness-onchain.mdx
 │   → consensus-driven on-chain RNG via `sui::random::Random` shared object
 │   → public fns taking &Random are compiler-REJECTED — expose private `entry` only
 │   → divide-logic pattern: commit random result in tx1, consume in tx2 (revert griefing)
+│   ⚠ never use timestamps, tx hash, or coin balances as randomness
 │   ⇢ alternative: commit-reveal with off-chain entropy when external sources are required
 │
 ├── Time                              📖 docs: .sui-docs/sui-stack/on-chain-primitives/access-time.mdx
@@ -498,6 +519,7 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │     `&mut Clock`/value fail to publish); timestamp_ms advances per CONSENSUS COMMIT (~1/4 s); consensus-only
 │   → tx_context::epoch_timestamp_ms() — epoch-start time, fastpath-compatible, ~24h granularity
 │     📖 docs: .move-book-docs/book/programmability/epoch-and-time.md
+│   ⚠ timestamps are NOT randomness — see Randomness above
 │
 └── Threshold/aggregation
     ↔ Seal § threshold encryption (off-chain peer to this on-chain primitive set)
@@ -596,6 +618,7 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │   📖 docs: .move-book-docs/book/move-basics/standard-library.md
 │   ↔ § Formal verification (Sui Prover) — spec-only Integer/Real types for overflow-free specs
 └── ⤳ skill: oz-math (math safety audit)
+    ⚠ overflow, rounding bias, MEV exposure
 ```
 
 ---
