@@ -8,7 +8,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-SKILLS=(oz-math specify sui-e2e sui-setup verify)
+# Discovered, not hardcoded — a roster listed by hand drifts from the tree every
+# time a skill is added or removed.
+SKILLS=()
+for d in "${PLUGIN_ROOT}"/skills/*/; do
+  SKILLS+=("$(basename "$d")")
+done
+[ ${#SKILLS[@]} -gt 0 ] || { echo "FAIL: no skills found under ${PLUGIN_ROOT}/skills/"; exit 1; }
 
 PASS=0
 FAIL=0
@@ -56,12 +62,14 @@ for skill in "${SKILLS[@]}"; do
 
   # Verify 'description:' key exists (may be block scalar)
   if grep -qE "^description:" "$skill_file"; then
-    # Try to get the inline value (or '|' for block scalars)
+    # Inline value, or a scalar marker for block/folded styles.
     desc_val=$(parse_frontmatter_key "$skill_file" "description" || true)
-    # For block scalars, desc_val will be '|' — verify description body follows
-    if [[ "$desc_val" == "|" ]]; then
-      # Block scalar: next line after 'description: |' must be non-empty
-      block_body=$(awk '/^description: \|/{found=1; next} found{if(/^[[:space:]]/ && NF>0){print; exit} else {exit}}' "$skill_file")
+    # YAML block/folded markers: | |- |+ > >- >+ — all mean "the body is on the
+    # following indented lines", so the marker itself proves nothing and the body
+    # must be read. Matching only '|' let a folded '>-' description pass as the
+    # two-character string, never checking whether any description existed.
+    if [[ "$desc_val" =~ ^[|\>][-+]?$ ]]; then
+      block_body=$(awk '/^description:[[:space:]]*[|>][-+]?[[:space:]]*$/{found=1; next} found{if(/^[[:space:]]/ && NF>0){print; exit} else {exit}}' "$skill_file")
       assert_nonempty "description (block)" "$block_body"
     else
       assert_nonempty "description" "$desc_val"

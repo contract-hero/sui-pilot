@@ -23,7 +23,7 @@ All notable changes to sui-pilot are documented in this file. The format is base
 ### Removed
 
 - **`/move-code-quality` and `/move-code-review` commands + skills.** Both skills, both command wrappers, and the two `.claude-plugin/fixtures/*-workflow-transcript.md` files that exercised the quality → review → tests sequence. Every cross-reference across `agents/sui-pilot-agent.md`, the surviving commands and skills, `README.md`, `NOTES.md`, `EVAL_FRAMEWORK.html`, the site pages and this changelog was scrubbed.
-  - 26 `⤳ skill:` pointer lines came out of the agent knowledge graph. 20 of them carried a security or idiom claim that existed nowhere else. Those claims, their graph anchors and the `git show` commands to recover them are registered in `skill-removal-content-loss-handoff.html`.
+  - 27 lines in the agent knowledge graph carried a `⤳ skill:` pointer to a removed skill: 26 were deleted outright, and 1 was rewritten to keep the `📖 docs:` pointer it also carried. 20 of the 27 carried a security or idiom claim that existed nowhere else. Those claims, their graph anchors and the `git show` commands to recover them are registered in `skill-removal-content-loss-handoff.html`.
 
 - **`/specify` non-interactive mode for evaluation.** Setting `SPECIFY_AUTO_DEFAULTS=1` in the environment makes the skill skip every `AskUserQuestion` gate (picks the suggested default), abort hard on `setup_warning` instead of offering "proceed anyway", cap per-function iterations at 1, and skip the prioritization batch (default order). Progress and audit-trail artifacts still land at the package root so the eval scorer can read them. Interactive mode (unset or `=0`) remains the default.
 

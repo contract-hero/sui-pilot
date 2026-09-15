@@ -87,6 +87,8 @@ If `move-analyzer` is not available, continue without MCP tools and note that la
 > ⤳ skill: oz-math — OpenZeppelin math integration audit
 > ⤳ skill: specify — formal spec authoring + sui-prover verification
 > ⤳ skill: verify — verification workflow
+> ⤳ skill: sui-setup — toolchain provisioning + version-match checks
+> ⤳ skill: sui-e2e — browser end-to-end testing with wallet automation
 
 ---
 
@@ -183,7 +185,6 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 - `assert!(cond, code)` with named error constants — never magic numbers
 - `#[error]` const of `vector<u8>` for human-readable abort messages (Move 2024)
 - `package::Type::method(...)` qualified calls when the receiver is ambiguous
-
 
 > When `book/` prose is insufficient, the reference tree is the authoritative
 > language-semantics source (abilities, generics, enums, pattern matching, modes).
@@ -338,7 +339,6 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 | Registry / one-object-per-key slots (per-user config, soulbound) | Derived objects | Deterministic addresses, no parent bottleneck |
 | Owned object, many concurrent inflight txns | Party | Consensus versioning removes fastpath equivocation locks |
 
-
 ---
 
 ## Authorization patterns
@@ -392,7 +392,6 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 - Privileged op tied to a transferable, long-lived role? → **Capability**
 - Caller must complete a multi-step protocol or pay/refund? → **Hot potato**
 - Authorship-of-a-package check (Display/policy ops)? → **Publisher**
-
 
 ---
 
@@ -897,7 +896,7 @@ TOOLING
 │   ⊃ sui client (network ops; `sui client ptb` for PTBs), sui move (build/test/migrate),
 │     sui keytool, sui replay
 ├── Move 2024 edition                 📖 docs: .move-book-docs/book/guides/2024-migration-guide.md
-│   ⊃ code-quality checklist       📖 docs: .move-book-docs/book/guides/code-quality-checklist.md
+│   ⊃ code-quality checklist          📖 docs: .move-book-docs/book/guides/code-quality-checklist.md
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
 │   ⊃ tools (10): move_diagnostics, move_hover, move_completions, move_goto_definition,
 │     move_find_references, move_rename, move_document_symbols, move_type_definition,
@@ -935,14 +934,9 @@ TOOLING
 ├── References — API specs, framework docs, glossary, PTB commands, research papers,
 │   Rust SDK, contributing            📖 docs: .sui-docs/references/ · 📖 docs: .sui-docs/references.mdx
 ├── Section landing stubs             📖 docs: .sui-docs/develop.mdx
-├── Browser E2E (optional)            → chrome-devtools-mcp, NOT bundled; register with
-│   `--browser-url=http://127.0.0.1:9222` or it spawns its own wallet-less Chrome
-│   ⊃ skill: sui-e2e — drives Chrome for Testing + Slush approval popups via raw CDP
-│   ⚠ chrome-devtools-mcp cannot see `chrome-extension://` pages; wallet popups never
-│     appear in `list_pages` — the bundled `cdp.py` is the only route to them
-│   ⚠ hosted Slush web wallet CANNOT sign localnet; use a faucet-funded local keypair
-├── Toolchain provisioning            ⊃ skill: sui-setup — suiup/sui/move-analyzer version
-│   match, MCP builds, Chrome+Slush presence; never touches a wallet profile
+├── Browser E2E (optional)            → chrome-devtools-mcp, NOT bundled; must ATTACH, not spawn
+│   ⤳ skill: sui-e2e (Chrome for Testing + Slush popups via raw CDP; traps & localnet caveats there)
+├── Toolchain provisioning            ⤳ skill: sui-setup (versions, MCP builds, Chrome+Slush)
 └── sui-pilot plugin                  → this package; bundles all of the above
 ```
 

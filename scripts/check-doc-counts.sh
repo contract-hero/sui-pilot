@@ -2,9 +2,9 @@
 # Doc-count gate, companion to check-graph-pointers.sh.
 #
 # The bundled-doc counts are embedded by hand in five user-facing surfaces
-# (README.md, llms.txt, CLAUDE.md, site/index.html, site/classic.html),
-# but the authoritative numbers live in
-# .last-sync, which sync-docs.sh rewrites on every corpus refresh. Nothing
+# (README.md, llms.txt, CLAUDE.md, site/index.html, site/classic.html), but the
+# authoritative numbers live in .last-sync, which sync-docs.sh rewrites on every
+# corpus refresh. Nothing
 # else ties the two together, and count drift has produced repeated fix-up
 # commits (11e8008, 515039e, 813729f). This script fails when an embedded
 # count is missing from its surface OR a stale count survives beside a
@@ -109,7 +109,6 @@ check site/classic.html "<strong>Walrus</strong> <span>$walrus files" "walrus"
 check site/classic.html "<strong>TS SDK</strong> <span>$tssdk files" "ts-sdk"
 check site/classic.html "<strong>Sui Prover</strong> <span>$prover files" "sui-prover"
 check site/classic.html "<strong>Seal</strong> <span>$seal files" "seal"
-
 
 if [ "$fail" -ne 0 ]; then
   echo "FAIL embedded doc counts have drifted from .last-sync — update them (see check names above)"

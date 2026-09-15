@@ -162,7 +162,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border
 <section id="what">
 <h2>1. What happened</h2>
 
-<p>The two skills were removed from the plugin at the user's request. As part of the cleanup, 27 lines matching <code>⤳ skill: move-code-review</code> or <code>⤳ skill: move-code-quality</code> were deleted from <code>agents/sui-pilot-agent.md</code>.</p>
+<p>The two skills were removed from the plugin at the user's request. As part of the cleanup, 27 lines in <code>agents/sui-pilot-agent.md</code> carried a <code>⤳ skill: move-code-review</code> or <code>⤳ skill: move-code-quality</code> pointer. 26 were deleted outright; 1 (line 926) was rewritten instead, because it also carried a <code>📖 docs:</code> pointer whose deletion would have failed the corpus-coverage gate.</p>
 
 <p>The user chose whole-line deletion over the alternative of keeping each warning as a plain <code>→</code> note. That decision was made with the trade-off stated in advance. This register is the record of what that cost.</p>
 
@@ -174,7 +174,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border
     ╰──────────┬──────────╯ ╰────────────────────────────┬─────────────────────────────────╯
           routing target                        the part that was worth keeping</code></pre>
 
-<p>Of the 27 deleted lines, <strong>20 carried a substantive claim</strong> and <strong>7 were routing only</strong>.</p>
+<p>Of those 27 lines, <strong>20 carried a substantive claim</strong> and <strong>7 were routing only</strong>.</p>
 
 <aside class="warning">
   <p><strong>Two lines were structural, not textual.</strong> One deleted line was a tree <em>node header</em> (<code>├── Address-owned</code>) whose pointer sat on the same line; deleting it orphaned three child detail lines. Three others were <code>└──</code> subtree terminators. All four were repaired during the cleanup — the <code>Address-owned</code> node was restored and <code>Gas model</code> / <code>Kiosk</code> were re-parented. No action needed, recorded here so a future diff reader is not confused by those repairs.</p>
@@ -336,8 +336,8 @@ git -C ~/workspace/sui-pilot checkout 7ddd15b -- skills/move-code-quality/</code
   <li><strong>Leave them out.</strong> Accept the loss. Valid if the judgement is that the bundled corpora cover the same ground well enough in longer form.</li>
 </ul>
 
-<h4>Unresolved from the cleanup</h4>
-<p><code>.claude-plugin/plugin.json</code> still describes the plugin as offering <em>"code quality tools"</em>. That phrase no longer maps to a specific skill. It was left untouched because the string is marketplace-facing.</p>
+<h4>Resolved since this register was written</h4>
+<p><code>.claude-plugin/plugin.json</code> described the plugin as offering <em>"code quality tools"</em> after the referent was removed. That string has since been rewritten to name toolchain setup and end-to-end dapp testing instead.</p>
 
 <aside class="error">
   <p><strong>Do not re-add the pointers verbatim.</strong> Any recovery must drop the <code>⤳ skill: move-code-review</code> / <code>⤳ skill: move-code-quality</code> prefix. Those skills no longer exist, and a pointer to a missing skill is worse than no pointer.</p>

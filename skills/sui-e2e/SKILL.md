@@ -15,7 +15,7 @@ description: >-
   `take_snapshot` are blind to it; every wallet E2E stalls there. If the
   toolchain is missing (no Chrome for Testing, no Slush, chrome-devtools-mcp not
   registered), run /sui-setup first — this skill assumes provisioning is done.
-allowed-tools: Bash, Read, mcp__chrome-devtools__*
+allowed-tools: Bash, Read, mcp__chrome-devtools__*, mcp__plugin_chrome-devtools-mcp_chrome-devtools__*
 ---
 
 # sui-e2e — end-to-end dapp testing with wallet automation
@@ -56,8 +56,11 @@ extensions) and every MCP call lands there. Symptom: two Chrome windows.
 ## A1 — assess what is running
 
 ```bash
-curl -sS -m 1 http://127.0.0.1:9222/json/version >/dev/null 2>&1 && echo "port:up" || echo "port:down"
-ps aux | grep -i "Chrome for Testing" | grep -v grep | grep -vE 'Helper|--type=' \
+VER=$(curl -sS -m 2 http://127.0.0.1:9222/json/version 2>/dev/null)
+[ -n "$VER" ] && echo "port:up" || echo "port:down"
+# One process-table snapshot; A4 filters the same capture rather than re-scanning.
+SNAP=$(ps aux | grep -i chrome | grep -v grep)
+printf '%s\n' "$SNAP" | grep -i "Chrome for Testing" | grep -vE 'Helper|--type=' \
   | grep -oE -- '--(user-data-dir|remote-debugging-port)=[^ ]+' | sort -u
 ```
 
@@ -79,7 +82,12 @@ pkill -f "Google Chrome for Testing" 2>/dev/null; sleep 1
   --remote-debugging-port=9222 \
   --user-data-dir="$HOME/dev-chrome" \
   > /dev/null 2>&1 &
-sleep 2
+# Poll rather than sleep a fixed 2s — that is too long on a fast machine and
+# not enough on a slow one. Exiting this loop already proves the port is up.
+for _ in $(seq 20); do
+  curl -sf -m 1 http://127.0.0.1:9222/json/version >/dev/null && break
+  sleep 0.25
+done
 ```
 
 ## A3 — verify the wallet profile is the debugged one
@@ -87,7 +95,7 @@ sleep 2
 Port-up is necessary, not sufficient.
 
 ```bash
-curl -sS -m 2 http://127.0.0.1:9222/json/version | head -2
+printf '%s\n' "$VER" | head -2          # reuse A1's capture; do not re-fetch
 curl -s http://127.0.0.1:9222/json \
   | grep -oE 'chrome-extension://opcgpfmipidbgpenhmajoajpbobppdil' | sort -u
 ```
@@ -106,7 +114,7 @@ connect modal and see Slush listed. Do that as the first action of Phase B.
 ## A4 — confirm MCP attached to this browser
 
 ```bash
-ps aux | grep -i "Google Chrome.app" | grep -v "Chrome for Testing" | grep -v grep \
+printf '%s\n' "$SNAP" | grep -i "Google Chrome.app" | grep -v "Chrome for Testing" \
   | grep -oE -- '--user-data-dir=[^ ]*chrome-devtools-mcp[^ ]*' | sort -u
 ```
 
@@ -126,13 +134,25 @@ ps aux | grep -i "Google Chrome.app" | grep -v "Chrome for Testing" | grep -v gr
 | What you drive | Tool |
 |---|---|
 | The **dapp** page (`https://…`) — buttons, modals, post-login checks | chrome-devtools-mcp (`navigate_page`, `take_snapshot`, `click`, `evaluate_script`) |
-| The **Slush popup** (`chrome-extension://…`) — Approve / Reject / Sign / Confirm | `scripts/cdp.py` |
+| The **Slush popup** (`chrome-extension://…`) — Approve / Reject / Sign / Confirm | `cdp.py` (bundled, see below) |
 
 chrome-devtools-mcp attaches only to http(s) page targets. Extension pages never
 appear in `list_pages` and `new_page` will not surface them. The DevTools
 endpoint on `:9222` exposes every target over WebSocket, extension pages
-included — MCP just declines to. `scripts/cdp.py` talks that protocol directly.
+included — MCP just declines to. The bundled `cdp.py` talks that protocol directly.
 It is Python 3 standard library only: no `pip install`, no Node, no `ws` module.
+
+**Resolve its path once, before B1.** The script ships inside the plugin, and the
+working directory during a run is the user's dapp project — not this repo — so a
+relative `scripts/cdp.py` finds nothing on an installed plugin:
+
+```bash
+CDP="${CLAUDE_PLUGIN_ROOT}/skills/sui-e2e/scripts/cdp.py"
+[ -f "$CDP" ] || echo "MISSING: cdp.py not found at $CDP"
+```
+
+Every `cdp.py` invocation below uses `"$CDP"`. Keep it quoted — the plugin root
+can contain spaces.
 
 The handoff is always the same: click something on the dapp that needs the
 wallet → a Slush popup opens → leave MCP, drive the popup with `cdp.py`, press
@@ -143,7 +163,7 @@ the button → control returns to the dapp.
 ### B1 — discover the popup
 
 ```bash
-python3 scripts/cdp.py targets opcgpfmipidbgpenhmajoajpbobppdil
+python3 "$CDP" targets opcgpfmipidbgpenhmajoajpbobppdil
 ```
 
 Popup URLs are `chrome-extension://<id>/index.html#<action>?…`. The hash says
@@ -166,7 +186,7 @@ matches popup URLs. When several targets match, pass the specific target id.
 ### B2 — inspect before touching
 
 ```bash
-python3 scripts/cdp.py inspect <id-or-#action-or-ws-url>
+python3 "$CDP" inspect <id-or-#action-or-ws-url>
 ```
 
 Prints title, visible body text, every clickable label, and `hasPasswordField`.
@@ -177,7 +197,7 @@ Reject** for signatures — read the actual labels rather than assuming.
 ### B3 — click
 
 ```bash
-python3 scripts/cdp.py click <target> "Approve"
+python3 "$CDP" click <target> "Approve"
 ```
 
 Matches a button by trimmed text or aria-label, case-insensitive, with a
@@ -266,7 +286,7 @@ to either trap above.
 
 ## The bundled tool
 
-`scripts/cdp.py` — Python 3 stdlib only. Commands: `targets [substr]`,
+`cdp.py` — Python 3 stdlib only. Commands: `targets [substr]`,
 `inspect <target>`, `click <target> <text>`, `eval <target> <js>`. `<target>` is
 a `ws://` debugger URL, a target id, or a URL substring resolving to a single
 page target. Override the endpoint with `CDP_HOST` / `CDP_PORT` (defaults
@@ -276,13 +296,10 @@ docstring has the details.
 
 ## Common failures
 
-- **Two Chrome windows, connect modal empty** — attach trap (A4).
-- **One window, connect modal empty** — profile-lock trap (A2).
-- **Connected, but localnet sign fails, account reads $0 mainnet** — hosted
-  wallet cannot do localnet. Switch signer.
+Each trap above carries its own remedy at the point of use; these two have no
+home section:
+
 - **"ProfileInUse" / Chrome refuses to start** — another instance holds the
   profile. `pkill -f "Google Chrome for Testing"`, then A2.
 - **Port 9222 up but `list_pages` empty** — call `new_page` on the app URL or
   `about:blank` to surface a tab.
-- **`~/dev-chrome/Default/Extensions` empty** — profile wiped. Ask the user. Do
-  not reinstall.

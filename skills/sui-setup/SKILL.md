@@ -60,7 +60,7 @@ dependency of one they did. Ask for both.
 ### C1 — suiup
 
 ```bash
-command -v suiup >/dev/null 2>&1 && suiup --version || echo "MISSING"
+suiup --version 2>/dev/null || echo "MISSING"
 ```
 
 Install (needs confirmation):
@@ -71,7 +71,7 @@ curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | 
 ### C2 — sui CLI
 
 ```bash
-command -v sui >/dev/null 2>&1 && sui --version || echo "MISSING"
+sui --version 2>/dev/null || echo "MISSING"
 ```
 
 Install: `suiup install sui` — requires C1 to pass first.
@@ -79,7 +79,7 @@ Install: `suiup install sui` — requires C1 to pass first.
 ### C3 — move-analyzer, version-matched to sui
 
 ```bash
-command -v move-analyzer >/dev/null 2>&1 && move-analyzer --version || echo "MISSING"
+move-analyzer --version 2>/dev/null || echo "MISSING"
 ```
 
 Install: `suiup install move-analyzer` — requires C1.
@@ -93,7 +93,7 @@ and apply the **Version-mismatch policy** below.
 
 ```bash
 node --version 2>/dev/null || echo "node MISSING"
-command -v pnpm >/dev/null 2>&1 && pnpm --version || echo "pnpm MISSING"
+pnpm --version 2>/dev/null || echo "pnpm MISSING"
 ```
 
 pnpm install (needs confirmation): `npm install -g pnpm`
@@ -104,19 +104,29 @@ package manager — they are used for nothing in this repo.
 ### C5 — bundled MCP server builds
 
 The plugin declares two MCP servers in `.claude-plugin/plugin.json`; both run
-from `dist/`, which is a build artifact.
+from `dist/`. Those bundles are **committed**, so a marketplace install already
+has them and this check passes without any action.
 
 ```bash
 for s in move-lsp-mcp sui-prover-mcp; do
-  if [ -f "mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
+  if [ -f "${CLAUDE_PLUGIN_ROOT}/mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
 done
 ```
 
-Install (needs confirmation, requires C4):
+Resolve from `${CLAUDE_PLUGIN_ROOT}`, never from the working directory — during a
+run the cwd is the user's Move or dapp project, where `mcp/` does not exist. A
+relative path would report `NOT BUILT` for every installed user.
+
+**Only offer the build when the user is developing on the plugin repo itself**
+— that is, `${CLAUDE_PLUGIN_ROOT}` and the repo root are the same tree:
+
 ```bash
-pnpm --dir mcp/move-lsp-mcp install && pnpm --dir mcp/move-lsp-mcp build
-pnpm --dir mcp/sui-prover-mcp install && pnpm --dir mcp/sui-prover-mcp build
+pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp" install && pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp" build
+pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/sui-prover-mcp" install && pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/sui-prover-mcp" build
 ```
+
+Never run `pnpm install` in the user's own project to fix this — that writes a
+`node_modules/` into a repo that did not ask for one.
 
 Build both even though this skill ignores the prover tier — `plugin.json`
 declares the `sui-prover` server unconditionally, so an unbuilt `dist/` makes
@@ -163,6 +173,10 @@ ls "$HOME/dev-chrome/Default/Extensions" 2>/dev/null | grep -q opcgpfmipidbgpenh
   && echo "installed" || echo "MISSING"
 ```
 
+**Skip this check when E2 reported MISSING** and report it as
+`[SKIP] — profile absent (see E2)`. Without the profile there is nowhere for the
+extension to live, so a second `[FAIL]` line would name one root cause twice.
+
 Missing → print: install Slush from the Chrome Web Store into the
 `~/dev-chrome` profile and unlock it. **Stop there.** Do not automate any part
 of wallet onboarding.
@@ -178,11 +192,19 @@ lands in the wrong browser, and the dapp's connect modal comes up empty while
 `list_pages` still succeeds. It looks like it is working.
 
 ```bash
-claude mcp list 2>/dev/null | grep -i chrome-devtools || echo "chrome-devtools-mcp NOT REGISTERED"
+claude mcp get chrome-devtools 2>/dev/null | grep -q -- '--browser-url' \
+  && echo "attach: OK" || echo "attach: MISSING --browser-url (or not registered)"
 ```
 
-Then confirm the flag is present in whichever config registered it — a
-user/project `.mcp.json`, `settings.json`, or a plugin config.
+`claude mcp get` returns the command and arguments actually in effect. Do not go
+hunting through `.mcp.json` / `settings.json` / plugin configs by hand — you can
+easily read a file that is not the registration being used.
+
+**If chrome-devtools-mcp came from a plugin rather than `claude mcp add`**, its
+tools appear as `mcp__plugin_<plugin>_chrome-devtools__*` and `claude mcp add`
+would create a *second*, differently-named server while leaving the plugin's
+registration wrong. In that case report it and let the user fix the plugin's own
+config — adding a duplicate server hides the problem instead of fixing it.
 
 Fix (needs confirmation) — register it with the attach flag:
 ```bash
@@ -274,5 +296,3 @@ failures in a single `AskUserQuestion` call.
   A fresh clone always needs C5.
 - **chrome-devtools-mcp registered without `--browser-url`** — the attach trap.
   Two Chrome windows, wallet-less automation, no error message.
-- **`~/dev-chrome` exists but `Extensions/` is empty** — profile was wiped.
-  Report and stop. Never reinstall.

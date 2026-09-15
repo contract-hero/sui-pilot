@@ -11,10 +11,7 @@ Invoke the `sui-e2e` skill to drive a full end-to-end test of a Sui dapp, includ
 - **Phase B** — drives the dapp through `chrome-devtools-mcp` and every Slush approval popup through the bundled `scripts/cdp.py`
 - Handles connect, sign-in message, and transaction signing without manual clicks
 - Verifies each approval on the **dapp** side, not just that the click landed
-
-## Why This Command Exists
-
-`chrome-devtools-mcp` cannot see `chrome-extension://` pages. Slush approval popups never appear in `list_pages`, so `click` and `take_snapshot` are blind to them and every wallet end-to-end test stalls at the first approval. This skill talks raw Chrome DevTools Protocol to those popups instead.
+- Works around `chrome-devtools-mcp` being unable to see `chrome-extension://` pages at all — wallet popups never reach `list_pages`, so a bundled raw-CDP client drives them instead
 
 ## When to Use
 
@@ -27,9 +24,10 @@ Invoke the `sui-e2e` skill to drive a full end-to-end test of a Sui dapp, includ
 - The toolchain is not installed yet — run `/sui-setup` first
 - You only need to check Move code compiles — that needs no browser
 
-## Network Note
+## Limitations
 
-The hosted Slush web wallet cannot sign against a private localnet. For hands-free localnet testing, prefer a faucet-funded local dev keypair signing PTBs directly. The skill covers both paths.
+- The hosted Slush web wallet cannot sign against a private localnet; the skill routes localnet runs to a faucet-funded local keypair instead.
+- Wallet state is report-only — a locked wallet or a wiped profile stops the run and asks you.
 
 ## Related Commands
 

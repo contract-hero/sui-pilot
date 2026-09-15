@@ -24,9 +24,10 @@ Invoke the `sui-setup` skill to diagnose the local Sui toolchain and offer to in
 - Mid-task, when a specific tool has already failed with a clear error — fix that one thing directly
 - To set up formal verification — `sui-prover` is deliberately out of this skill's scope
 
-## Safety
+## Limitations
 
-Wallet state is **never** touched. The `~/dev-chrome` profile, the Slush extension, wallet passwords and seed phrases are report-only. If a wallet looks missing or wiped, the skill prints what to do and stops — it will not reinstall anything, because that destroys keys.
+- Wallet state is report-only and never written — see the skill's iron rule. A missing or wiped profile stops the run instead of being repaired.
+- `sui-prover` is out of scope; `/specify` and `/verify` have their own prerequisites.
 
 ## Related Commands
 
