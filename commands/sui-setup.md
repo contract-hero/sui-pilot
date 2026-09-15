@@ -10,7 +10,7 @@ Invoke the `sui-setup` skill to diagnose the local Sui toolchain and offer to in
 - Checks the **CORE** tier: `suiup`, the `sui` CLI, a version-matched `move-analyzer`, Node + pnpm, and the plugin's two bundled MCP server builds
 - Checks the **E2E** tier: Google Chrome for Testing, the `~/dev-chrome` profile, the Slush extension, `chrome-devtools-mcp` configured to attach, and Python 3
 - Prints one tier-grouped status report with `[OK]` / `[WARN]` / `[FAIL]` per item
-- Offers to install each failing item — one confirmation per item, nothing chained silently
+- Offers to install each *installable* failing item, one confirmation each — wallet items are report-only and nothing is chained silently
 
 ## When to Use
 

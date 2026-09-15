@@ -334,7 +334,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
     ├── transfer::party_transfer(obj, party)  → party-owned (single_owner)
     ├── transfer::receive(&mut parent.id, Receiving<T>) → transfer-to-object (TTO)
     ├── ↔ Formal verification § Ghost variables (public_transfer specs need ghosts)
-    └── ⚠ blind transfers are a common SEC-AC bug class
+    └── ⚠ a blind transfer to a caller-supplied address is a common access-control bug
 ```
 
 **Decision matrix — which ownership do I pick?**
@@ -368,7 +368,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 │   ⊃ capabilities ARE objects (capability.md § "Capability is an Object");
 │     common DeFi caps: PoolAdminCap, OracleSourceCap, BridgeOperatorCap
 │   ⚠ anti-pattern: tx_context::sender() as the only guard — use a Capability
-│   ⚠ assert holder; never accept by-ref a cap from untrusted caller
+│   ⚠ a shared or wrapped Cap defeats the pattern — keep capabilities owned
 │   ⇢ alternative: address allowlist when multiple operators rotate frequently
 │
 ├── Witness pattern                   📖 docs: .move-book-docs/book/programmability/witness-pattern.md
@@ -397,7 +397,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
     → authority checked later via `from_module<T>(&pub)` / `from_package<T>(&pub)` —
       every gated function must perform the check (publisher.md security warning)
     ↔ Display, transfer-policy: gated by Publisher
-    → idiomatic packages own a Publisher per type family
+    → one Publisher per module (OTW-bound); a package can hold several
 ```
 
 **When to use what — quick decision flow:**

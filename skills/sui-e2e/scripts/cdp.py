@@ -13,7 +13,7 @@ them as a drivable target. So when a Slush popup is the thing standing between
 you and a signed login, MCP is blind to it. This script talks the raw CDP
 WebSocket directly, which CAN reach those targets.
 
-It uses only the Python standard library (socket + urllib + hashlib), so it
+It uses only the Python standard library (socket + urllib + base64 + struct), so it
 runs anywhere Python 3 does — no `pip install`, no hunting for a stray `ws`
 module in some npx cache.
 
@@ -306,7 +306,13 @@ def cmd_click(args):
     target, text = args[0], args[1]
     cdp = CDP(resolve_ws(target))
     try:
-        print(cdp.evaluate(CLICK_JS(text)))
+        out = cdp.evaluate(CLICK_JS(text))
+        print(out)
+        # In a wallet-signing flow "clicked Approve" and "clicked nothing" must
+        # not share an exit code - a wrapper or && chain would otherwise treat a
+        # no-op as a successful approval.
+        if not json.loads(out).get("clicked"):
+            sys.exit(1)
     finally:
         cdp.close()
 

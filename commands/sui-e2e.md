@@ -7,7 +7,7 @@ Invoke the `sui-e2e` skill to drive a full end-to-end test of a Sui dapp, includ
 
 ## What This Command Does
 
-- **Phase A** — brings up Google Chrome for Testing on port 9222 with the wallet profile, then verifies the debugged browser is the one holding Slush and that `chrome-devtools-mcp` attached to it rather than spawning its own
+- **Phase A** — brings up Google Chrome for Testing on port 9222 with the wallet profile, then checks that the debugged browser is the one holding Slush and that `chrome-devtools-mcp` attached to it rather than spawning its own. Slush is an MV3 worker that can be dormant, so the definitive wallet check is functional and happens in Phase B
 - **Phase B** — drives the dapp through `chrome-devtools-mcp` and every Slush approval popup through the bundled `scripts/cdp.py`
 - Handles connect, sign-in message, and transaction signing without manual clicks
 - Verifies each approval on the **dapp** side, not just that the click landed

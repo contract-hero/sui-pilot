@@ -60,18 +60,32 @@ dependency of one they did. Ask for both.
 ### C1 — suiup
 
 ```bash
-suiup --version 2>/dev/null || echo "MISSING"
+if ! command -v suiup >/dev/null; then
+  echo "suiup: MISSING (not on PATH)"
+elif OUT=$(suiup --version 2>&1); then
+  echo "suiup: OK $OUT"
+else
+  echo "suiup: BROKEN - found at $(command -v suiup) but it exited non-zero:"; printf '%s\n' "$OUT"
+fi
 ```
 
-Install (needs confirmation):
+Install (needs confirmation): only on `MISSING`.
 ```bash
 curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
 ```
 
+**`BROKEN` must never trigger an install.** A dyld failure, a Gatekeeper
+quarantine, a malformed config or a permission error all mean the binary is
+present. Reinstalling would replace a working install to fix a fault nobody
+diagnosed. Report the captured error and ask the user. The same rule applies to
+every probe below.
+
 ### C2 — sui CLI
 
 ```bash
-sui --version 2>/dev/null || echo "MISSING"
+if ! command -v sui >/dev/null; then echo "sui: MISSING (not on PATH)"
+elif OUT=$(sui --version 2>&1); then echo "sui: OK $OUT"
+else echo "sui: BROKEN - exited non-zero:"; printf '%s\n' "$OUT"; fi
 ```
 
 Install: `suiup install sui` — requires C1 to pass first.
@@ -79,7 +93,9 @@ Install: `suiup install sui` — requires C1 to pass first.
 ### C3 — move-analyzer, version-matched to sui
 
 ```bash
-move-analyzer --version 2>/dev/null || echo "MISSING"
+if ! command -v move-analyzer >/dev/null; then echo "move-analyzer: MISSING (not on PATH)"
+elif OUT=$(move-analyzer --version 2>&1); then echo "move-analyzer: OK $OUT"
+else echo "move-analyzer: BROKEN - exited non-zero:"; printf '%s\n' "$OUT"; fi
 ```
 
 Install: `suiup install move-analyzer` — requires C1.
@@ -92,8 +108,8 @@ and apply the **Version-mismatch policy** below.
 ### C4 — Node and pnpm
 
 ```bash
-node --version 2>/dev/null || echo "node MISSING"
-pnpm --version 2>/dev/null || echo "pnpm MISSING"
+command -v node >/dev/null && node --version || echo "node: MISSING (not on PATH)"
+command -v pnpm >/dev/null && pnpm --version || echo "pnpm: MISSING (not on PATH)"
 ```
 
 pnpm install (needs confirmation): `npm install -g pnpm`
@@ -108,9 +124,13 @@ from `dist/`. Those bundles are **committed**, so a marketplace install already
 has them and this check passes without any action.
 
 ```bash
-for s in move-lsp-mcp sui-prover-mcp; do
-  if [ -f "${CLAUDE_PLUGIN_ROOT}/mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
-done
+if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  echo "SKIP: CLAUDE_PLUGIN_ROOT is unset - cannot locate the plugin tree, so MCP builds are unverifiable"
+else
+  for s in move-lsp-mcp sui-prover-mcp; do
+    if [ -f "${CLAUDE_PLUGIN_ROOT}/mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
+  done
+fi
 ```
 
 Resolve from `${CLAUDE_PLUGIN_ROOT}`, never from the working directory — during a
@@ -169,8 +189,13 @@ Missing → tell the user to launch Chrome for Testing once with
 Slush extension id: `opcgpfmipidbgpenhmajoajpbobppdil`
 
 ```bash
-ls "$HOME/dev-chrome/Default/Extensions" 2>/dev/null | grep -q opcgpfmipidbgpenhmajoajpbobppdil \
-  && echo "installed" || echo "MISSING"
+if [ ! -r "$HOME/dev-chrome" ]; then
+  echo "UNKNOWN: ~/dev-chrome is not readable - this says nothing about the wallet"
+elif compgen -G "$HOME/dev-chrome/*/Extensions/opcgpfmipidbgpenhmajoajpbobppdil" >/dev/null; then
+  echo "installed"
+else
+  echo "MISSING from every profile under ~/dev-chrome"
+fi
 ```
 
 **Skip this check when E2 reported MISSING** and report it as
@@ -192,10 +217,20 @@ lands in the wrong browser, and the dapp's connect modal comes up empty while
 `list_pages` still succeeds. It looks like it is working.
 
 ```bash
-claude mcp get chrome-devtools 2>/dev/null | grep -q -- '--browser-url' \
-  && echo "attach: OK" || echo "attach: MISSING --browser-url (or not registered)"
+if ! command -v claude >/dev/null; then
+  echo "attach: UNKNOWN - the 'claude' CLI is not on PATH, so the registration cannot be read"
+elif ! OUT=$(claude mcp get chrome-devtools 2>&1); then
+  echo "attach: NOT REGISTERED (or 'claude mcp get' failed):"; printf '%s\n' "$OUT"
+elif printf '%s' "$OUT" | grep -q -- '--browser-url'; then
+  echo "attach: OK"
+else
+  echo "attach: REGISTERED WITHOUT --browser-url"
+fi
 ```
 
+Four states, four remedies. `UNKNOWN` means the check itself is broken — offer
+nothing, because `claude mcp add` on a broken check can create a second,
+differently-named server while the real registration stays wrong.
 `claude mcp get` returns the command and arguments actually in effect. Do not go
 hunting through `.mcp.json` / `settings.json` / plugin configs by hand — you can
 easily read a file that is not the registration being used.
@@ -219,7 +254,7 @@ connection afterwards.
 ### E5 — Python 3
 
 ```bash
-python3 --version 2>/dev/null || echo "MISSING"
+command -v python3 >/dev/null && python3 --version || echo "python3: MISSING (not on PATH)"
 ```
 
 Runs `scripts/cdp.py` in `/sui-e2e`. Standard library only — nothing to
@@ -241,8 +276,14 @@ as one grey line in the report.
    absent, so the LSP can report errors that are not real and miss ones that are.
 3. Check a matching pair is actually available before offering anything:
    ```bash
-   suiup list 2>/dev/null | grep -E 'sui|move-analyzer'
+   if ! LIST=$(suiup list 2>&1); then
+     echo "UNKNOWN: cannot query suiup - the catalogue is unreadable:"; printf '%s\n' "$LIST"
+   else
+     printf '%s\n' "$LIST" | grep -E 'sui|move-analyzer'
+   fi
    ```
+   A failed query is **not** the same as "no matching pair exists". When the
+   catalogue is unreadable, keep the `[WARN]`, say so, and offer nothing.
 4. **If a matching version exists, offer to realign both.** Include it in the
    batched `AskUserQuestion`, and name the target version in the option:
    ```bash
@@ -292,7 +333,5 @@ failures in a single `AskUserQuestion` call.
   install the CLI and forget the LSP, then wonder why diagnostics are empty.
 - **Both present, versions drift** — happens after `suiup install sui` without
   a matching `move-analyzer` update. Silent degradation.
-- **MCP `dist/` missing after a fresh clone** — `dist/` is a build artifact.
-  A fresh clone always needs C5.
 - **chrome-devtools-mcp registered without `--browser-url`** — the attach trap.
   Two Chrome windows, wallet-less automation, no error message.

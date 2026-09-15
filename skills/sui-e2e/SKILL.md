@@ -15,7 +15,7 @@ description: >-
   `take_snapshot` are blind to it; every wallet E2E stalls there. If the
   toolchain is missing (no Chrome for Testing, no Slush, chrome-devtools-mcp not
   registered), run /sui-setup first — this skill assumes provisioning is done.
-allowed-tools: Bash, Read, mcp__chrome-devtools__*, mcp__plugin_chrome-devtools-mcp_chrome-devtools__*
+allowed-tools: Bash, Read, mcp__chrome-devtools, mcp__plugin_chrome-devtools-mcp_chrome-devtools
 ---
 
 # sui-e2e — end-to-end dapp testing with wallet automation
@@ -56,13 +56,19 @@ extensions) and every MCP call lands there. Symptom: two Chrome windows.
 ## A1 — assess what is running
 
 ```bash
-VER=$(curl -sS -m 2 http://127.0.0.1:9222/json/version 2>/dev/null)
-[ -n "$VER" ] && echo "port:up" || echo "port:down"
-# One process-table snapshot; A4 filters the same capture rather than re-scanning.
-SNAP=$(ps aux | grep -i chrome | grep -v grep)
-printf '%s\n' "$SNAP" | grep -i "Chrome for Testing" | grep -vE 'Helper|--type=' \
+curl -sS -m 2 --noproxy '*' http://127.0.0.1:9222/json/version; RC=$?
+case $RC in
+  0)  echo "port:up" ;;
+  7)  echo "port:down - connection refused (nothing listening on 9222)" ;;
+  28) echo "port:INCONCLUSIVE - timed out after 2s; the browser may be slow to start" ;;
+  *)  echo "port:INCONCLUSIVE - curl exit $RC; see the error above" ;;
+esac
+ps auxww | grep -i "Chrome for Testing" | grep -v grep | grep -vE 'Helper|--type=' \
   | grep -oE -- '--(user-data-dir|remote-debugging-port)=[^ ]+' | sort -u
 ```
+
+**`INCONCLUSIVE` is not `port:down`.** A2 kills the user's browser, so only run it
+on a confirmed `port:down`. On `INCONCLUSIVE`, show the curl error and ask the user.
 
 - **port:down, nothing holds `~/dev-chrome`** → clean launch (A2).
 - **port:down, a Chrome-for-Testing already holds `~/dev-chrome`** → the
@@ -81,13 +87,16 @@ pkill -f "Google Chrome for Testing" 2>/dev/null; sleep 1
 "/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" \
   --remote-debugging-port=9222 \
   --user-data-dir="$HOME/dev-chrome" \
-  > /dev/null 2>&1 &
-# Poll rather than sleep a fixed 2s — that is too long on a fast machine and
-# not enough on a slow one. Exiting this loop already proves the port is up.
+  > /tmp/cft-launch.log 2>&1 &
+# Poll rather than sleep a fixed 2s - too long on a fast machine, too short on a
+# slow one. The loop also exits after 20 failed attempts, so record which it was.
+UP=0
 for _ in $(seq 20); do
-  curl -sf -m 1 http://127.0.0.1:9222/json/version >/dev/null && break
+  curl -sf -m 1 --noproxy '*' http://127.0.0.1:9222/json/version >/dev/null && { UP=1; break; }
   sleep 0.25
 done
+[ "$UP" = 1 ] || { echo "FATAL: port 9222 did not come up in 5s. Chrome log:"; tail -20 /tmp/cft-launch.log; exit 1; }
+echo "port 9222 up"
 ```
 
 ## A3 — verify the wallet profile is the debugged one
@@ -95,9 +104,12 @@ done
 Port-up is necessary, not sufficient.
 
 ```bash
-printf '%s\n' "$VER" | head -2          # reuse A1's capture; do not re-fetch
-curl -s http://127.0.0.1:9222/json \
-  | grep -oE 'chrome-extension://opcgpfmipidbgpenhmajoajpbobppdil' | sort -u
+curl -sS -m 2 --noproxy '*' http://127.0.0.1:9222/json/version | head -2
+# Prove the fetch succeeded BEFORE reading meaning into an empty result - an
+# unreachable endpoint must never be reported to the user as a wiped wallet.
+JSON=$(curl -sf -m 5 --noproxy '*' http://127.0.0.1:9222/json) \
+  || { echo "INCONCLUSIVE: cannot read /json from 9222 - this says nothing about the wallet"; exit 1; }
+printf '%s' "$JSON" | grep -oE 'chrome-extension://opcgpfmipidbgpenhmajoajpbobppdil' | sort -u
 ```
 
 - Extension line present → real profile loaded. Continue.
@@ -114,16 +126,22 @@ connect modal and see Slush listed. Do that as the first action of Phase B.
 ## A4 — confirm MCP attached to this browser
 
 ```bash
-printf '%s\n' "$SNAP" | grep -i "Google Chrome.app" | grep -v "Chrome for Testing" \
-  | grep -oE -- '--user-data-dir=[^ ]*chrome-devtools-mcp[^ ]*' | sort -u
+STRAY=$(ps auxww | grep -i "Google Chrome.app" | grep -v grep | grep -v "Chrome for Testing" \
+  | grep -oE -- '--user-data-dir=[^ ]*chrome-devtools-mcp[^ ]*' | sort -u)
+if [ -n "$STRAY" ]; then
+  echo "ATTACH-TRAP: MCP spawned its own Chrome: $STRAY"
+else
+  echo "attach: OK (no chrome-devtools-mcp profile in the process table)"
+fi
 ```
 
-- **Output present** → MCP spawned its own Chrome; the attach trap fired.
+- **`ATTACH-TRAP:`** → MCP spawned its own Chrome; the attach trap fired.
   `--browser-url` is missing from the chrome-devtools-mcp registration. Fix it
   via `/sui-setup` (check E4), restart the MCP connection — config changes do
   not hot-reload — then kill the stray:
   `pkill -f "chrome-devtools-mcp/chrome-profile"`.
-- **No output** → MCP is attaching to the 9222 Chrome. Phase A passes.
+- **`attach: OK`** → MCP is attaching to the 9222 Chrome. Phase A passes. Treat a
+  silent block as a broken check, never as a pass.
 
 ---
 
@@ -147,12 +165,17 @@ working directory during a run is the user's dapp project — not this repo — 
 relative `scripts/cdp.py` finds nothing on an installed plugin:
 
 ```bash
+: "${CLAUDE_PLUGIN_ROOT:?CLAUDE_PLUGIN_ROOT is unset - run /sui-e2e as an installed plugin}"
 CDP="${CLAUDE_PLUGIN_ROOT}/skills/sui-e2e/scripts/cdp.py"
-[ -f "$CDP" ] || echo "MISSING: cdp.py not found at $CDP"
+[ -f "$CDP" ] || { echo "FATAL: cdp.py not found at $CDP - run /sui-setup"; exit 1; }
+echo "CDP=$CDP"
 ```
 
-Every `cdp.py` invocation below uses `"$CDP"`. Keep it quoted — the plugin root
-can contain spaces.
+**Read the printed `CDP=` value and substitute that absolute path literally into
+every `python3` command below.** A shell variable does not survive to the next
+command block — each fenced block here is a separate shell. The `"$CDP"` written
+below is a placeholder for that path, not a variable you can rely on. Keep it
+quoted: the plugin root can contain spaces.
 
 The handoff is always the same: click something on the dapp that needs the
 wallet → a Slush popup opens → leave MCP, drive the popup with `cdp.py`, press

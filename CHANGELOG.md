@@ -16,15 +16,6 @@ All notable changes to sui-pilot are documented in this file. The format is base
   - **Network guidance:** the hosted Slush web wallet cannot sign against a private localnet. The skill routes localnet testing to a faucet-funded local dev keypair signing PTBs directly, and notes that localnet's JSON-RPC rejects automatic gas estimation, so an explicit `tx.setGasBudget(...)` is required.
   - Merged and adapted from the standalone `launch-dev-chrome` and `drive-slush-wallet` skills. The originals depended on a machine-local SessionStart hook to inject `--browser-url`; that guarantee now lives in `/sui-setup` check E4 so the plugin is portable.
 
-### Changed
-
-- **`plugin.json` description and keywords.** The description no longer claims "code quality tools" (the referent was removed) and now names toolchain setup and end-to-end dapp testing. Added `e2e-testing`, `dapp` and `wallet` keywords.
-
-### Removed
-
-- **`/move-code-quality` and `/move-code-review` commands + skills.** Both skills, both command wrappers, and the two `.claude-plugin/fixtures/*-workflow-transcript.md` files that exercised the quality → review → tests sequence. Every cross-reference across `agents/sui-pilot-agent.md`, the surviving commands and skills, `README.md`, `NOTES.md`, `EVAL_FRAMEWORK.html`, the site pages and this changelog was scrubbed.
-  - 27 lines in the agent knowledge graph carried a `⤳ skill:` pointer to a removed skill. 20 of them also carried a security or idiom claim that existed nowhere else — for example *"never use timestamps, tx hash, or coin balances as randomness"*. Those claims are Sui facts rather than skill routing, so all 20 were **restored at their original graph anchors** as plain `⚠` / `→` notes with the dead pointer stripped. Of the remaining 7, six were routing-only and stayed deleted; one was rewritten to keep the `📖 docs:` pointer it also carried.
-
 - **`/specify` non-interactive mode for evaluation.** Setting `SPECIFY_AUTO_DEFAULTS=1` in the environment makes the skill skip every `AskUserQuestion` gate (picks the suggested default), abort hard on `setup_warning` instead of offering "proceed anyway", cap per-function iterations at 1, and skip the prioritization batch (default order). Progress and audit-trail artifacts still land at the package root so the eval scorer can read them. Interactive mode (unset or `=0`) remains the default.
 
 - **`evals/fixtures/specify-discovery/` + `task-28-specify-discovery` eval task.** A mixed-visibility Move fixture (bare `public`, `public(package)`, `public entry`, bare `entry`, private, `public macro`, `#[test_only] public`, and `#[test]`) exercises the visibility-classifier regex contract from `skills/specify/references/spec-patterns.md` §1. The eval asserts `.specify-progress.json` lists the three externally-reachable functions (`pub_fn`, `pub_entry_fn`, `entry_only_fn`) and excludes the four non-reachable ones. Category `specify`; lives at the end of `evals/tasks.json` (the 28th tier-2 task).
@@ -48,6 +39,15 @@ All notable changes to sui-pilot are documented in this file. The format is base
 - **Sui Prover docs as a sixth bundled corpus.** `.sui-prover-docs/` ships three subtrees: `guide/` (canonical `SKILL.md` + `spec-reference.md` from `asymptotic-code/sui-prover/.claude/skills/sui-prover/`), `sources/` (the `prover.move`, `ghost.move`, `log.move`, `vector.move` construct definitions imported by `#[spec_only] use prover::...`), and `examples/` (worked specs for `public` and `entry` functions from `asymptotic-code/sui-kit/examples/` — guide, AMM, showcase, integer-mate-bug). 20 text files total. The corpus underpins the upcoming `/specify` formal-verification command (planned phases 2-4 in `~/.claude/plans/drifting-rolling-pike.md`) and the `sui-prover-mcp` wrapper around the locally-installed `sui-prover` binary. Replaces all training-time knowledge of the legacy Move Prover MSL syntax (`aborts_if`, `pragma`, `apply`, `assume`, free `axiom`) which is **not** what Sui Prover uses — see `.sui-prover-docs/guide/SKILL.md` for the actual `#[spec(prove)]` / `requires` / `ensures` / `asserts` construct set.
 - **`sync-docs.sh` extended for the prover corpus.** Three new `sync_repo` invocations pull the prover guide, construct sources, and Asymptotic example packages. The file-count gate in both `sync_repo` and `sync_repo_multi` now accepts `.move` files alongside `.md` / `.mdx` so subtrees containing only Move source (like `packages/prover/sources/`) are not refused as "empty content". Both functions also `mkdir -p "$(dirname "$local_dir")"` before the final `mv` so nested layouts (`.sui-prover-docs/guide`, `.sui-prover-docs/sources`, `.sui-prover-docs/examples`) work without manual parent-dir pre-creation.
 - **Routing surfaces updated.** New row in `agents/sui-pilot-agent.md` topic→corpus table for `.sui-prover-docs/`; mirrored in `CLAUDE.md`'s table; `llms.txt` gained a sixth corpus bullet (~715 doc files total, up from ~695).
+
+### Changed
+
+- **`plugin.json` description and keywords.** The description no longer claims "code quality tools" (the referent was removed) and now names toolchain setup and end-to-end dapp testing. Added `e2e-testing`, `dapp` and `wallet` keywords.
+
+### Removed
+
+- **`/move-code-quality` and `/move-code-review` commands + skills.** Both skills, both command wrappers, and the two `.claude-plugin/fixtures/*-workflow-transcript.md` files that exercised the quality → review → tests sequence. Every cross-reference across `agents/sui-pilot-agent.md`, the surviving commands and skills, `README.md`, `NOTES.md`, `EVAL_FRAMEWORK.html`, the site pages and this changelog was scrubbed.
+  - 27 lines in the agent knowledge graph carried a `⤳ skill:` pointer to a removed skill. 20 of them also carried a security or idiom claim that existed nowhere else — for example *"never use timestamps, tx hash, or coin balances as randomness"*. Those claims are Sui facts rather than skill routing, so all 20 were **restored at their original graph anchors** with the dead pointer stripped: 19 as plain `⚠` / `→` notes, and one as a `📖 docs:` pointer to the checklist it described. Of the remaining 7, six were routing-only and stayed deleted; one was rewritten to keep the `📖 docs:` pointer it also carried.
 
 ### Changed
 
@@ -107,7 +107,7 @@ First marketplace-installable release. Install via:
 - Self-hosted plugin marketplace at `.claude-plugin/marketplace.json` (`alilloig` marketplace, one plugin `sui-pilot` sourced from the repo root).
 - Prebundled `move-lsp` MCP server (esbuild, minified ESM, ~470 KB) committed at `mcp/move-lsp-mcp/dist/index.js` so marketplace installs work with no post-install build step.
 - Bundled documentation for the Sui, Walrus, Seal, and TypeScript SDK ecosystems (548 files total).
-- Three slash commands: `/sui-pilot`, `/move-tests`, `/oz-math`.
+- Five slash commands: `/sui-pilot`, `/move-code-quality`, `/move-code-review`, `/move-tests`, `/oz-math`. *(`/move-tests` was removed later in this file's Unreleased section; `/move-code-quality` and `/move-code-review` were removed after that. This line records what 0.1.0 shipped.)*
 - `sui-pilot-agent` doc-first subagent.
 - CI drift-check and bundle-size budget (600 KB ceiling) on the committed MCP bundle.
 
