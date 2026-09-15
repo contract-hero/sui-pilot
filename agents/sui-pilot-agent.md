@@ -67,11 +67,9 @@ Any file importing `@mysten/*` may still be on the 1.x API; 2.0 has extensive br
 
 Run quality checks in order:
 1. `move_diagnostics` MCP tool for compiler errors
-2. `/move-code-quality` for Move 2024 compliance
-3. `/move-code-review` for security issues (if substantial changes)
-4. `/specify` for formal verification of externally reachable functions (`public` non-package + `entry`) — opt-in; writes `#[spec(prove)]` specs into the user's `.move` files
+2. `/specify` for formal verification of externally reachable functions (`public` non-package + `entry`) — opt-in; writes `#[spec(prove)]` specs into the user's `.move` files
 
-Skip steps 2-4 for trivial fixes (typos, single-line changes).
+Skip step 2 for trivial fixes (typos, single-line changes).
 
 ## When LSP Unavailable
 
@@ -86,11 +84,11 @@ If `move-analyzer` is not available, continue without MCP tools and note that la
 > TS SDK) — how they relate, when each is the right tool, and which bundled skills
 > provide deeper guidance.
 >
-> ⤳ skill: move-code-quality — Move-2024 syntax/idiom enforcement
-> ⤳ skill: move-code-review — security, architecture, design review
 > ⤳ skill: oz-math — OpenZeppelin math integration audit
 > ⤳ skill: specify — formal spec authoring + sui-prover verification
 > ⤳ skill: verify — verification workflow
+> ⤳ skill: sui-setup — toolchain provisioning + version-match checks
+> ⤳ skill: sui-e2e — browser end-to-end testing with wallet automation
 
 ---
 
@@ -124,7 +122,7 @@ ABILITIES                             📖 docs: .move-book-docs/book/move-basic
 ├── drop   — value can be silently dropped at end of scope
 │   📖 docs: .move-book-docs/book/move-basics/drop-ability.md
 │   ↔ Hot-potato pattern → a struct with NO abilities must be consumed explicitly
-│   ⤳ skill: move-code-review (hot-potato is a load-bearing safety pattern)
+│   ⚠ hot-potato is a load-bearing safety pattern
 │
 ├── key    — value may be stored as a top-level Sui object
 │   📖 docs: .move-book-docs/book/storage/key-ability.md
@@ -149,7 +147,7 @@ GENERIC TYPES                         📖 docs: .move-book-docs/book/move-basic
 │
 ├── Constrained generics: `<T: store + drop>`  → propagate ability requirements
 │   → ABILITIES (compile-time check)
-│   ⤳ skill: move-code-quality (proper bounds = idiomatic Move 2024)
+│   → proper bounds = idiomatic Move 2024
 │
 ├── Phantom type parameters: `<phantom T>`     → carry brand without storage cost
 │   ↔ One-time-witness pattern (§ Authorization patterns)
@@ -170,7 +168,7 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
     ├── A function consuming a value by-move destroys the caller's binding
     ├── References cannot outlive their referent — borrow-checker enforced
     └── No `Drop`-equivalent destructor; types lacking `drop` MUST be consumed explicitly
-        ⤳ skill: move-code-review (look for unconsumed hot-potatoes & resource leaks)
+        ⚠ look for unconsumed hot-potatoes & resource leaks
 ```
 
 **Enums & match**                     📖 docs: .move-book-docs/book/move-basics/enum-and-match.md
@@ -191,7 +189,7 @@ REFERENCES                            📖 docs: .move-book-docs/book/move-basic
 - `#[error]` const of `vector<u8>` for human-readable abort messages (Move 2024)
 - `package::Type::method(...)` qualified calls when the receiver is ambiguous
 
-⤳ skill: move-code-quality (the canonical checklist for these)
+📖 docs: .move-book-docs/book/guides/code-quality-checklist.md — the canonical checklist for these
 
 > When `book/` prose is insufficient, the reference tree is the authoritative
 > language-semantics source (abilities, generics, enums, pattern matching, modes).
@@ -229,7 +227,6 @@ MODULES                               📖 docs: .move-book-docs/book/move-basic
 └── #[test_only] / #[mode(...)]       → compile-time inclusion filters; mode-annotated
     code is unpublishable (#[test_only] = sugar for #[mode(test)])
     📖 docs: .move-book-docs/book/move-advanced/modes.md
-    ⤳ skill: move-code-quality
 ```
 
 **Package lifecycle**
@@ -268,13 +265,13 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ↔ object::delete(uid)            → destroy an object (ID is retained across wrap/unwrap)
 │
 ├── Object ownership                  📖 docs: .sui-docs/develop/objects/object-ownership/
-│   ├── Address-owned                 ⤳ skill: move-code-review
+│   ├── Address-owned
 │   │   → fast-path execution; one writer at a time; no consensus needed
 │   │   → docs now recommend Party over fastpath for owned objects (versioning.mdx tip)
 │   │   ⇢ alternative: shared (when multi-writer is required)
 │   │
 │   ├── Shared                        → consensus-required; multi-writer; congestion-prone
-│   │   ⤳ skill: move-code-review (look for shared-object hot spots)
+│   │   ⚠ look for shared-object hot spots
 │   │   ↔ Transactions § Local fee markets (per-object congestion pricing)
 │   │   ⇢ alternative: Party objects  → single-owner, consensus-sequenced (see below)
 │   │   ⇢ alternative: derived objects (parent-child) when ownership is hierarchical
@@ -297,7 +294,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ⊃ dynamic_object_field — children that are themselves Sui objects (preserve UID)
 │   ⊃ Table/Bag (+ Object* variants) are built ON dynamic fields — not peers (see Collections)
 │   ⚠ deleting a parent with live dynamic fields orphans them forever (even non-`drop` values)
-│   ⤳ skill: move-code-review (DOF lookups can hide gas costs; audit access patterns)
+│   ⚠ DOF lookups can hide gas costs; audit access patterns
 │
 ├── Collections
 │   ├── in-memory: vector / VecSet / VecMap → struct-embedded, bounded by object size limit
@@ -317,7 +314,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ↔ Each mutation bumps the object version (used by consensus + replay)
 │   ↔ Package upgrades — `version: u64` guard convention → § Modules & visibility § Package
 │     lifecycle  📖 docs: .sui-docs/develop/publish-upgrade-packages/upgrade.mdx
-│   ⤳ skill: move-code-review (version mismatch = silent foot-gun)
+│   ⚠ version mismatch = silent foot-gun
 │
 ├── Display — off-chain rendering templates per type; Publisher-gated (§ Authorization § Publisher)
 │   📖 docs: .sui-docs/develop/objects/display/
@@ -337,7 +334,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
     ├── transfer::party_transfer(obj, party)  → party-owned (single_owner)
     ├── transfer::receive(&mut parent.id, Receiving<T>) → transfer-to-object (TTO)
     ├── ↔ Formal verification § Ghost variables (public_transfer specs need ghosts)
-    └── ⤳ skill: move-code-review (blind transfers are a common SEC-AC bug class)
+    └── ⚠ a blind transfer to a caller-supplied address is a common access-control bug
 ```
 
 **Decision matrix — which ownership do I pick?**
@@ -351,7 +348,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 | Registry / one-object-per-key slots (per-user config, soulbound) | Derived objects | Deterministic addresses, no parent bottleneck |
 | Owned object, many concurrent inflight txns | Party | Consensus versioning removes fastpath equivocation locks |
 
-⤳ skill: move-code-review (the single most common review finding is "wrong ownership choice")
+⚠ the single most common design error here is the wrong ownership choice
 
 ---
 
@@ -371,7 +368,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 │   ⊃ capabilities ARE objects (capability.md § "Capability is an Object");
 │     common DeFi caps: PoolAdminCap, OracleSourceCap, BridgeOperatorCap
 │   ⚠ anti-pattern: tx_context::sender() as the only guard — use a Capability
-│   ⤳ skill: move-code-review (assert holder; never accept by-ref a cap from untrusted caller)
+│   ⚠ a shared or wrapped Cap defeats the pattern — keep capabilities owned
 │   ⇢ alternative: address allowlist when multiple operators rotate frequently
 │
 ├── Witness pattern                   📖 docs: .move-book-docs/book/programmability/witness-pattern.md
@@ -383,7 +380,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 ├── One-time witness (OTW)            📖 docs: .move-book-docs/book/programmability/one-time-witness.md
 │   → witness type whose name == module name (uppercase); guaranteed instantiated once
 │   → consumed in module init; commonly used to construct singleton coins/treasuries
-│   ⤳ skill: move-code-review (audit OTW consumption — must be by-value, drop-only)
+│   ⚠ audit OTW consumption — must be by-value, drop-only
 │   ↔ coin::create_currency<T>(otw, ...)
 │
 ├── Hot potato pattern                📖 docs: .move-book-docs/book/programmability/hot-potato-pattern.md
@@ -392,7 +389,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 │   ↔ framework hot potatoes: transfer_policy::TransferRequest, token::ActionRequest,
 │     PAS Request, deepbook FlashLoan (§ Transfer policies, § Onchain finance)
 │   ↔ Transactions § PTB structure — hot values can't flow into non-public `entry` calls
-│   ⤳ skill: move-code-review (every hot-potato needs an exhaustive consume function)
+│   ⚠ every hot-potato needs an exhaustive consume function
 │   ⇢ alternative: Option-wrapped builder when the consume step is optional
 │
 └── Publisher                         📖 docs: .move-book-docs/book/programmability/publisher.md
@@ -400,7 +397,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
     → authority checked later via `from_module<T>(&pub)` / `from_package<T>(&pub)` —
       every gated function must perform the check (publisher.md security warning)
     ↔ Display, transfer-policy: gated by Publisher
-    ⤳ skill: move-code-quality (idiomatic packages own a Publisher per type family)
+    → one Publisher per module (OTW-bound); a package can hold several
 ```
 
 **When to use what — quick decision flow:**
@@ -411,7 +408,7 @@ AUTHORIZATION                         📖 docs: .sui-docs/develop/security/best
 - Caller must complete a multi-step protocol or pay/refund? → **Hot potato**
 - Authorship-of-a-package check (Display/policy ops)? → **Publisher**
 
-⤳ skill: move-code-review (every authorization choice should match this flow; deviations are usually bugs)
+⚠ every authorization choice should match this flow; deviations are usually bugs
 
 ---
 
@@ -443,15 +440,14 @@ TRANSACTIONS                          📖 docs: .sui-docs/develop/transactions/
 │   ↔ Cryptography & primitives § Signing & verification
 ├── Soft bundles (SIP-19)             📖 docs: .sui-docs/develop/transactions/soft-bundles.mdx
 │   ⇢ alternative to: single PTB — multi-signer, per-tx revert; best-effort ordering, NOT atomic
-├── Gas model                         📖 docs: .sui-docs/develop/transaction-payment/gas-in-sui.mdx · 📖 docs: .sui-docs/develop/transaction-payment/
-│   ├── Sponsored txns                📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
-│   │   → sponsor / gas station supplies the gas payment object on the user's behalf
-│   ├── Gasless stablecoin transfers  📖 docs: .sui-docs/develop/transaction-payment/gasless-stablecoin-transfers.mdx
-│   │   → protocol allowlist, sender holds no SUI; deprioritized under congestion — distinct mechanism from sponsorship
-│   └── Local fee markets             📖 docs: .sui-docs/develop/transaction-payment/local-fee-markets.mdx
-│       → per-shared-object rate limit (ExecutionCancelledDueToSharedObjectCongestion); gas price is the only priority lever
-│       ↔ Sui object model § Shared (avoid a single hot shared object; split state per pair/user)
-└── ⤳ skill: move-code-review
+└── Gas model                         📖 docs: .sui-docs/develop/transaction-payment/gas-in-sui.mdx · 📖 docs: .sui-docs/develop/transaction-payment/
+    ├── Sponsored txns                📖 docs: .sui-docs/develop/transaction-payment/sponsor-txn.mdx
+    │   → sponsor / gas station supplies the gas payment object on the user's behalf
+    ├── Gasless stablecoin transfers  📖 docs: .sui-docs/develop/transaction-payment/gasless-stablecoin-transfers.mdx
+    │   → protocol allowlist, sender holds no SUI; deprioritized under congestion — distinct mechanism from sponsorship
+    └── Local fee markets             📖 docs: .sui-docs/develop/transaction-payment/local-fee-markets.mdx
+        → per-shared-object rate limit (ExecutionCancelledDueToSharedObjectCongestion); gas price is the only priority lever
+        ↔ Sui object model § Shared (avoid a single hot shared object; split state per pair/user)
 ```
 
 ---
@@ -473,14 +469,14 @@ TRANSFER POLICIES                     📖 docs: .sui-docs/develop/objects/trans
 │   → omit `store` so only the defining module can transfer the type (module-gated transfer fns)
 ├── transfer-to-object                📖 docs: .sui-docs/develop/objects/transfers/transfer-to-object.mdx
 │   → send to a 32-byte object ID; receive via `Receiving<T>` PTB argument; NOT supported for party objects
-├── Kiosk                             📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-example.mdx
-│   ├── shared object (§ Sui object model § Shared); KioskOwnerCap (§ Capability) → place/take/list/lock/withdraw
-│   ├── trading T requires a shared TransferPolicy<T>; without one, assets can be stored but not sold
-│   ├── Kiosk apps                    📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-apps.mdx
-│   │   → basic: uid_mut_as_owner + dynamic fields (§ Sui object model § Dynamic fields)
-│   │   → permissioned: `kiosk_extension` module — witness-gated install, tamper-proof app storage
-│   └── ↔ TS SDK § kiosk SDK          📖 docs: .ts-sdk-docs/kiosk/index.mdx
-└── ⤳ skill: move-code-review (unconsumed TransferRequest paths; rule bypass via a second wrapped policy)
+└── Kiosk                             📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-example.mdx
+    ├── shared object (§ Sui object model § Shared); KioskOwnerCap (§ Capability) → place/take/list/lock/withdraw
+    ├── trading T requires a shared TransferPolicy<T>; without one, assets can be stored but not sold
+    ├── Kiosk apps                    📖 docs: .sui-docs/onchain-finance/kiosk/kiosk-apps.mdx
+    │   → basic: uid_mut_as_owner + dynamic fields (§ Sui object model § Dynamic fields)
+    │   → permissioned: `kiosk_extension` module — witness-gated install, tamper-proof app storage
+    ├── ↔ TS SDK § kiosk SDK          📖 docs: .ts-sdk-docs/kiosk/index.mdx
+    └── ⚠ unconsumed TransferRequest paths; rule bypass via a second wrapped policy
 ```
 
 ---
@@ -497,7 +493,7 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │   ├── std::hash::sha2_256            → general-purpose
 │   ├── std::hash::sha3_256
 │   └── sui::hash::keccak256, blake2b256  → Ethereum-compatibility & Merkle proofs
-│   ⤳ skill: move-code-review (commit-reveal needs domain-separation; never raw-hash user input)
+│   ⚠ commit-reveal needs domain-separation; never raw-hash user input
 │
 ├── Signing & verification             📖 docs: .sui-docs/develop/cryptography/signing.mdx
 │   ├── ed25519, secp256k1, secp256r1  → on-chain verify primitives
@@ -509,13 +505,13 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │   ├── Groth16 verifier               📖 docs: .sui-docs/develop/cryptography/groth16.mdx
 │   ├── ECVRF                          📖 docs: .sui-docs/develop/cryptography/ecvrf.mdx
 │   └── zkLogin                        📖 docs: .sui-docs/sui-stack/zklogin-integration/
-│       ⤳ skill: move-code-review (audit circuit-input encoding, never trust caller-supplied verifier params)
+│       ⚠ audit circuit-input encoding, never trust caller-supplied verifier params
 │
 ├── Randomness                        📖 docs: .sui-docs/sui-stack/on-chain-primitives/randomness-onchain.mdx
 │   → consensus-driven on-chain RNG via `sui::random::Random` shared object
 │   → public fns taking &Random are compiler-REJECTED — expose private `entry` only
 │   → divide-logic pattern: commit random result in tx1, consume in tx2 (revert griefing)
-│   ⤳ skill: move-code-review (never use timestamps, tx hash, or coin balances as randomness)
+│   ⚠ never use timestamps, tx hash, or coin balances as randomness
 │   ⇢ alternative: commit-reveal with off-chain entropy when external sources are required
 │
 ├── Time                              📖 docs: .sui-docs/sui-stack/on-chain-primitives/access-time.mdx
@@ -523,7 +519,7 @@ CRYPTOGRAPHY                          📖 docs: .sui-docs/develop/cryptography/
 │     `&mut Clock`/value fail to publish); timestamp_ms advances per CONSENSUS COMMIT (~1/4 s); consensus-only
 │   → tx_context::epoch_timestamp_ms() — epoch-start time, fastpath-compatible, ~24h granularity
 │     📖 docs: .move-book-docs/book/programmability/epoch-and-time.md
-│   ⤳ skill: move-code-review (⚠ timestamps are NOT randomness — see Randomness above)
+│   ⚠ timestamps are NOT randomness — see Randomness above
 │
 └── Threshold/aggregation
     ↔ Seal § threshold encryption (off-chain peer to this on-chain primitive set)
@@ -622,7 +618,7 @@ ONCHAIN FINANCE                       📖 docs: .sui-docs/onchain-finance/ · �
 │   📖 docs: .move-book-docs/book/move-basics/standard-library.md
 │   ↔ § Formal verification (Sui Prover) — spec-only Integer/Real types for overflow-free specs
 └── ⤳ skill: oz-math (math safety audit)
-   ⤳ skill: move-code-review (overflow, rounding bias, MEV exposure)
+    ⚠ overflow, rounding bias, MEV exposure
 ```
 
 ---
@@ -923,7 +919,7 @@ TOOLING
 │   ⊃ sui client (network ops; `sui client ptb` for PTBs), sui move (build/test/migrate),
 │     sui keytool, sui replay
 ├── Move 2024 edition                 📖 docs: .move-book-docs/book/guides/2024-migration-guide.md
-│   ⤳ skill: move-code-quality       📖 docs: .move-book-docs/book/guides/code-quality-checklist.md
+│   ⊃ code-quality checklist          📖 docs: .move-book-docs/book/guides/code-quality-checklist.md
 ├── move-analyzer (LSP)               → MCP-bridged via plugin's move-lsp server
 │   ⊃ tools (10): move_diagnostics, move_hover, move_completions, move_goto_definition,
 │     move_find_references, move_rename, move_document_symbols, move_type_definition,
@@ -961,8 +957,10 @@ TOOLING
 ├── References — API specs, framework docs, glossary, PTB commands, research papers,
 │   Rust SDK, contributing            📖 docs: .sui-docs/references/ · 📖 docs: .sui-docs/references.mdx
 ├── Section landing stubs             📖 docs: .sui-docs/develop.mdx
+├── Browser E2E (optional)            → chrome-devtools-mcp, NOT bundled; must ATTACH, not spawn
+│   ⤳ skill: sui-e2e (Chrome for Testing + Slush popups via raw CDP; traps & localnet caveats there)
+├── Toolchain provisioning            ⤳ skill: sui-setup (versions, MCP builds, Chrome+Slush)
 └── sui-pilot plugin                  → this package; bundles all of the above
-    ⤳ skill: move-code-review (security + architecture review)
 ```
 
 Prefer `move_diagnostics` over re-running `sui move build` for tight iteration loops.

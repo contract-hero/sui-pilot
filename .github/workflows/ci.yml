@@ -139,6 +139,11 @@ jobs:
       - name: Smoke test bundled skills
         run: bash scripts/smoke-test-skills.sh
 
+      # Mutation test for the gate above. It once passed vacuously for folded
+      # '>-' descriptions, so it is now pinned against every scalar style.
+      - name: Self-test the skill smoke gate
+        run: bash scripts/test/smoke-test-skills.t.sh
+
   lint:
     runs-on: ubuntu-latest
 

@@ -15,12 +15,9 @@ Invoke the `oz-math` skill to analyze the Move package in the current directory 
 ## When to Use
 
 - Before deploying DeFi code that handles token amounts, prices, or rates
-- When you see `/move-code-review` SEC-AR-* findings and want concrete fixes
 - After adding arithmetic logic to pools, oracles, AMMs, or vaults
 - When manually implementing math that might have library support
 
 ## Related Commands
 
-- `/move-code-review` — Flags SEC-AR-* arithmetic security issues (this skill provides the fixes)
-- `/move-code-quality` — Style and idiom analysis (run before oz-math)
 - `/specify` — Author formal specs after applying oz-math recommendations

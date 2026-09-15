@@ -36,6 +36,4 @@ Invoke the `specify` skill to walk through formal-specification authoring for th
 
 ## Related Commands
 
-- `/move-code-review` — Identifies which functions most need specs (SEC-* findings).
-- `/move-code-quality` — Style/idiom pass that should precede formal verification.
 - `/verify` — Run verification after authoring specs.

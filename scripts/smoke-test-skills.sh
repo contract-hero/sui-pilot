@@ -8,7 +8,16 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-SKILLS=(move-code-quality move-code-review oz-math specify verify)
+# Discovered, not hardcoded — a roster listed by hand drifts from the tree every
+# time a skill is added or removed.
+[ -d "${PLUGIN_ROOT}/skills" ] || { echo "FAIL: ${PLUGIN_ROOT}/skills/ does not exist"; exit 1; }
+SKILLS=()
+shopt -s nullglob
+for d in "${PLUGIN_ROOT}"/skills/*/; do
+  SKILLS+=("$(basename "$d")")
+done
+shopt -u nullglob
+[ ${#SKILLS[@]} -gt 0 ] || { echo "FAIL: no skills found under ${PLUGIN_ROOT}/skills/"; exit 1; }
 
 PASS=0
 FAIL=0
@@ -19,7 +28,7 @@ parse_frontmatter_key() {
   local key="$2"
   awk '/^---/{n++; if(n==2) exit; next} n==1{print}' "$file" \
     | grep -E "^${key}:" \
-    | sed -E "s/^${key}:[[:space:]]*//" \
+    | sed -E "s/^${key}:[[:space:]]*//; s/[[:space:]]+$//" \
     | head -1 || true
 }
 
@@ -56,14 +65,25 @@ for skill in "${SKILLS[@]}"; do
 
   # Verify 'description:' key exists (may be block scalar)
   if grep -qE "^description:" "$skill_file"; then
-    # Try to get the inline value (or '|' for block scalars)
+    # Inline value, or a scalar marker for block/folded styles.
     desc_val=$(parse_frontmatter_key "$skill_file" "description" || true)
-    # For block scalars, desc_val will be '|' — verify description body follows
-    if [[ "$desc_val" == "|" ]]; then
-      # Block scalar: next line after 'description: |' must be non-empty
-      block_body=$(awk '/^description: \|/{found=1; next} found{if(/^[[:space:]]/ && NF>0){print; exit} else {exit}}' "$skill_file")
+    # YAML block/folded headers — | |- |+ |2 > >- >+ >2 and combinations, with an
+    # optional trailing comment — all mean "the body is on the following indented
+    # lines". The marker itself proves nothing, so the body must be read. Matching
+    # only '|' let a folded '>-' description pass as the two-character string,
+    # never checking whether any description existed.
+    #
+    # Test a comment-stripped COPY: an inline description may legitimately contain
+    # '#', and truncating it there would hide a real emptiness.
+    marker="${desc_val%%#*}"
+    marker="${marker%"${marker##*[![:space:]]}"}"         # rtrim what the strip left
+    if [[ "$marker" =~ ^[|\>]([0-9]|[-+]){0,2}$ ]]; then
+      block_body=$(awk '/^description:[[:space:]]*[|>]([0-9]|[-+]){0,2}[[:space:]]*$/{f=1; next} f{if(NF==0) next; if(/^[[:space:]]/){print; exit} exit}' "$skill_file")
       assert_nonempty "description (block)" "$block_body"
     else
+      # A quoted empty string is two characters of text, not a description.
+      desc_val="${desc_val%\"}"; desc_val="${desc_val#\"}"
+      desc_val="${desc_val%\'}"; desc_val="${desc_val#\'}"
       assert_nonempty "description" "$desc_val"
     fi
   else

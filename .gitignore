@@ -50,3 +50,9 @@ mcp/sui-prover-mcp/test/fixtures/**/Move.lock
 # Stray sui-prover debug logs that the binary drops in cwd
 sui-prover.log.*
 .impeccable/
+
+# Maintainer-only working docs — handoff notes, scratch reports, anything
+# written for this repo's maintainers rather than its users. The repo root is
+# the plugin package root, so a doc left there ships to every marketplace
+# install; put it here instead.
+private/

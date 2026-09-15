@@ -17,7 +17,7 @@ Always search and read these docs before writing code for these ecosystems.
 
 ## Usage
 
-1. The `sui-pilot-agent` subagent auto-loads the slim doc-first directive in `agents/sui-pilot-agent.md`. Commands routing through it (`/sui-pilot`, `/move-code-review`, etc.) are docs-first out of the box.
+1. The `sui-pilot-agent` subagent auto-loads the slim doc-first directive in `agents/sui-pilot-agent.md`. Commands routing through it (`/sui-pilot`, `/specify`, etc.) are docs-first out of the box. `/sui-setup` and `/sui-e2e` are environment/browser skills and do not need the doc corpora.
 2. If you are developing on this repo directly, use `Glob` and `Grep` against the appropriate `.<source>-docs/` directory for your topic. When unsure which source, search across all corpora.
 3. Walrus and Seal build on Sui — Sui docs may also be relevant. For Move language questions (syntax, idioms, language semantics), prefer `.move-book-docs/` first.
 4. `.move-book-docs/packages/` holds Move source examples referenced from the Move Book prose (`file=` directives) — read them when an example would clarify a pattern.

@@ -6,7 +6,7 @@
 
 > A Claude Code plugin that turns Claude into a Sui/Move development expert — grounded in current docs, not stale training data.
 
-sui-pilot bundles **812 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
+sui-pilot bundles **812 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, **end-to-end dapp testing** that drives the Slush wallet hands-free, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
 
 **[Dive into the landing page](https://contract-hero.github.io/sui-pilot/)** · [read the full story](https://contract-hero.github.io/sui-pilot/classic.html)
 
@@ -43,6 +43,15 @@ suiup install sui
 suiup install move-analyzer
 ```
 
+Or let the plugin check for you — `/sui-setup` reports what is present, what is
+missing, and whether `sui` and `move-analyzer` versions match, then offers to
+install the gaps.
+
+End-to-end testing (`/sui-e2e`) needs more: Google Chrome for Testing, a
+`~/dev-chrome` profile with the Slush extension, `chrome-devtools-mcp`
+registered with `--browser-url=http://127.0.0.1:9222`, and Python 3.
+`/sui-setup` checks all of it.
+
 ---
 
 ## What Ships
@@ -74,11 +83,19 @@ Two MCP servers provide real-time tooling from within Claude Code:
 | Command | Purpose |
 |---|---|
 | `/sui-pilot` | Doc-first entry point; routes to the sui-pilot agent |
-| `/move-code-quality` | Move 2024 Edition compliance (50+ rules) |
-| `/move-code-review` | Security and architecture review (40 checks, 6 categories) |
+| `/sui-setup` | Check the local toolchain and offer to install what is missing |
+| `/sui-e2e` | End-to-end dapp tests with hands-free Slush wallet approval |
 | `/oz-math` | OpenZeppelin math library recommendations |
 | `/specify` | Author `#[spec(prove)]` formal specs + verify via `sui-prover` |
 | `/verify` | Re-verify that authored specs still hold against current code |
+
+### End-to-end dapp testing
+
+`/sui-e2e` runs a full browser test against a Sui dapp with the wallet in the loop. It brings up Chrome for Testing on the debug port with the wallet profile, verifies `chrome-devtools-mcp` attached to *that* browser rather than spawning its own, then drives every Slush approval popup — connect, sign-in message, transaction signing — without a manual click.
+
+This works around a hard limitation: `chrome-devtools-mcp` cannot see `chrome-extension://` pages, so wallet popups never appear in `list_pages` and every wallet e2e stalls at the first approval. The skill bundles a dependency-free CDP client (`scripts/cdp.py`, Python stdlib only) that drives those popups directly.
+
+Wallet state is never touched — a locked wallet or a wiped profile stops the run and asks you.
 
 ### Specialized agent
 
@@ -92,14 +109,17 @@ The `sui-pilot-agent` enforces a doc-first workflow: consult documentation befor
 # Ask about Sui/Move (doc-grounded answer)
 What are shared objects in Sui and when should I use them?
 
-# Check code quality
-/move-code-quality
+# Check the local toolchain before you start
+/sui-setup
 
-# Security review
-/move-code-review
+# Audit arithmetic for safer math
+/oz-math
 
 # Get compiler diagnostics
 Check diagnostics for sources/my_module.move
+
+# Drive a full dapp test, wallet approvals included
+/sui-e2e
 ```
 
 ---
@@ -136,6 +156,8 @@ pnpm --dir mcp/move-lsp-mcp install && pnpm --dir mcp/move-lsp-mcp build
 pnpm --dir mcp/sui-prover-mcp install && pnpm --dir mcp/sui-prover-mcp build
 claude --plugin-dir "$(pwd)"
 ```
+
+Then run `/sui-setup` inside that session to confirm the toolchain is complete.
 
 See [`CLAUDE.md`](./CLAUDE.md) for architectural invariants and the doc-first workflow.
 

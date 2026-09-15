@@ -27,5 +27,3 @@ Invoke the `verify` skill to re-check existing `#[spec(prove)]` formal specifica
 ## Related Commands
 
 - `/specify` — Author new formal specs (this skill only re-verifies existing ones)
-- `/move-code-review` — Identifies which functions most need specs (SEC-* findings)
-- `/move-code-quality` — Style and idiom analysis
