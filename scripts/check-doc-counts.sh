@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Doc-count gate, companion to check-graph-pointers.sh.
 #
-# The bundled-doc counts are embedded by hand in six user-facing surfaces
-# (README.md, llms.txt, CLAUDE.md, site/index.html, site/classic.html,
-# SUI_PILOT_FOR_DUMMIES.md), but the authoritative numbers live in
+# The bundled-doc counts are embedded by hand in five user-facing surfaces
+# (README.md, llms.txt, CLAUDE.md, site/index.html, site/classic.html),
+# but the authoritative numbers live in
 # .last-sync, which sync-docs.sh rewrites on every corpus refresh. Nothing
 # else ties the two together, and count drift has produced repeated fix-up
 # commits (11e8008, 515039e, 813729f). This script fails when an embedded
@@ -21,7 +21,7 @@ command -v jq >/dev/null || { echo "MISS: jq is required" >&2; exit 2; }
 jq -e '.fileCounts | type == "object" and length > 0' .last-sync >/dev/null 2>&1 \
   || { echo "MISS: .last-sync has no non-empty fileCounts object" >&2; exit 2; }
 
-SURFACES=(README.md llms.txt CLAUDE.md site/index.html site/classic.html SUI_PILOT_FOR_DUMMIES.md)
+SURFACES=(README.md llms.txt CLAUDE.md site/index.html site/classic.html)
 for f in "${SURFACES[@]}"; do
   [ -r "$f" ] || { echo "MISS: cannot read $f — update check-doc-counts.sh if the surface moved" >&2; exit 2; }
 done
@@ -110,8 +110,6 @@ check site/classic.html "<strong>TS SDK</strong> <span>$tssdk files" "ts-sdk"
 check site/classic.html "<strong>Sui Prover</strong> <span>$prover files" "sui-prover"
 check site/classic.html "<strong>Seal</strong> <span>$seal files" "seal"
 
-check SUI_PILOT_FOR_DUMMIES.md "$total files across six corpora" "total (intro)"
-check SUI_PILOT_FOR_DUMMIES.md "($total documentation files, lazy-grepped)" "total (diagram)"
 
 if [ "$fail" -ne 0 ]; then
   echo "FAIL embedded doc counts have drifted from .last-sync — update them (see check names above)"

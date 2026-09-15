@@ -1,6 +1,6 @@
 ---
 name: oz-math
-description: "Analyzes Move code and suggests improvements using OpenZeppelin math contracts. Use when: (1) User asks to 'analyze math', 'check arithmetic safety', 'find overflow risks'; (2) User mentions 'OpenZeppelin math', 'mul_div', 'safe math', 'fixed-point'; (3) Working with DeFi Move code (pools, oracles, AMMs, staking, vaults); (4) User explicitly invokes '/oz-math'. Complements /move-code-review (which flags SEC-AR-* arithmetic issues) by providing concrete OpenZeppelin library recommendations."
+description: "Analyzes Move code and suggests improvements using OpenZeppelin math contracts. Use when: (1) User asks to 'analyze math', 'check arithmetic safety', 'find overflow risks'; (2) User mentions 'OpenZeppelin math', 'mul_div', 'safe math', 'fixed-point'; (3) Working with DeFi Move code (pools, oracles, AMMs, staking, vaults); (4) User explicitly invokes '/oz-math'. Provides concrete OpenZeppelin library recommendations for unsafe or hand-rolled arithmetic."
 ---
 
 # OpenZeppelin Math Analyzer
@@ -268,7 +268,6 @@ openzeppelin_math = { git = "https://github.com/OpenZeppelin/contracts-sui.git",
 2. Apply fixes in priority order (HIGH -> MEDIUM -> LOW)
 3. Run `sui move build` to verify compilation
 4. Run `sui move test` to verify behavior unchanged
-5. Consider `/move-code-review` for full security audit
 ```
 
 ## OpenZeppelin Math API Reference
@@ -339,6 +338,4 @@ let result = positive.add(negative);
 
 ## Interaction with Other Skills
 
-- **Complements `/move-code-review`**: That skill flags SEC-AR-* issues; this skill provides the fix
-- **Runs after `/move-code-quality`**: Style fixes first, then math safety improvements
 - **Precedes `/specify`**: Ensure math is safe before writing formal specs for it

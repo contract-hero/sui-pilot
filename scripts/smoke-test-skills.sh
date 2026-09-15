@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-SKILLS=(move-code-quality move-code-review oz-math specify verify)
+SKILLS=(oz-math specify sui-e2e sui-setup verify)
 
 PASS=0
 FAIL=0

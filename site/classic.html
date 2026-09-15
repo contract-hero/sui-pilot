@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>sui-pilot — a Claude Code plugin for Sui/Move development</title>
-  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 812 bundled docs, Move LSP integration, formal verification, and five specialized skills.">
+  <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 812 bundled docs, Move LSP integration, formal verification, end-to-end dapp testing, and five specialized skills.">
   <style>
     :root {
       --bg: #fafaf7;
@@ -374,9 +374,9 @@
         <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
         <p class="lede">
           sui-pilot bundles 812 documentation files from six MystenLabs corpora, bridges the Move LSP
-          and Sui Prover into Claude Code, and ships five specialized skills &mdash; all behind a
-          doc-first agent that reads the docs before writing code. No hallucinated APIs, no deprecated
-          patterns, no stale training data.
+          and Sui Prover into Claude Code, drives end-to-end dapp tests with the wallet in the loop,
+          and ships five specialized skills &mdash; all behind a doc-first agent that reads the docs
+          before writing code. No hallucinated APIs, no deprecated patterns, no stale training data.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="#start">Get started</a>
@@ -521,13 +521,30 @@
           <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
           <tbody>
             <tr><td><code>/sui-pilot</code></td><td>Doc-first entry point &mdash; routes to the specialized agent</td></tr>
-            <tr><td><code>/move-code-quality</code></td><td>Move 2024 Edition compliance (40+ rules from the Move Book checklist)</td></tr>
-            <tr><td><code>/move-code-review</code></td><td>Security and architecture review (40 checks across 6 categories)</td></tr>
+            <tr><td><code>/sui-setup</code></td><td>Check the local toolchain and offer to install what is missing</td></tr>
+            <tr><td><code>/sui-e2e</code></td><td>End-to-end dapp tests with hands-free Slush wallet approval</td></tr>
             <tr><td><code>/oz-math</code></td><td>OpenZeppelin math library recommendations for DeFi arithmetic</td></tr>
             <tr><td><code>/specify</code></td><td>Author <code>#[spec(prove)]</code> formal specs and verify via sui-prover</td></tr>
             <tr><td><code>/verify</code></td><td>Re-verify that authored specs still hold against current code</td></tr>
           </tbody>
         </table>
+
+        <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">End-to-end dapp testing</h3>
+        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
+          <code>/sui-e2e</code> tests a Sui dapp in a real browser with a real wallet, hands-free.
+          It brings up Chrome for Testing on the debug port with the wallet profile, confirms
+          <code>chrome-devtools-mcp</code> attached to that browser instead of spawning its own,
+          then drives every Slush approval &mdash; connect, sign-in message, transaction signing
+          &mdash; without a manual click.
+        </p>
+        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
+          This exists because <code>chrome-devtools-mcp</code> cannot see
+          <code>chrome-extension://</code> pages: wallet popups never appear in
+          <code>list_pages</code>, so every wallet end-to-end test stalls at the first approval.
+          The skill bundles a dependency-free Chrome DevTools Protocol client (Python standard
+          library only) that drives those popups directly. Wallet state is never touched &mdash; a
+          locked wallet or a wiped profile stops the run and asks you.
+        </p>
       </div>
     </section>
 
@@ -556,6 +573,8 @@
             <pre><code>curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh | sh
 suiup install sui
 suiup install move-analyzer</code></pre>
+            <p>Or run <code>/sui-setup</code> and let the plugin report what is missing, flag a
+            <code>sui</code> / <code>move-analyzer</code> version mismatch, and offer to install the gaps.</p>
           </div>
         </div>
 
@@ -573,8 +592,8 @@ suiup install move-analyzer</code></pre>
             <h3>Try it</h3>
             <p>Ask a question, run a skill, or get diagnostics:</p>
             <pre><code>What are shared objects in Sui and when should I use them?
-/move-code-quality
-/move-code-review</code></pre>
+/oz-math
+/specify</code></pre>
           </div>
         </div>
       </div>

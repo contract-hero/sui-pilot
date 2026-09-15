@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content Loss Register — move-code-quality / move-code-review Removal</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1f1f1f;
+  --fg-muted: #6e6e6e;
+  --heading-fg: #1a1a1a;
+  --accent: #1976d2;
+  --border: #e0e0e0;
+  --code-bg: #f0f0f0;
+  --code-fg: #6e3700;
+  --pre-bg: #fafafa;
+  --aside-bg: #f5f5f5;
+  --success: #2e7d32;
+  --warning: #9a5b00;
+  --error: #d32f2f;
+  --success-bg: #f3f8f4;
+  --warning-bg: #fbf7f0;
+  --error-bg: #fdf5f5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --fg: #cccccc;
+    --fg-muted: #9e9e9e;
+    --heading-fg: #e8e8e8;
+    --accent: #4dabf7;
+    --border: #2a2a2a;
+    --code-bg: #2a2a2a;
+    --code-fg: #f0e8d8;
+    --pre-bg: #161616;
+    --aside-bg: #242424;
+    --success: #66bb6a;
+    --warning: #f0c674;
+    --error: #ff7676;
+    --success-bg: #1e251f;
+    --warning-bg: #29241a;
+    --error-bg: #2a1f1f;
+  }
+}
+@media print {
+  :root {
+    color-scheme: light;
+    --bg: #ffffff; --fg: #1f1f1f; --fg-muted: #6e6e6e; --heading-fg: #1a1a1a;
+    --accent: #1976d2; --border: #e0e0e0; --code-bg: #f0f0f0; --code-fg: #6e3700;
+    --pre-bg: #fafafa; --aside-bg: #f5f5f5; --success: #2e7d32; --warning: #9a5b00;
+    --error: #d32f2f; --success-bg: #f3f8f4; --warning-bg: #fbf7f0; --error-bg: #fdf5f5;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.6;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+h1, h2, h3, h4 { color: var(--heading-fg); line-height: 1.25; }
+h1 { font-size: 2rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.3rem; margin: 2.5rem 0 .75rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+h3 { font-size: 1rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; margin: 1.75rem 0 .5rem; }
+h4 { font-size: 1rem; font-weight: 600; margin: 1.25rem 0 .4rem; }
+a { color: var(--accent); }
+small, figcaption, th { color: var(--fg-muted); }
+code {
+  background: var(--code-bg); color: var(--code-fg);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .9em; padding: .12em .34em; border-radius: 3px;
+}
+pre {
+  background: var(--pre-bg); border: 1px solid var(--border);
+  border-radius: 4px; padding: .8rem 1rem; overflow-x: auto;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: .9em; }
+
+header.doc { border-bottom: 2px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+.subtitle { color: var(--fg-muted); font-size: 1rem; margin: .25rem 0 0; }
+.meta { font-size: .9em; color: var(--fg-muted); margin-top: .9rem; }
+.meta span { display: inline-block; margin-right: 1.25rem; }
+
+nav.toc { background: var(--aside-bg); border: 1px solid var(--border); border-radius: 4px; padding: .8rem 1.1rem; }
+nav.toc ol { margin: .3rem 0 0; padding-left: 1.2rem; }
+nav.toc li { margin: .15rem 0; }
+
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: .95rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: .9em; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+tbody tr:hover { background: var(--aside-bg); }
+td.ln { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; color: var(--fg-muted); }
+td.anchor { white-space: normal; }
+td.anchor .sec { display: block; font-size: .9em; color: var(--fg-muted); }
+td.lost { }
+
+aside { background: var(--aside-bg); border: 1px solid var(--border); border-radius: 4px; padding: .7rem 1rem; margin: 1.1rem 0; }
+aside.success { background: var(--success-bg); }
+aside.warning { background: var(--warning-bg); }
+aside.error   { background: var(--error-bg); }
+aside p:first-child { margin-top: 0; }
+aside p:last-child  { margin-bottom: 0; }
+aside :is(strong, b):first-child         { color: var(--heading-fg); }
+aside.success :is(strong, b):first-child { color: var(--success); }
+aside.warning :is(strong, b):first-child { color: var(--warning); }
+aside.error   :is(strong, b):first-child { color: var(--error); }
+
+details { border: 1px solid var(--border); border-radius: 4px; padding: .6rem .9rem; margin: 1rem 0; background: var(--aside-bg); }
+details summary { cursor: pointer; font-weight: 600; color: var(--heading-fg); }
+details[open] summary { margin-bottom: .6rem; }
+
+figure { margin: 1.5rem 0; }
+figcaption { font-size: .9em; margin-top: .5rem; }
+
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: .9em; color: var(--fg-muted); }
+
+@media (max-width: 720px) {
+  body { padding: 1.25rem .9rem 3rem; }
+  h1 { font-size: 1.6rem; }
+  table { font-size: .88rem; }
+  th, td { padding: .4rem .35rem; }
+}
+</style>
+</head>
+<body>
+
+<header class="doc">
+  <h1>Content Loss Register</h1>
+  <p class="subtitle">Knowledge deliberately deleted from the sui-pilot agent graph when <code>move-code-quality</code> and <code>move-code-review</code> were removed.</p>
+  <p class="meta">
+    <span><strong>Repo:</strong> <code>sui-pilot</code></span>
+    <span><strong>Branch:</strong> <code>main</code></span>
+    <span><strong>Baseline:</strong> <code>7ddd15b</code></span>
+    <span><strong>Date:</strong> 2026-09-15</span>
+  </p>
+</header>
+
+<aside class="success">
+  <p><strong>Nothing is permanently lost.</strong> Every line in this register is recoverable from commit <code>7ddd15b</code>. This document exists so a future session knows <em>what</em> to look for and <em>where it was anchored</em> — that context is not in git.</p>
+</aside>
+
+<nav class="toc" aria-label="Contents">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#what">What happened</a></li>
+    <li><a href="#recovery">Recovery commands</a></li>
+    <li><a href="#knowledge">The 20 knowledge lines</a></li>
+    <li><a href="#routing">The 7 routing-only lines</a></li>
+    <li><a href="#files">Whole files deleted</a></li>
+    <li><a href="#open">Open questions for later</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="what">
+<h2>1. What happened</h2>
+
+<p>The two skills were removed from the plugin at the user's request. As part of the cleanup, 27 lines matching <code>⤳ skill: move-code-review</code> or <code>⤳ skill: move-code-quality</code> were deleted from <code>agents/sui-pilot-agent.md</code>.</p>
+
+<p>The user chose whole-line deletion over the alternative of keeping each warning as a plain <code>→</code> note. That decision was made with the trade-off stated in advance. This register is the record of what that cost.</p>
+
+<h3>The nature of the loss</h3>
+
+<p>Those lines were <strong>not pure routing</strong>. Most carried a parenthetical that asserted a security or idiom claim. The claim existed <em>only</em> on that line — it is not restated elsewhere in the graph, and it is not in the bundled doc corpora in that compressed form.</p>
+
+<pre><code>│   ⤳ skill: move-code-review (never use timestamps, tx hash, or coin balances as randomness)
+    ╰──────────┬──────────╯ ╰────────────────────────────┬─────────────────────────────────╯
+          routing target                        the part that was worth keeping</code></pre>
+
+<p>Of the 27 deleted lines, <strong>20 carried a substantive claim</strong> and <strong>7 were routing only</strong>.</p>
+
+<aside class="warning">
+  <p><strong>Two lines were structural, not textual.</strong> One deleted line was a tree <em>node header</em> (<code>├── Address-owned</code>) whose pointer sat on the same line; deleting it orphaned three child detail lines. Three others were <code>└──</code> subtree terminators. All four were repaired during the cleanup — the <code>Address-owned</code> node was restored and <code>Gas model</code> / <code>Kiosk</code> were re-parented. No action needed, recorded here so a future diff reader is not confused by those repairs.</p>
+</aside>
+</section>
+
+<section id="recovery">
+<h2>2. Recovery commands</h2>
+
+<figure>
+<svg viewBox="0 0 700 210" width="100%" role="img" aria-labelledby="recov-title">
+  <title id="recov-title">Three recovery sources, all rooted at commit 7ddd15b</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g font-family="system-ui, sans-serif" font-size="12" fill="currentColor">
+    <rect x="8" y="78" width="150" height="54" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <text x="83" y="99" text-anchor="middle" font-weight="600">commit 7ddd15b</text>
+    <text x="83" y="117" text-anchor="middle" fill="var(--fg-muted)">pre-removal baseline</text>
+
+    <line x1="158" y1="105" x2="238" y2="42" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="158" y1="105" x2="238" y2="105" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="158" y1="105" x2="238" y2="168" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <rect x="244" y="18" width="200" height="48" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="256" y="38">agents/sui-pilot-agent.md</text>
+    <text x="256" y="56" fill="var(--fg-muted)">27 pointer lines</text>
+
+    <rect x="244" y="81" width="200" height="48" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="256" y="101">skills/move-code-*/SKILL.md</text>
+    <text x="256" y="119" fill="var(--fg-muted)">417 + 365 lines</text>
+
+    <rect x="244" y="144" width="200" height="48" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+    <text x="256" y="164">.claude-plugin/fixtures/</text>
+    <text x="256" y="182" fill="var(--fg-muted)">155 + 136 lines</text>
+
+    <line x1="444" y1="42" x2="524" y2="100" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="444" y1="105" x2="524" y2="105" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+    <line x1="444" y1="168" x2="524" y2="112" stroke="currentColor" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+    <rect x="530" y="78" width="160" height="54" rx="4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+    <text x="610" y="99" text-anchor="middle" font-weight="600">git show</text>
+    <text x="610" y="117" text-anchor="middle" fill="var(--fg-muted)">full text, any time</text>
+  </g>
+</svg>
+<figcaption>All three deleted surfaces live in the same pre-removal commit. Pin to the SHA, not to <code>HEAD</code> — <code>HEAD</code> moves once the cleanup is committed.</figcaption>
+</figure>
+
+<h3>Read the original agent graph</h3>
+<pre><code>git -C ~/workspace/sui-pilot show 7ddd15b:agents/sui-pilot-agent.md</code></pre>
+
+<h3>Regenerate this register's table from source</h3>
+<pre><code>git -C ~/workspace/sui-pilot show 7ddd15b:agents/sui-pilot-agent.md \
+  | grep -nE '⤳ skill: move-code-(review|quality)'</code></pre>
+
+<h3>Restore a deleted skill wholesale</h3>
+<pre><code>git -C ~/workspace/sui-pilot checkout 7ddd15b -- skills/move-code-review/
+git -C ~/workspace/sui-pilot checkout 7ddd15b -- skills/move-code-quality/</code></pre>
+
+<aside class="warning">
+  <p><strong>Status at the time of writing.</strong> The removal was still <em>uncommitted</em> in the working tree, so <code>7ddd15b</code> was <code>HEAD</code>. Once the cleanup lands as a commit, <code>7ddd15b</code> becomes an ancestor — the commands above keep working unchanged because they name the SHA explicitly.</p>
+</aside>
+</section>
+
+<section id="knowledge">
+<h2>3. The 20 knowledge lines</h2>
+
+<p>Line numbers refer to <code>agents/sui-pilot-agent.md</code> <strong>as of <code>7ddd15b</code></strong>. The anchor is the tree node the line hung from — that is the placement information git cannot give you back cheaply.</p>
+
+<table>
+<thead>
+<tr><th>Line</th><th>Anchor</th><th>Lost claim (verbatim)</th></tr>
+</thead>
+<tbody>
+<tr><td class="ln">127</td><td class="anchor"><code>drop</code> ability<span class="sec">§ Move type system &amp; abilities → ABILITIES</span></td><td class="lost">hot-potato is a load-bearing safety pattern</td></tr>
+<tr><td class="ln">152</td><td class="anchor"><code>&lt;T: store + drop&gt;</code><span class="sec">§ Move type system &amp; abilities → GENERIC TYPES</span></td><td class="lost">proper bounds = idiomatic Move 2024</td></tr>
+<tr><td class="ln">173</td><td class="anchor">No <code>Drop</code>-equivalent destructor<span class="sec">§ Move type system &amp; abilities → REFERENCES</span></td><td class="lost">look for unconsumed hot-potatoes &amp; resource leaks</td></tr>
+<tr><td class="ln">194</td><td class="anchor">end of REFERENCES tree<span class="sec">§ Move type system &amp; abilities</span></td><td class="lost">the canonical checklist for these</td></tr>
+<tr><td class="ln">277</td><td class="anchor"><code>Shared</code> ownership<span class="sec">§ Sui object model → Object ownership</span></td><td class="lost">look for shared-object hot spots</td></tr>
+<tr><td class="ln">300</td><td class="anchor">Dynamic fields<span class="sec">§ Sui object model</span></td><td class="lost">DOF lookups can hide gas costs; audit access patterns</td></tr>
+<tr><td class="ln">320</td><td class="anchor">Versioning<span class="sec">§ Sui object model</span></td><td class="lost">version mismatch = silent foot-gun</td></tr>
+<tr><td class="ln">340</td><td class="anchor">Transfer functions<span class="sec">§ Sui object model</span></td><td class="lost">blind transfers are a common SEC-AC bug class</td></tr>
+<tr><td class="ln">354</td><td class="anchor">Ownership decision matrix<span class="sec">§ Sui object model</span></td><td class="lost">the single most common review finding is "wrong ownership choice"</td></tr>
+<tr><td class="ln">374</td><td class="anchor">Capability<span class="sec">§ Authorization patterns → AUTHORIZATION</span></td><td class="lost">assert holder; never accept by-ref a cap from untrusted caller</td></tr>
+<tr><td class="ln">386</td><td class="anchor">One-time witness (OTW)<span class="sec">§ Authorization patterns → AUTHORIZATION</span></td><td class="lost">audit OTW consumption — must be by-value, drop-only</td></tr>
+<tr><td class="ln">395</td><td class="anchor">Hot potato pattern<span class="sec">§ Authorization patterns → AUTHORIZATION</span></td><td class="lost">every hot-potato needs an exhaustive consume function</td></tr>
+<tr><td class="ln">403</td><td class="anchor">Publisher<span class="sec">§ Authorization patterns → AUTHORIZATION</span></td><td class="lost">idiomatic packages own a Publisher per type family</td></tr>
+<tr><td class="ln">414</td><td class="anchor">end of AUTHORIZATION tree<span class="sec">§ Authorization patterns</span></td><td class="lost">every authorization choice should match this flow; deviations are usually bugs</td></tr>
+<tr><td class="ln">483</td><td class="anchor">Kiosk<span class="sec">§ Transfer policies &amp; kiosk → TRANSFER POLICIES</span></td><td class="lost">unconsumed TransferRequest paths; rule bypass via a second wrapped policy</td></tr>
+<tr><td class="ln">500</td><td class="anchor">Hashing<span class="sec">§ Cryptography &amp; primitives → CRYPTOGRAPHY</span></td><td class="lost">commit-reveal needs domain-separation; never raw-hash user input</td></tr>
+<tr><td class="ln">512</td><td class="anchor">zkLogin<span class="sec">§ Cryptography &amp; primitives → CRYPTOGRAPHY</span></td><td class="lost">audit circuit-input encoding, never trust caller-supplied verifier params</td></tr>
+<tr><td class="ln">518</td><td class="anchor">Randomness<span class="sec">§ Cryptography &amp; primitives → CRYPTOGRAPHY</span></td><td class="lost">never use timestamps, tx hash, or coin balances as randomness</td></tr>
+<tr><td class="ln">526</td><td class="anchor">Time<span class="sec">§ Cryptography &amp; primitives → CRYPTOGRAPHY</span></td><td class="lost">⚠ timestamps are NOT randomness — see Randomness above</td></tr>
+<tr><td class="ln">625</td><td class="anchor">after <code>⤳ skill: oz-math</code><span class="sec">§ Onchain finance &amp; math → ONCHAIN FINANCE</span></td><td class="lost">overflow, rounding bias, MEV exposure</td></tr>
+</tbody>
+</table>
+
+<aside>
+  <p><strong>Density note.</strong> Six of the twenty sit in <code>§ Authorization patterns</code> and <code>§ Cryptography &amp; primitives</code>. Those two sections took the heaviest hit, and they are the two where a wrong answer is most expensive.</p>
+</aside>
+</section>
+
+<section id="routing">
+<h2>4. The 7 routing-only lines</h2>
+
+<p>These carried no claim beyond naming the skill. They are listed for completeness — recovering them has no value now that the skills are gone.</p>
+
+<details>
+<summary>Show the 7 routing-only lines</summary>
+<table>
+<thead>
+<tr><th>Line</th><th>Anchor</th><th>Deleted text</th></tr>
+</thead>
+<tbody>
+<tr><td class="ln">89</td><td class="anchor">graph legend<span class="sec">§ Ecosystem Knowledge Graph</span></td><td class="lost">move-code-quality — Move-2024 syntax/idiom enforcement</td></tr>
+<tr><td class="ln">90</td><td class="anchor">graph legend<span class="sec">§ Ecosystem Knowledge Graph</span></td><td class="lost">move-code-review — security, architecture, design review</td></tr>
+<tr><td class="ln">232</td><td class="anchor">MODULES tree<span class="sec">§ Modules &amp; visibility</span></td><td class="lost"><em>bare pointer, no text</em></td></tr>
+<tr><td class="ln">271</td><td class="anchor"><code>Address-owned</code> node header<span class="sec">§ Sui object model</span></td><td class="lost"><em>node restored during cleanup; only the pointer went</em></td></tr>
+<tr><td class="ln">454</td><td class="anchor">end of TRANSACTIONS tree<span class="sec">§ Transactions &amp; lifecycle</span></td><td class="lost"><em>bare pointer, no text</em></td></tr>
+<tr><td class="ln">926</td><td class="anchor">Move 2024 edition<span class="sec">§ Tooling → TOOLING</span></td><td class="lost"><em>doc pointer preserved as</em> <code>⊃ code-quality checklist</code></td></tr>
+<tr><td class="ln">965</td><td class="anchor">sui-pilot plugin<span class="sec">§ Tooling → TOOLING</span></td><td class="lost">security + architecture review</td></tr>
+</tbody>
+</table>
+</details>
+</section>
+
+<section id="files">
+<h2>5. Whole files deleted</h2>
+
+<p>These are fully recoverable and need no transcription. Listed so the scale of the removal is on record.</p>
+
+<table>
+<thead>
+<tr><th>Path</th><th>Lines</th><th>Note</th></tr>
+</thead>
+<tbody>
+<tr><td><code>skills/move-code-review/SKILL.md</code></td><td class="ln">365</td><td>40 checks across 6 categories</td></tr>
+<tr><td><code>skills/move-code-quality/SKILL.md</code></td><td class="ln">417</td><td>Move Book code-quality checklist</td></tr>
+<tr><td><code>commands/move-code-review.md</code></td><td class="ln">26</td><td>slash-command wrapper</td></tr>
+<tr><td><code>commands/move-code-quality.md</code></td><td class="ln">25</td><td>slash-command wrapper</td></tr>
+<tr><td><code>.claude-plugin/fixtures/compliant-workflow-transcript.md</code></td><td class="ln">155</td><td>taught the quality → review → tests sequence</td></tr>
+<tr><td><code>.claude-plugin/fixtures/non-compliant-workflow-transcript.md</code></td><td class="ln">136</td><td>negative counterpart</td></tr>
+</tbody>
+</table>
+</section>
+
+<section id="open">
+<h2>6. Open questions for later</h2>
+
+<p>No decision has been made on recovery. These are the options as they stand, not a recommendation.</p>
+
+<h4>Where should the 20 claims live?</h4>
+<ul>
+  <li><strong>Back in the agent graph as plain notes.</strong> Re-add each claim at its original anchor as a <code>→</code> line with no skill pointer. Cheapest option, restores the always-loaded reach. Costs ~20 lines against the 1200-line ceiling — the file currently sits at 941, so there is room.</li>
+  <li><strong>A new consolidated skill.</strong> Fold them into a single security-notes skill invoked on demand. Keeps the graph slim, but the claims stop being always-loaded, which is what made them useful.</li>
+  <li><strong>Absorb into the surviving skills.</strong> The arithmetic claim (line 625) fits <code>oz-math</code>; several authorization claims could fit <code>specify</code>. Partial coverage only — most have no natural home.</li>
+  <li><strong>Leave them out.</strong> Accept the loss. Valid if the judgement is that the bundled corpora cover the same ground well enough in longer form.</li>
+</ul>
+
+<h4>Unresolved from the cleanup</h4>
+<p><code>.claude-plugin/plugin.json</code> still describes the plugin as offering <em>"code quality tools"</em>. That phrase no longer maps to a specific skill. It was left untouched because the string is marketplace-facing.</p>
+
+<aside class="error">
+  <p><strong>Do not re-add the pointers verbatim.</strong> Any recovery must drop the <code>⤳ skill: move-code-review</code> / <code>⤳ skill: move-code-quality</code> prefix. Those skills no longer exist, and a pointer to a missing skill is worse than no pointer.</p>
+</aside>
+</section>
+
+</main>
+
+<footer>
+  <p>Register compiled 2026-09-15 against <code>sui-pilot</code> @ <code>7ddd15b</code>. Source of truth is git — this document records placement and intent, which git does not.</p>
+</footer>
+
+</body>
+</html>

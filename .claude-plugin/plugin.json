@@ -1,6 +1,6 @@
 {
   "name": "sui-pilot",
-  "description": "Sui Move development plugin with LSP integration, comprehensive documentation, code quality tools, and formal-verification wrapper",
+  "description": "Sui Move development plugin with LSP integration, comprehensive bundled documentation, toolchain setup, end-to-end dapp testing with wallet automation, and a formal-verification wrapper",
   "author": { "name": "alilloig" },
   "keywords": [
     "sui",
@@ -12,7 +12,10 @@
     "language-server",
     "diagnostics",
     "formal-verification",
-    "sui-prover"
+    "sui-prover",
+    "e2e-testing",
+    "dapp",
+    "wallet"
   ],
   "mcpServers": {
     "move-lsp": {
