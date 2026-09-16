@@ -5,28 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>sui-pilot — a Claude Code plugin for Sui/Move development</title>
   <meta name="description" content="A Claude Code plugin that turns Claude into a Sui/Move development expert. 812 bundled docs, Move LSP integration, formal verification, end-to-end dapp testing, and five specialized skills.">
+  <link rel="icon" type="image/png" href="assets/contract-hero.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <style>
     :root {
-      --bg: #fafaf7;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --muted: #475569;
-      --border: #e5e7eb;
-      --accent: #0a4a8a;
-      --accent-soft: #e6eef4;
-      --code-bg: #f1f5f9;
-      --warn: #92400e;
-      --warn-soft: #fef3c7;
+      --bg:#0b0f0c;
+      --bg-2:#0e1410;
+      --bg-code:#060907;
+      --ink:#dfe6e0;
+      --ink-2:#b9c6bd;
+      --muted:#9fb0a4;
+      --muted-2:#8ea095;
+      --dim:#6b7d70;
+      --g:#3df08a;
+      --g-line:#245c3b;
+      --line:#1f2a22;
+      --r:2px;
+      --wrap:1180px;
+      --sans:"Space Grotesk",system-ui,sans-serif;
+      --mono:"JetBrains Mono",ui-monospace,monospace;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 17px;
-      line-height: 1.55;
-      color: var(--text);
       background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.6 var(--sans);
       -webkit-font-smoothing: antialiased;
     }
     .wrap {
@@ -34,79 +41,105 @@
       margin: 0 auto;
       padding: 0 24px;
     }
+    h1, h2, h3 {
+      font-family: var(--sans);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+
     header.site {
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
     }
     header.site .wrap {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-top: 16px;
-      padding-bottom: 16px;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-top: 14px;
+      padding-bottom: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-weight: 600;
-      color: var(--text);
+      font-family: var(--mono);
+      font-weight: 500;
+      color: var(--g);
       text-decoration: none;
-      letter-spacing: -0.01em;
     }
     .brand-mark {
       width: 28px;
       height: 28px;
       flex: none;
+      display: block;
     }
+    .brand .wordmark::after {
+      content: "_";
+      color: var(--g);
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .brand .wordmark::after { animation: blink 1.1s steps(1) infinite; }
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .byline {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--dim);
+      text-decoration: none;
+      margin-left: 6px;
+    }
+    .byline:hover { color: var(--g); }
     nav.site-nav a {
       color: var(--muted);
       text-decoration: none;
       margin-left: 20px;
-      font-size: 15px;
+      font-family: var(--mono);
+      font-size: 13px;
     }
-    nav.site-nav a:hover { color: var(--accent); }
+    nav.site-nav a:hover { color: var(--g); }
 
     section { padding: 56px 0; }
-    section + section { border-top: 1px solid var(--border); }
+    section + section { border-top: 1px solid var(--line); }
 
-    .hero {
-      padding-top: 72px;
-      padding-bottom: 48px;
-    }
+    .hero { padding-top: 64px; padding-bottom: 48px; }
     .hero-banner {
       display: block;
       width: 100%;
       height: auto;
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--r);
       margin: 0 0 32px 0;
-      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
     }
     .eyebrow {
       display: inline-block;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent);
-      background: var(--accent-soft);
-      padding: 4px 10px;
-      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      letter-spacing: 0.04em;
+      color: var(--g);
       margin-bottom: 18px;
     }
+    .eyebrow::before {
+      content: "$ whoami  \2192  ";
+      color: var(--dim);
+    }
     h1 {
-      font-size: clamp(28px, 4.2vw, 42px);
-      line-height: 1.15;
-      letter-spacing: -0.02em;
+      font-size: clamp(44px, 6vw, 84px);
       margin: 0 0 18px 0;
-      max-width: 24ch;
+      max-width: 20ch;
+      color: var(--ink);
     }
-    h1 em {
-      font-style: normal;
-      color: var(--accent);
-    }
+    h1 em { font-style: normal; color: var(--g); }
     .lede {
-      font-size: 19px;
-      color: var(--muted);
+      font-size: 18px;
+      color: var(--ink-2);
       max-width: 62ch;
       margin: 0 0 28px 0;
     }
@@ -119,32 +152,41 @@
     .btn {
       display: inline-block;
       padding: 10px 18px;
-      border-radius: 6px;
+      border-radius: var(--r);
+      font-family: var(--mono);
       font-weight: 500;
-      font-size: 15px;
+      font-size: 14px;
       text-decoration: none;
       border: 1px solid transparent;
-      transition: background 120ms ease, border-color 120ms ease;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
+      background: var(--g);
+      color: #04140a;
+      box-shadow: 0 0 18px rgba(61, 240, 138, 0.25);
     }
-    .btn-primary:hover { background: #083a6e; }
+    .btn-primary:hover { background: #57f79c; }
     .btn-secondary {
       background: transparent;
-      color: var(--accent);
-      border-color: var(--border);
+      color: var(--g);
+      border-color: var(--g-line);
     }
-    .btn-secondary:hover { border-color: var(--accent); }
+    .btn-secondary:hover { border-color: var(--g); }
 
     h2 {
-      font-size: clamp(22px, 2.4vw, 28px);
-      letter-spacing: -0.015em;
-      margin: 0 0 12px 0;
+      font-size: clamp(28px, 3.4vw, 44px);
+      margin: 0 0 14px 0;
+      color: var(--ink);
+    }
+    h2::before {
+      content: "## ";
+      color: var(--g);
+      font-family: var(--mono);
+      font-size: .6em;
+      vertical-align: middle;
     }
     h2 + p.section-lede {
-      color: var(--muted);
+      color: var(--muted-2);
       margin: 0 0 32px 0;
       max-width: 60ch;
     }
@@ -152,19 +194,16 @@
     figure.diagram {
       margin: 0 auto;
       max-width: 720px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      background: linear-gradient(180deg, var(--bg-2), var(--bg));
+      border: 1px solid var(--line);
+      border-radius: var(--r);
       padding: 24px;
     }
-    figure.diagram svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
+    figure.diagram svg { width: 100%; height: auto; display: block; }
     figcaption {
-      color: var(--muted);
-      font-size: 14px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12.5px;
       margin-top: 16px;
       text-align: center;
     }
@@ -172,101 +211,92 @@
     .cards {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
     }
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 22px;
+      background: var(--bg);
+      padding: 18px;
     }
     .card h3 {
       margin: 0 0 6px 0;
       font-size: 17px;
-      letter-spacing: -0.01em;
+      color: var(--ink);
     }
     .card .tag {
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--g);
       display: block;
       margin-bottom: 8px;
     }
-    .card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
 
     .corpus-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
       margin-top: 24px;
     }
-    .corpus-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-    }
+    .corpus-item { background: var(--bg); padding: 18px; }
     .corpus-item strong {
       display: block;
-      font-size: 15px;
-      margin-bottom: 2px;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--g);
+      margin-bottom: 4px;
     }
-    .corpus-item span {
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .corpus-item span { color: var(--muted); font-size: 13px; }
 
     pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--bg-code);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
       padding: 14px 16px;
       overflow-x: auto;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 14px;
+      color: var(--g);
+      font-family: var(--mono);
+      font-size: 13.5px;
       line-height: 1.5;
       margin: 0 0 16px 0;
     }
-    code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
-    p code, li code {
-      background: var(--code-bg);
+    code { font-family: var(--mono); }
+    p code, li code, td code {
+      background: var(--bg-code);
+      border: 1px solid var(--line);
+      color: var(--g);
       padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 0.92em;
+      border-radius: var(--r);
+      font-size: 0.9em;
     }
 
     .step {
       display: grid;
-      grid-template-columns: 32px 1fr;
+      grid-template-columns: 32px minmax(0, 1fr);
       gap: 14px;
       margin-bottom: 18px;
     }
     .step .n {
       width: 28px;
       height: 28px;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 14px;
+      border-radius: var(--r);
+      border: 1px solid var(--g-line);
+      background: var(--bg-2);
+      color: var(--g);
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .step h3 {
-      margin: 2px 0 4px 0;
-      font-size: 16px;
-    }
-    .step p {
-      margin: 0 0 6px 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
+    .step h3 { margin: 2px 0 4px 0; font-size: 16px; color: var(--ink); }
+    .step p { margin: 0 0 6px 0; color: var(--muted); font-size: 15px; }
 
     .tools-table {
       width: 100%;
@@ -275,52 +305,47 @@
     }
     .tools-table th {
       text-align: left;
+      font-family: var(--mono);
       font-size: 12px;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: var(--muted-2);
       padding: 8px 12px;
-      border-bottom: 2px solid var(--border);
+      border-bottom: 1px solid var(--line);
     }
     .tools-table td {
       padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
       font-size: 15px;
     }
-    .tools-table code {
-      font-size: 13px;
-    }
+    .tools-table td strong { color: var(--ink); }
+    .tools-table code { font-size: 13px; }
 
     .research-links {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
     }
     .research-link {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
+      background: var(--bg);
       padding: 20px;
       text-decoration: none;
-      color: var(--text);
-      transition: border-color 120ms ease;
+      color: var(--ink);
+      transition: background 120ms ease;
     }
-    .research-link:hover { border-color: var(--accent); }
-    .research-link h3 {
-      margin: 0 0 6px 0;
-      font-size: 16px;
-    }
-    .research-link p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
+    .research-link:hover { background: var(--bg-2); }
+    .research-link h3 { margin: 0 0 6px 0; font-size: 16px; color: var(--g); }
+    .research-link p { margin: 0; color: var(--muted); font-size: 14px; }
 
     footer.site {
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--line);
       padding: 28px 0 40px 0;
-      color: var(--muted);
-      font-size: 14px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12.5px;
     }
     footer.site .wrap {
       display: flex;
@@ -329,18 +354,24 @@
       justify-content: space-between;
       align-items: center;
     }
-    footer.site a { color: var(--accent); text-decoration: none; }
-    footer.site a:hover { text-decoration: underline; }
+    footer.site a {
+      color: var(--g);
+      text-decoration: none;
+      border-bottom: 1px solid var(--g-line);
+    }
+    footer.site a:hover { border-bottom-color: var(--g); }
 
     @media (max-width: 720px) {
       section { padding: 40px 0; }
-      .hero { padding-top: 48px; }
+      .hero { padding-top: 40px; }
       .cards { grid-template-columns: 1fr; }
-      .corpus-grid { grid-template-columns: 1fr 1fr; }
+      .corpus-grid { grid-template-columns: 1fr; }
+      .research-links { grid-template-columns: 1fr; }
       .tools-table { display: block; overflow-x: auto; }
-      nav.site-nav a { margin-left: 12px; font-size: 14px; }
+      nav.site-nav a { margin-left: 12px; font-size: 12.5px; }
       nav.site-nav a:first-child { margin-left: 0; }
-      .lede { font-size: 17px; }
+      .lede { font-size: 16px; }
+      h1 { font-size: clamp(34px, 9vw, 44px); }
     }
   </style>
 </head>
@@ -348,13 +379,10 @@
   <header class="site">
     <div class="wrap">
       <a class="brand" href="#top">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-          <rect x="2" y="2" width="28" height="28" rx="6" fill="#0a4a8a"/>
-          <path d="M8 23 L16 7 L24 23" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="16" cy="18" r="3" fill="#fff" opacity="0.9"/>
-        </svg>
-        <span>sui-pilot</span>
+        <img class="brand-mark" src="assets/contract-hero.png" alt="" width="28" height="28">
+        <span class="wordmark">sui-pilot</span>
       </a>
+      <a class="byline" href="https://contracthero.dev">by Contract Hero</a>
       <nav class="site-nav" aria-label="Page contents">
         <a href="#problem">Why</a>
         <a href="#how">How it works</a>
@@ -369,7 +397,7 @@
   <main>
     <section class="hero" id="top">
       <div class="wrap">
-        <img class="hero-banner" src="sui-pilot.jpg" alt="sui-pilot banner">
+        <img class="hero-banner" src="assets/stills/hero.webp" alt="sui-pilot banner">
         <span class="eyebrow">Claude Code Plugin</span>
         <h1>Turn Claude into a <em>Sui/Move expert</em> &mdash; grounded in current docs.</h1>
         <p class="lede">
@@ -426,50 +454,50 @@
           <svg viewBox="0 0 680 380" role="img" aria-label="Architecture: Claude Code loads sui-pilot, which provides doc corpora, MCP tools, and specialized skills.">
             <defs>
               <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+                <path d="M0,0 L10,5 L0,10 z" fill="#9fb0a4"/>
               </marker>
             </defs>
 
-            <text x="20" y="32" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">RUNTIME</text>
-            <text x="20" y="132" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">PLUGIN</text>
-            <text x="20" y="252" font-size="11" letter-spacing="1.5" fill="#475569" font-family="system-ui">LAYERS</text>
+            <text x="20" y="32" font-size="11" letter-spacing="1.5" fill="#9fb0a4" font-family="JetBrains Mono, ui-monospace, monospace">RUNTIME</text>
+            <text x="20" y="132" font-size="11" letter-spacing="1.5" fill="#9fb0a4" font-family="JetBrains Mono, ui-monospace, monospace">PLUGIN</text>
+            <text x="20" y="252" font-size="11" letter-spacing="1.5" fill="#9fb0a4" font-family="JetBrains Mono, ui-monospace, monospace">LAYERS</text>
 
-            <rect x="240" y="14" width="200" height="44" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="340" y="42" font-size="14" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Claude Code session</text>
+            <rect x="240" y="14" width="200" height="44" rx="8" fill="#0e1410" stroke="#1f2a22"/>
+            <text x="340" y="42" font-size="14" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#dfe6e0">Claude Code session</text>
 
-            <line x1="340" y1="62" x2="340" y2="92" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="340" y1="62" x2="340" y2="92" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
 
-            <rect x="140" y="96" width="400" height="78" rx="8" fill="#e6eef4" stroke="#0a4a8a"/>
-            <text x="340" y="120" font-size="14" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0a4a8a">sui-pilot</text>
-            <text x="340" y="142" font-size="12" text-anchor="middle" font-family="system-ui" fill="#475569">doc-first agent &middot; 5 skills &middot; 2 MCP servers</text>
-            <text x="340" y="158" font-size="12" text-anchor="middle" font-family="system-ui" fill="#475569">topic &rarr; corpus routing table (always loaded)</text>
+            <rect x="140" y="96" width="400" height="78" rx="8" fill="#0e1410" stroke="#3df08a"/>
+            <text x="340" y="120" font-size="14" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#3df08a">sui-pilot</text>
+            <text x="340" y="142" font-size="12" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">doc-first agent &middot; 5 skills &middot; 2 MCP servers</text>
+            <text x="340" y="158" font-size="12" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">topic &rarr; corpus routing table (always loaded)</text>
 
-            <line x1="170" y1="178" x2="170" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="340" y1="178" x2="340" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="510" y1="178" x2="510" y2="210" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="170" y1="178" x2="170" y2="210" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="340" y1="178" x2="340" y2="210" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="510" y1="178" x2="510" y2="210" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
 
-            <rect x="80" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="170" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Doc corpora</text>
-            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">812 files &middot; 6 sources</text>
-            <text x="170" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">Glob/Grep navigated</text>
+            <rect x="80" y="214" width="180" height="64" rx="8" fill="#0e1410" stroke="#1f2a22"/>
+            <text x="170" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#dfe6e0">Doc corpora</text>
+            <text x="170" y="256" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">812 files &middot; 6 sources</text>
+            <text x="170" y="270" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">Glob/Grep navigated</text>
 
-            <rect x="270" y="214" width="140" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="340" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">MCP tools</text>
-            <text x="340" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">move-analyzer LSP</text>
-            <text x="340" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">sui-prover binary</text>
+            <rect x="270" y="214" width="140" height="64" rx="8" fill="#0e1410" stroke="#1f2a22"/>
+            <text x="340" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#dfe6e0">MCP tools</text>
+            <text x="340" y="256" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">move-analyzer LSP</text>
+            <text x="340" y="270" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">sui-prover binary</text>
 
-            <rect x="420" y="214" width="180" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1"/>
-            <text x="510" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Skills</text>
-            <text x="510" y="256" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">code-quality &middot; review</text>
-            <text x="510" y="270" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">oz-math &middot; specify &middot; verify</text>
+            <rect x="420" y="214" width="180" height="64" rx="8" fill="#0e1410" stroke="#1f2a22"/>
+            <text x="510" y="238" font-size="13" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#dfe6e0">Skills</text>
+            <text x="510" y="256" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">code-quality &middot; review</text>
+            <text x="510" y="270" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">oz-math &middot; specify &middot; verify</text>
 
-            <rect x="80" y="310" width="520" height="50" rx="8" fill="#ffffff" stroke="#0a4a8a"/>
-            <text x="340" y="332" font-size="13" font-weight="600" text-anchor="middle" font-family="system-ui" fill="#0f172a">Result: doc-grounded code &middot; LSP-verified &middot; formally specified</text>
-            <text x="340" y="348" font-size="11" text-anchor="middle" font-family="system-ui" fill="#475569">No hallucinated APIs &middot; No deprecated patterns &middot; No stale training data</text>
+            <rect x="80" y="310" width="520" height="50" rx="8" fill="#0e1410" stroke="#245c3b"/>
+            <text x="340" y="332" font-size="13" font-weight="600" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#dfe6e0">Result: doc-grounded code &middot; LSP-verified &middot; formally specified</text>
+            <text x="340" y="348" font-size="11" text-anchor="middle" font-family="JetBrains Mono, ui-monospace, monospace" fill="#9fb0a4">No hallucinated APIs &middot; No deprecated patterns &middot; No stale training data</text>
 
-            <line x1="170" y1="282" x2="170" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="340" y1="282" x2="340" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
-            <line x1="510" y1="282" x2="510" y2="306" stroke="#475569" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="170" y1="282" x2="170" y2="306" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="340" y1="282" x2="340" y2="306" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
+            <line x1="510" y1="282" x2="510" y2="306" stroke="#9fb0a4" stroke-width="1.4" marker-end="url(#arrow)"/>
           </svg>
           <figcaption>Slim plugin, three layers: documentation, tooling, procedural skills.</figcaption>
         </figure>
@@ -484,7 +512,7 @@
         </p>
 
         <h3 style="margin-top: 32px; margin-bottom: 8px; font-size: 18px;">Bundled documentation</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
+        <p style="color: var(--muted-2); font-size: 15px; margin: 0 0 16px 0;">
           Six corpora synced from the official MystenLabs repos. Local, searchable, always current.
         </p>
         <div class="corpus-grid">
@@ -497,7 +525,7 @@
         </div>
 
         <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">MCP tools</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 8px 0;">
+        <p style="color: var(--muted-2); font-size: 15px; margin: 0 0 8px 0;">
           Two MCP servers bridge external tooling into Claude Code.
         </p>
         <table class="tools-table">
@@ -530,14 +558,14 @@
         </table>
 
         <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">End-to-end dapp testing</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
+        <p style="color: var(--muted-2); font-size: 15px; margin: 0 0 16px 0;">
           <code>/sui-e2e</code> tests a Sui dapp in a real browser with a real wallet, hands-free.
           It brings up Chrome for Testing on the debug port with the wallet profile, confirms
           <code>chrome-devtools-mcp</code> attached to that browser instead of spawning its own,
           then drives every Slush approval &mdash; connect, sign-in message, transaction signing
           &mdash; without a manual click.
         </p>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 16px 0;">
+        <p style="color: var(--muted-2); font-size: 15px; margin: 0 0 16px 0;">
           This exists because <code>chrome-devtools-mcp</code> cannot see
           <code>chrome-extension://</code> pages: wallet popups never appear in
           <code>list_pages</code>, so every wallet end-to-end test stalls at the first approval.
@@ -639,6 +667,11 @@ suiup install move-analyzer</code></pre>
         <a href="https://github.com/contract-hero/sui-pilot">Source</a> &middot;
         <a href="https://github.com/contract-hero/plugin-marketplace">Marketplace</a> &middot;
         <a href="https://github.com/contract-hero/sui-pilot/blob/main/CHANGELOG.md">Changelog</a>
+      </div>
+      <div>
+        <a href="https://contracthero.dev">contracthero.dev</a> &middot;
+        <a href="https://contract-hero.github.io/plugin-marketplace/">Plugin marketplace</a> &middot;
+        <a href="https://github.com/contract-hero">GitHub</a>
       </div>
     </div>
   </footer>
