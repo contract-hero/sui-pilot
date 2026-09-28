@@ -333,7 +333,7 @@
     }
     .tools-table td:first-child { white-space: nowrap; }
     .tools-table td strong { color: var(--ink); }
-    .tools-table code { font-size: 13px; }
+    .tools-table code { font-size: 13px; overflow-wrap: normal; }
 
     blockquote.pull {
       margin: 28px 0;
@@ -346,7 +346,7 @@
     }
     blockquote.pull footer {
       margin-top: 10px;
-      color: var(--dim);
+      color: var(--muted-2);
       font-family: var(--mono);
       font-size: 12.5px;
     }
@@ -371,6 +371,7 @@
     }
     .callout .label::before { content: "! "; }
     .callout ul { margin: 0; padding-left: 20px; }
+    .callout p { margin: 0; }
     .callout li + li { margin-top: 6px; }
 
     .pill {
@@ -421,6 +422,7 @@
       nav.site-nav a:first-child { margin-left: 0; }
       .lede { font-size: 16px; }
       h1 { font-size: clamp(32px, 8.5vw, 42px); }
+      section { scroll-margin-top: 96px; }
     }
   </style>
 </head>
@@ -518,7 +520,7 @@
         <h2>Four waves in two weeks</h2>
         <p class="section-lede">
           The capability landed and matured in four waves over roughly two weeks in May 2026.
-          Three are merged PRs in git history; one is a design note that lives outside the repo.
+          Three are in git history (PRs #24 and #27, #30, #32); one is a design note that lives outside the repo.
         </p>
 
         <div class="step">
@@ -584,7 +586,7 @@
       <div class="wrap">
         <h2>What ships today</h2>
         <p class="section-lede">
-          One MCP server, one bundled docs corpus, and two of sui-pilot's five skills, with an
+          One dedicated MCP server (the skills also call three <code>move-lsp</code> tools), one bundled docs corpus, and two of sui-pilot's five skills, with an
           explicit boundary between them: <code>/specify</code> authors; <code>/verify</code>
           checks. The other three skills &mdash; <code>/oz-math</code>, <code>/sui-setup</code>,
           <code>/sui-e2e</code> &mdash; are outside the FV workflow.
@@ -650,7 +652,7 @@
           <thead><tr><th>Phase</th><th>What happens</th></tr></thead>
           <tbody>
             <tr><td><strong>0 &middot; Validate</strong></td><td>Hard gate: <code>prover_capabilities</code> probe, a compile-health check via <code>move_diagnostics</code>, a <code>git ls-remote</code> reachability check on every git dependency, and setup warnings. A missing binary stops an interactive run with the brew command; a non-interactive run falls back to discovery only.</td></tr>
-            <tr><td><strong>1 &middot; Discover</strong></td><td>Comment-aware regex over <code>sources/</code> finds the <code>public</code> + <code>entry</code> surface; <code>list_specs</code> marks each function verified, pending, or partial; progress goes to <code>.specify-progress.json</code>.</td></tr>
+            <tr><td><strong>1 &middot; Discover</strong></td><td>Comment-aware regex over <code>sources/</code> finds the <code>public</code> + <code>entry</code> surface; the skill uses <code>list_specs</code> to mark each function verified, pending, or partial; progress goes to <code>.specify-progress.json</code>.</td></tr>
             <tr><td><strong>1.5 &middot; Scope + callees</strong></td><td>Above 25 functions, ask how to scope. Flag stub callee modules (every body <code>abort 0</code> or <code>native</code>) that would make proofs vacuous.</td></tr>
             <tr><td><strong>2 &middot; Cascade</strong></td><td>Per function: callers via <code>move_find_references</code>, callees via <code>move_goto_definition</code>, depth 2 by default.</td></tr>
             <tr><td><strong>3 &middot; Prioritize</strong></td><td><code>entry</code> first, then mutating <code>public</code> functions, then read-only ones.</td></tr>
@@ -721,7 +723,8 @@
         <h2>Try it</h2>
         <p class="section-lede">
           The prover is a separate install: <code>/sui-setup</code> checks the Sui toolchain and the
-          MCP builds, but leaves <code>sui-prover</code> out of scope on purpose.
+          MCP builds, but leaves <code>sui-prover</code> out of scope on purpose. Read the toolchain
+          note below first: on 2026-09-28 the default prover install could not produce a verified spec.
         </p>
 
         <div class="step">
@@ -752,6 +755,22 @@
 /verify
 /verify --strict</code></pre>
           </div>
+        </div>
+
+        <div class="callout">
+          <span class="label">Toolchain status, 2026-09-28</span>
+          <p>
+            A cold eval of <code>/specify</code> and <code>/verify</code> on 2026-09-28
+            (<a href="https://github.com/contract-hero/sui-pilot/issues/31">issue #31</a>) found that
+            the default install cannot produce a verified spec. The brew bottle (built 2026-05-28;
+            <code>sui-prover --version</code> prints 1.5.3) fetches its runtime dependencies from
+            moving branches: <code>asymptotic-code/sui-prover</code> <code>main</code> and
+            <code>asymptotic-code/sui</code> <code>next</code>. Upstream changed the spec syntax on
+            2026-09-18. With those branches at their 2026-09-25 heads, a toy spec fails with 42
+            <code>restricted visibility</code> errors, and <code>/specify</code> Phase 0 does not
+            detect it. Until the bottle and the upstream branches agree again, steps 2 and 3 do not
+            end in a verified spec.
+          </p>
         </div>
       </div>
     </section>
@@ -809,7 +828,7 @@
         <p>
           Default mode is warn-and-run: exit zero unless a spec hard-fails to prove
           (<code>failed_some</code>, <code>compile_failure</code>, or <code>error</code>).
-          <code>/verify --strict</code> is the CI contract &mdash; non-zero exit on any spec failure,
+          <code>/verify --strict</code> is the CI contract &mdash; the skill specifies a non-zero exit on any spec failure,
           stale spec, uncovered function, missing spec package, or context drift (moved dep or
           changed prover version), because CI must catch &ldquo;the proof is no longer about the
           current code,&rdquo; not just &ldquo;a spec failed.&rdquo; A package with no specs at all
@@ -817,6 +836,8 @@
           <code>/specify --audit</code> emits runs the prover once per spec package with its recorded
           flags. Without a manifest, <code>/verify</code> degrades honestly: it re-proves the spec
           packages and reports verdicts, but announces that drift detection is unavailable.
+          The 2026-09-28 eval found that the <code>--strict</code> exit code is prose only: a headless
+          <code>--strict</code> run reported a failure and still exited zero.
         </p>
       </div>
     </section>
@@ -836,7 +857,7 @@
           worktree armed a <code>tail -F</code> on the target session's transcript and a 5-second
           mtime poll on its files &mdash; non-intrusive observation, no edits to the target repo.
           Toolchain at the time of the run: sui-prover 1.5.3, sui 1.69.2. The run first stopped at a
-          private-dependency blocker, then continued after the user picked an unblock option.
+          private-dependency blocker, then continued after Option B (a local clone of the private dependency) unblocked the build.
           Verdict: <span class="pill">Conditional Pass</span>
         </p>
 
@@ -944,9 +965,10 @@
           &mdash; the integer-library work from Asymptotic &times; Bluefin &mdash; including abort
           conditions as first-class output, math-domain modeling for custom integer types,
           defining-property postconditions, per-package prover flags, and <code>--audit</code>
-          regression artifacts with a <code>prover.yml</code> CI stub. Q4's v1 shipped as designed.
-          <code>SKILL.md</code> still lists v2 and v3 as roadmap, but in practice the CI stub plus
-          <code>/verify --strict</code> already enforce drift.
+          regression artifacts with a <code>prover.yml</code> CI stub. Q4's v1 shipped as designed,
+          and <code>SKILL.md</code> still lists v2 and v3 as roadmap. <code>/verify --strict</code>
+          defines the drift checks, but the CI stub runs <code>sui-prover</code> once per spec package
+          and does not compare source hashes, so CI alone does not catch a stale spec that still passes.
         </p>
       </div>
     </section>
@@ -969,8 +991,9 @@
               registered slash command with <code>--strict</code> for CI.
             </p>
             <p>
-              Since PR #32 the FV code has only seen maintenance: weekly doc syncs refresh the prover
-              corpus from upstream, and PR #52 (2026-09-15) removed the review skills, so
+              Since PR #32 the FV code has only seen maintenance: the weekly doc sync re-pulls the
+              prover corpus from upstream (its content last changed on 2026-08-25; the last sync ran
+              2026-09-14), and PR #52 (2026-09-15) removed the review skills, so
               <code>/specify</code> and <code>/verify</code> now point only at each other.
             </p>
           </article>
@@ -980,10 +1003,12 @@
             <p>
               No commit in the repo records a walk-back of the redesigned deliverable through the
               Aftermath AMM eval, to check whether it would have caught the 12 findings. The eval's
-              own recommended follow-up &mdash; a <code>/specify</code> run on a fully buildable
-              package to exercise the happy path of Phases 2&ndash;4 in production &mdash; also has
-              no recorded result. And the Aftermath specs' <code>ignore_abort</code> caveat still
-              stands.
+              own recommended follow-up &mdash; a <code>/specify</code> run on fully buildable
+              packages to exercise Phases 2&ndash;4 &mdash; ran cold on 2026-09-28
+              (<a href="https://github.com/contract-hero/sui-pilot/issues/31">issue #31</a>). Its
+              verdict: skill logic is a conditional pass, and the toolchain is blocked today (see
+              <a href="#try">Try it</a>). And the Aftermath specs' <code>ignore_abort</code> caveat
+              still stands.
             </p>
           </article>
         </div>
@@ -994,6 +1019,9 @@
             <li><code>commands/specify.md</code> still describes the legacy inline-marker layout and a single <code>.specify-report.html</code> as the default, and calls the <code>target =</code> form deferred. <code>skills/specify/SKILL.md</code> has moved the default to the sibling-package layout with <code>--inline</code> as the opt-out. The command doc lags the skill.</li>
             <li>Both skills cite the design note as <code>docs/specify-deliverable-design.html</code>, but that file is not in the repo.</li>
             <li>Both skills tell the agent to call <code>prove_package</code> with <code>move_toml_path</code>; the tool's input is <code>path</code>. <code>move_toml_path</code> belongs to <code>prover_capabilities</code>.</li>
+            <li><code>skills/specify/SKILL.md</code> 5.1 says to reuse <code>dep-pins-capture</code> logic for the <code>deps</code> block; nothing else in the repo defines it.</li>
+            <li>5.1 also says toolchain versions come from <code>prover_capabilities</code>, but that tool reports only the sui-prover and Sui CLI versions, not Boogie or Z3.</li>
+            <li><code>skills/specify/SKILL.md</code> 4.6 targets <code>&lt;pkg&gt;_specs::&lt;mod&gt;_specs::&lt;fn&gt;_spec</code>; the 2026-09-28 eval found that sui-prover returns <code>function_not_found</code> for that form and accepts <code>&lt;mod&gt;_specs::&lt;fn&gt;_spec</code>.</li>
           </ul>
         </div>
       </div>
