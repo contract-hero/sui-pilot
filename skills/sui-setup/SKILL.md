@@ -19,6 +19,12 @@ allowed-tools: Bash, Read, AskUserQuestion
 
 # sui-setup — provision a machine for Sui development
 
+Read [runtime guidance](../sui-pilot/references/runtime.md) first and resolve
+`SUI_PILOT_ROOT` from the installed skill path before running plugin checks.
+Use the active host's tools and MCP registration commands. The E2E provisioning
+steps below target macOS; on another platform, report that limitation rather
+than running macOS commands.
+
 Diagnose first, then offer to fix. Two tiers, checked in order:
 
 | Tier | Covers | Needed for |
@@ -112,37 +118,39 @@ command -v node >/dev/null && node --version || echo "node: MISSING (not on PATH
 command -v pnpm >/dev/null && pnpm --version || echo "pnpm: MISSING (not on PATH)"
 ```
 
-pnpm install (needs confirmation): `npm install -g pnpm`
+Install pnpm with the user's platform package manager (needs confirmation),
+for example `brew install pnpm` on macOS.
 
 Only pnpm is acceptable here. Do not suggest npm or yarn as the project's
 package manager — they are used for nothing in this repo.
 
 ### C5 — bundled MCP server builds
 
-The plugin declares two MCP servers in `.claude-plugin/plugin.json`; both run
+The plugin declares two local MCP servers in `.codex-plugin/plugin.json` for
+OpenAI hosts and `.claude-plugin/plugin.json` for Claude; both run
 from `dist/`. Those bundles are **committed**, so a marketplace install already
 has them and this check passes without any action.
 
 ```bash
-if [ -z "${CLAUDE_PLUGIN_ROOT:-}" ]; then
-  echo "SKIP: CLAUDE_PLUGIN_ROOT is unset - cannot locate the plugin tree, so MCP builds are unverifiable"
+if [ -z "${SUI_PILOT_ROOT:-}" ]; then
+  echo "SKIP: resolve SUI_PILOT_ROOT from the loaded skill path before checking builds"
 else
   for s in move-lsp-mcp sui-prover-mcp; do
-    if [ -f "${CLAUDE_PLUGIN_ROOT}/mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
+    if [ -f "${SUI_PILOT_ROOT}/mcp/$s/dist/index.js" ]; then echo "$s: built"; else echo "$s: NOT BUILT"; fi
   done
 fi
 ```
 
-Resolve from `${CLAUDE_PLUGIN_ROOT}`, never from the working directory — during a
+Resolve from `${SUI_PILOT_ROOT}`, never from the working directory — during a
 run the cwd is the user's Move or dapp project, where `mcp/` does not exist. A
 relative path would report `NOT BUILT` for every installed user.
 
 **Only offer the build when the user is developing on the plugin repo itself**
-— that is, `${CLAUDE_PLUGIN_ROOT}` and the repo root are the same tree:
+— that is, `${SUI_PILOT_ROOT}` and the repo root are the same tree:
 
 ```bash
-pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp" install && pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/move-lsp-mcp" build
-pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/sui-prover-mcp" install && pnpm --dir "${CLAUDE_PLUGIN_ROOT}/mcp/sui-prover-mcp" build
+pnpm --dir "${SUI_PILOT_ROOT}/mcp/move-lsp-mcp" install && pnpm --dir "${SUI_PILOT_ROOT}/mcp/move-lsp-mcp" build
+pnpm --dir "${SUI_PILOT_ROOT}/mcp/sui-prover-mcp" install && pnpm --dir "${SUI_PILOT_ROOT}/mcp/sui-prover-mcp" build
 ```
 
 Never run `pnpm install` in the user's own project to fix this — that writes a
@@ -216,12 +224,21 @@ Without that flag it **spawns its own** extension-less Chrome, every MCP call
 lands in the wrong browser, and the dapp's connect modal comes up empty while
 `list_pages` still succeeds. It looks like it is working.
 
+Choose the registration check for the **active host**, not whichever CLI happens
+to be installed. For Codex, run `codex mcp get chrome-devtools --json` and inspect
+the command and arguments for the exact
+`--browser-url=http://127.0.0.1:9222` value. A different URL or a bare
+`--browser-url` is not a passing check. If the desktop host manages the server
+through a plugin, inspect that plugin's effective configuration instead.
+
+For Claude Code:
+
 ```bash
 if ! command -v claude >/dev/null; then
   echo "attach: UNKNOWN - the 'claude' CLI is not on PATH, so the registration cannot be read"
 elif ! OUT=$(claude mcp get chrome-devtools 2>&1); then
   echo "attach: NOT REGISTERED (or 'claude mcp get' failed):"; printf '%s\n' "$OUT"
-elif printf '%s' "$OUT" | grep -q -- '--browser-url'; then
+elif printf '%s' "$OUT" | grep -q -- '--browser-url=http://127.0.0.1:9222'; then
   echo "attach: OK"
 else
   echo "attach: REGISTERED WITHOUT --browser-url"
@@ -229,22 +246,29 @@ fi
 ```
 
 Four states, four remedies. `UNKNOWN` means the check itself is broken — offer
-nothing, because `claude mcp add` on a broken check can create a second,
+nothing, because registering a server on a broken check can create a second,
 differently-named server while the real registration stays wrong.
 `claude mcp get` returns the command and arguments actually in effect. Do not go
 hunting through `.mcp.json` / `settings.json` / plugin configs by hand — you can
 easily read a file that is not the registration being used.
 
-**If chrome-devtools-mcp came from a plugin rather than `claude mcp add`**, its
-tools appear as `mcp__plugin_<plugin>_chrome-devtools__*` and `claude mcp add`
+**If chrome-devtools-mcp came from a plugin rather than direct registration**, its
+tools may have a plugin-specific prefix, and registering another server
 would create a *second*, differently-named server while leaving the plugin's
 registration wrong. In that case report it and let the user fix the plugin's own
 config — adding a duplicate server hides the problem instead of fixing it.
 
-Fix (needs confirmation) — register it with the attach flag:
+Fix (needs confirmation) — register it with the attach flag in the active host:
 ```bash
-claude mcp add chrome-devtools -- npx -y chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+# Codex
+codex mcp add chrome-devtools -- pnpm dlx chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
+
+# Claude Code
+claude mcp add chrome-devtools -- pnpm dlx chrome-devtools-mcp@latest --browser-url=http://127.0.0.1:9222
 ```
+
+Run only the command for the active host. If its configuration is managed by
+the desktop app rather than that CLI, use the app's connection settings.
 
 If it is already registered **without** the flag, say so and let the user
 re-register. Do not rewrite an MCP config entry the user did not ask you to

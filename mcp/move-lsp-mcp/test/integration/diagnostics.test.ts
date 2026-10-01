@@ -71,7 +71,7 @@ describe('diagnostics integration', () => {
         properties: {
           filePath: {
             type: 'string',
-            description: expect.stringContaining('Path to the Move source file'),
+            description: expect.stringContaining('Absolute path to the Move source file'),
           },
           content: {
             type: 'string',

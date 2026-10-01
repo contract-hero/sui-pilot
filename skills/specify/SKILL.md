@@ -1,15 +1,20 @@
 ---
 name: specify
-description: "Walks the user through writing `#[spec(prove)]` formal specifications for every externally reachable function (`public` non-package + `entry`) in their Sui Move package. Emits the specs into a separate sibling `<pkg>_specs/` package (keeping production source pristine), drives sui-prover via the sui-prover-mcp, and produces an invariant-driven HTML report plus a `spec-context.json` reproducibility manifest. Use this skill when the user invokes `/specify`, asks to 'add formal verification', 'write prover specs', 'verify this package with sui-prover', or wants to harden a Move package before mainnet deploy. Skip for `public(package)` or private functions (out of scope), or when sui-prover isn't installed."
+description: "Walks the user through writing `#[spec(prove)]` formal specifications for every externally reachable function (`public` non-package + `entry`) in their Sui Move package. Emits the specs into a separate sibling specs package (keeping production source pristine), drives sui-prover via the sui-prover-mcp, and produces an invariant-driven HTML report plus a `spec-context.json` reproducibility manifest. Use this skill when the user invokes `/specify`, asks to 'add formal verification', 'write prover specs', 'verify this package with sui-prover', or wants to harden a Move package before mainnet deploy. Skip for `public(package)` or private functions (out of scope), or when sui-prover isn't installed."
 ---
 
 # Specify — formal specifications for Sui Move
+
+Read [runtime guidance](../sui-pilot/references/runtime.md) first. Documentation
+paths below are relative to the installed plugin, while source and output paths
+are relative to the user's package. Tool names describe the operation; use the
+current host's exposed equivalents and preserve the interactive review gates.
 
 > **Doc-First Requirement.** Read `.sui-prover-docs/` before drafting any spec. The Sui Prover spec language is **not** the legacy Move Prover MSL — it uses `#[spec(prove)]`, `requires`, `ensures`, `asserts` (positive abort form), and the macros `clone!`, `forall!`, `exists!`, `invariant!`. It does NOT use `aborts_if`, `pragma`, `apply`, `assume`, or free `axiom`. Verify any construct against `.sui-prover-docs/guide/spec-reference.md` before emitting it.
 
 ## Deliverable shape (read first)
 
-`/specify` ships **three artifacts**, not one. This is the load-bearing architectural decision (`docs/specify-deliverable-design.html`, learning L1, validated against `~/workspace/integer-library`):
+`/specify` ships **three artifacts**, not one:
 
 1. **The production package — left pristine.** No `#[spec_only]`, no prover dependency, no marker blocks. Verification scaffolding never touches deployed source.
 2. **One or more spec packages.** A sibling `<pkg>_specs/` package holds `#[spec(prove, target = <pkg>::<mod>::<fn>)]` twins, one `<mod>_specs.move` per source module. A function that needs a custom prover invocation (e.g. `--no-bv-int-encoding` for bit-exact semantics) goes in a *second* package `<pkg>_specs_bv/` (Phase 4.6).
@@ -391,7 +396,7 @@ Reuse `dep-pins-capture` logic for the `deps` block rather than duplicating it. 
 
 ### 5.2 The report — invariant-driven, hybrid granularity (Q5 / Q1)
 
-Write per-module `<mod>.spec.html` next to each spec module, plus a package-level `index.html`. `--single-file` collapses to one file for tiny packages. Each file is self-contained semantic HTML5 with inline CSS (match the house style in `docs/*.html`).
+Write per-module `<mod>.spec.html` next to each spec module, plus a package-level `index.html`. `--single-file` collapses to one file for tiny packages. Each file is self-contained semantic HTML5 with inline CSS, clear verdicts, accessible contrast, and readable code samples.
 
 **Structured sections via markers (Q2).** Machine-derived zones regenerate every run; human-authored prose is preserved. Wrap each:
 
@@ -441,5 +446,5 @@ Any run starts at Phase 0 → Phase 1, then loads `.specify-progress.json` and s
 - **Never duplicate a `#[spec(...)]` for the same function.** Idempotency via the marker block.
 - **Never strip per-spec `boogie_opt` tokens.** They are load-bearing on hard specs (the AMM `withdraw_spec` uses three).
 - **Never delete downstream tasks on a Phase 0 blocker.** If `/specify` hits a hard blocker (unreachable deps, compile failure, missing binary), leave queued Phase 2–4 tasks as `pending` or move them to a `blocked` status — the resumption breadcrumb in `.specify-progress.json` must stay coherent with the session task list so the user can resume cleanly after fixing the blocker.
-- **`AskUserQuestion` is the only user-input channel.** No free-form prompts. Batch sub-questions by topic.
+- **Use the host's user-input tool when available.** Batch sub-questions by topic. If the host has no such tool, ask in conversation and wait for the answer before crossing a required review gate.
 - **For document deliverables outside chat, prefer self-contained HTML.** The Phase 5 audit report is the user's record.

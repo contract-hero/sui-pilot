@@ -1,0 +1,42 @@
+{
+  "name": "sui-pilot",
+  "version": "0.2.0",
+  "description": "Doc-first Sui development with bundled documentation, local Move LSP and Sui Prover tools, toolchain setup, and dapp testing.",
+  "author": {
+    "name": "Contract Hero",
+    "url": "https://github.com/contract-hero"
+  },
+  "homepage": "https://contract-hero.github.io/sui-pilot/",
+  "repository": "https://github.com/contract-hero/sui-pilot",
+  "license": "MIT",
+  "keywords": ["sui", "move", "walrus", "seal", "typescript", "language-server", "formal-verification"],
+  "skills": "./skills/",
+  "mcpServers": {
+    "move-lsp": {
+      "command": "node",
+      "args": ["./mcp/move-lsp-mcp/dist/index.js"],
+      "cwd": "."
+    },
+    "sui-prover": {
+      "command": "node",
+      "args": ["./mcp/sui-prover-mcp/dist/index.js"],
+      "cwd": "."
+    }
+  },
+  "interface": {
+    "displayName": "Sui Pilot",
+    "shortDescription": "Sui tools on your machine",
+    "longDescription": "Build Sui applications using bundled Sui, Move Book, Walrus, Seal, TypeScript SDK, and Sui Prover documentation. Run Move LSP and Sui Prover MCP tools locally against your project. Includes documentation guidance, arithmetic analysis, formal specification and verification, toolchain setup, and optional browser testing with Slush. Requires a local execution environment with Node.js and the relevant Sui toolchain; browser testing additionally requires a configured Chrome and test wallet. Distributed through a Git marketplace; public-directory local-MCP support requires confirmation from OpenAI.",
+    "developerName": "Contract Hero",
+    "category": "Developer Tools",
+    "capabilities": ["Read", "Write", "Interactive"],
+    "websiteURL": "https://contract-hero.github.io/sui-pilot/",
+    "defaultPrompt": [
+      "Help me build a Sui application using the bundled docs",
+      "Check my local Sui development toolchain",
+      "Add formal specifications to this Move package"
+    ],
+    "composerIcon": "./site/assets/contract-hero.png",
+    "logo": "./site/assets/contract-hero.png"
+  }
+}

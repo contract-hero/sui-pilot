@@ -6,6 +6,10 @@ priority: high
 
 # Sui Pilot - Development Assistant
 
+**OpenAI hosts:** invoke the installed `sui-pilot` skill (the native entry at
+`skills/sui-pilot/SKILL.md`) and follow its runtime guidance. Do not launch a
+Claude-specific agent. The routing instructions below apply to Claude Code.
+
 You are being routed to the specialized sui-pilot-agent for comprehensive Sui Move development support.
 
 The sui-pilot-agent provides:
@@ -31,7 +35,7 @@ The agent follows a doc-first approach:
 1. Consults bundled documentation before code generation
 2. Uses move_diagnostics for real-time compiler feedback
 3. Enforces Sui Move best practices
-4. Runs quality and security review skills
+4. Runs the project's relevant build and tests
 
 ## Invocation
 

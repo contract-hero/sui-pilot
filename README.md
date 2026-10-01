@@ -4,15 +4,49 @@
   <img src="sui-pilot.jpg" alt="Sui Pilot" width="600" />
 </p>
 
-> A Claude Code plugin that turns Claude into a Sui/Move development expert — grounded in current docs, not stale training data.
+> A plugin for Claude Code and local Codex environments, grounded in bundled Sui/Move documentation and local development tools.
 
-sui-pilot bundles **812 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, **end-to-end dapp testing** that drives the Slush wallet hands-free, and **five specialized skills** — all wired into a doc-first agent that reads the docs before writing code. Install it and every Sui/Move question Claude answers is grounded in the current state of the ecosystem.
+sui-pilot bundles **815 documentation files** from six upstream MystenLabs corpora, a **Move LSP** bridge for real-time diagnostics, a **formal verification** wrapper for the Sui Prover, **end-to-end dapp testing** that drives the Slush wallet hands-free, and **five specialized skills** — with a doc-first entry skill for OpenAI hosts and a specialized agent for Claude Code. Both hosts use the same documentation and run the MCP tools on your machine.
 
 **[Dive into the landing page](https://contract-hero.github.io/sui-pilot/)** · [read the full story](https://contract-hero.github.io/sui-pilot/classic.html)
 
 ---
 
 ## Install
+
+### Codex and local desktop environments
+
+Use a current Codex release with Git-backed plugin source support (validated
+with Codex CLI 0.153.4):
+
+```bash
+codex plugin marketplace add contract-hero/plugin-marketplace
+codex plugin add sui-pilot@contract-hero
+```
+
+Start a new session after installation. Invoke `$sui-pilot` or choose a skill
+from the host's skill menu; the five specialized skills can also be invoked
+directly. In a compatible desktop client, add the same Git marketplace and
+install Sui Pilot from its plugin browser.
+
+Both bundled MCP servers use **local stdio**: Node launches `move-lsp` and
+`sui-prover` from the installed plugin directory. There is no hosted LSP,
+listening HTTP port, plugin service account, or remote project upload. Tool
+results still enter the agent conversation under the host's normal data
+handling, and toolchain commands may fetch their ordinary dependencies.
+
+This requires execution on the machine containing your project and toolchain.
+Installing in browser-only ChatGPT does not grant access to your computer's
+files, binaries, Chrome, or wallet. The optional browser setup/E2E workflows
+currently document macOS.
+
+**Distribution boundary:** a Git marketplace is separate from OpenAI's public
+plugin directory. As checked on 2026-10-01, OpenAI's public-submission guidance
+directs local-MCP authors to their OpenAI contact for support. This package does
+not claim public-directory approval. See [packaging and marketplaces](https://developers.openai.com/plugins/build/plugins)
+and [local MCP submission guidance](https://developers.openai.com/plugins/guides/submit-claude-plugin).
+
+### Claude Code
 
 From inside Claude Code:
 
@@ -36,7 +70,13 @@ Then restart Claude Code — MCP servers launch at session start.
 |---|---|---|
 | suiup | Latest | `curl -sSfL https://raw.githubusercontent.com/MystenLabs/suiup/main/install.sh \| sh` |
 | sui + move-analyzer | Same version | **Must match** — install both via suiup |
-| Claude Code | Latest | Plugin host environment |
+| Node.js | 18+ | Runs both prebuilt MCP bundles; must be visible on the host's PATH |
+| Plugin host | Current | Codex with Git plugin sources, a compatible local desktop client, or Claude Code |
+
+`sui-prover` is an additional prerequisite for executing formal proofs; the
+prover MCP exposes a capability check when it is missing. pnpm is needed only
+for development/builds or optional browser tooling, not to install the two
+prebuilt MCP servers.
 
 ```bash
 suiup install sui
@@ -56,22 +96,23 @@ registered with `--browser-url=http://127.0.0.1:9222`, and Python 3.
 
 ## What Ships
 
-### Bundled documentation (812 files, 6 corpora)
+### Bundled documentation (815 files, 6 corpora)
 
-All docs are local and searchable. Claude reads them before generating code — no hallucinated APIs, no deprecated patterns.
+All docs are local and searchable. The skills direct the agent to read the
+relevant documentation before generating code.
 
 | Source | Files | Topics |
 |---|---|---|
-| **Sui** | 416 | Blockchain, objects, transactions, DeFi, framework |
-| **Move Book** | 149 | Move language tutorial + reference: syntax, types, abilities, idioms |
-| **Walrus** | 108 | Decentralized blob storage, Walrus Sites, HTTP API |
-| **TS SDK** | 104 | TypeScript SDK, dapp-kit, payment-kit, kiosk, React hooks |
+| **Sui** | 408 | Blockchain, objects, transactions, DeFi, framework |
+| **Move Book** | 150 | Move language tutorial + reference: syntax, types, abilities, idioms |
+| **Walrus** | 117 | Decentralized blob storage, Walrus Sites, HTTP API |
+| **TS SDK** | 105 | TypeScript SDK, dapp-kit, payment-kit, kiosk, React hooks |
 | **Sui Prover** | 20 | Formal verification: `#[spec(prove)]` specs, Boogie tuning |
 | **Seal** | 15 | Secrets management, encryption, key servers, access control |
 
 ### MCP tools
 
-Two MCP servers provide real-time tooling from within Claude Code:
+Two local MCP servers provide tooling in supported plugin hosts:
 
 | Server | Tools | What it wraps |
 |---|---|---|
@@ -126,7 +167,9 @@ Check diagnostics for sources/my_module.move
 
 ## For Other AI Agents
 
-sui-pilot also works as a standalone documentation source for non-Claude Code environments. Clone the repo, point your agent at `agents/sui-pilot-agent.md`, and it will navigate the bundled `.<source>-docs/` corpora with `Glob` and `Grep`.
+sui-pilot also works as a standalone documentation source. Clone the repo and
+point your agent at `skills/sui-pilot/SKILL.md`. It routes into the bundled
+`.<source>-docs/` corpora using the host's file-search tools.
 
 ---
 
@@ -158,6 +201,35 @@ claude --plugin-dir "$(pwd)"
 ```
 
 Then run `/sui-setup` inside that session to confirm the toolchain is complete.
+
+The OpenAI manifest is `.codex-plugin/plugin.json`; the Claude manifest stays in
+`.claude-plugin/plugin.json`. Keep their local MCP server names and entrypoints
+aligned. OpenAI's manifest uses `cwd: "."`, resolved by Codex against the
+installed plugin root, so it also works when the user's project is elsewhere.
+The OpenAI manifest declares MCP servers inline to avoid introducing a root
+`.mcp.json` that would duplicate Claude's existing declarations.
+
+`pnpm --dir mcp/move-lsp-mcp test` includes a packaging integration test that
+launches both committed bundles from a relocated installation with spaces in
+its path, without `node_modules` or Claude environment variables. It checks
+MCP initialization, tool discovery, and local spec-file access. Compiler and
+proof integration tests separately require the corresponding binaries.
+
+The live prover test requires a successful proof, including Boogie and Z3;
+run it with `SKIP_PROVER_NETWORK` unset. Its default framework dependencies
+track upstream branches, which can become incompatible with a released prover
+binary. To test a specific build, set `SUI_PROVER_FRAMEWORK_PATH` to a directory
+containing the matching `move-stdlib`, `sui-framework`, `sui-system`, `deepbook`,
+`sui-prover`, `sui-specs`, and `prover` packages. The test copies the fixture into
+a fresh temporary directory so generated lockfiles cannot override that choice.
+`SKIP_PROVER_NETWORK=1` explicitly skips the live proof for ordinary CI.
+
+For a local Codex install test, use a temporary marketplace containing a copy of
+this tree under `plugins/sui-pilot`, add it with
+`codex plugin marketplace add <marketplace-root>`, and install
+`sui-pilot@<temporary-marketplace-name>`. Start a new session to pick up skills
+and tools. Remove that test plugin and marketplace after testing. Do not edit
+the installed cache or use the user's normal marketplace as a test fixture.
 
 See [`CLAUDE.md`](./CLAUDE.md) for architectural invariants and the doc-first workflow.
 
