@@ -10,11 +10,11 @@ Invoke the `specify` skill to walk through formal-specification authoring for th
 - Probes the local `sui-prover` binary and the package's `Move.toml` for setup issues (capabilities, edition, implicit-dep readiness).
 - Discovers every externally reachable function (`public` non-package + `entry`) under `sources/`.
 - Builds a per-function context (signature, callees, observable effects, abort paths).
-- Asks the user — one structured AskUserQuestion batch per function — for invariants, preconditions, postconditions, and abort conditions.
-- Drafts a `#[spec(prove)]` twin function and writes it inline at the bottom of the same `.move` file (between `// === sui-pilot specify: generated specs ===` markers).
+- Asks the user — one structured question batch per function using the host's available input mechanism — for invariants, preconditions, postconditions, and abort conditions.
+- Drafts `#[spec(prove, target = ...)]` twins in sibling spec packages, keeping production source unchanged. Inline specs are an explicit opt-in; the skill is the source of truth for layout and review gates.
 - Runs `sui-prover` via the `sui-prover-mcp` MCP and iterates on failures using the failure taxonomy at `skills/specify/references/failure-taxonomy.md`.
 - Persists progress to `.specify-progress.json` at the package root so the flow is resumable.
-- Emits a self-contained HTML audit at `.specify-report.html` on completion.
+- Emits self-contained HTML reports and a `spec-context.json` reproducibility manifest.
 
 ## When to Use
 
@@ -30,8 +30,7 @@ Invoke the `specify` skill to walk through formal-specification authoring for th
 
 ## Limitations
 
-- Single-package scope. Cross-package spec generation (the `target = other_pkg::mod::fn` form) is deferred.
-- Spec quality is bounded by the user's answers to the `AskUserQuestion` batches; vague answers produce weak specs.
+- Spec quality is bounded by the user's answers to the review questions; vague answers produce weak specs.
 - Some Move code patterns require `no_opaque` or `boogie_opt` tuning that the skill suggests but cannot always derive automatically — the failure-taxonomy file documents the manual escape hatches.
 
 ## Related Commands

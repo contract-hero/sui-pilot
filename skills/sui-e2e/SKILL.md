@@ -1,24 +1,22 @@
 ---
 name: sui-e2e
 description: >-
-  Runs end-to-end browser tests against a Sui dapp with Claude driving both the
-  page and the wallet. Brings up Google Chrome for Testing on the debug port
-  with the wallet profile, verifies chrome-devtools-mcp attached to THAT browser
-  and not a spawned wallet-less one, then drives every Slush approval popup —
-  connect, sign-in message, transaction signing — hands-free via a bundled raw
-  CDP client. Use this skill when the user says "/sui-e2e", "run e2e", "test the
-  dapp end to end", "connect the wallet", "approve the wallet", "sign in with
-  Slush", "prueba la dapp", "aprueba la wallet", "firma con Slush", or whenever
-  an automated browser flow against a Sui dapp stalls on a wallet popup. The
-  reason this skill exists — chrome-devtools-mcp CANNOT see `chrome-extension://`
-  pages, so the Slush popup never appears in `list_pages` and `click`/
-  `take_snapshot` are blind to it; every wallet E2E stalls there. If the
-  toolchain is missing (no Chrome for Testing, no Slush, chrome-devtools-mcp not
-  registered), run /sui-setup first — this skill assumes provisioning is done.
+  Test a Sui dapp end to end in a local Chrome browser with Slush wallet
+  automation. Verifies the wallet browser and chrome-devtools-mcp attachment,
+  then drives the page and authorized wallet approvals with a bundled CDP
+  client. Use for /sui-e2e, browser testing of a Sui dapp, Slush test-wallet
+  connection or signing, and flows stalled on wallet popups. Also applies to
+  "prueba la dapp", "aprueba la wallet", and "firma con Slush". Requires the
+  local browser, wallet profile, and MCP setup checked by sui-setup.
 allowed-tools: Bash, Read, mcp__chrome-devtools, mcp__plugin_chrome-devtools-mcp_chrome-devtools
 ---
 
 # sui-e2e — end-to-end dapp testing with wallet automation
+
+Read [runtime guidance](../sui-pilot/references/runtime.md) first. Resolve
+`SUI_PILOT_ROOT` from the loaded skill path. Confirm the authorized test network,
+account, and transaction scope before driving wallet approvals. The browser
+launch instructions below target macOS; report unsupported environments.
 
 Two phases. Phase A guarantees the browser is the right one. Phase B drives the
 dapp and its wallet popups. Do not start Phase B until Phase A's verification
@@ -165,8 +163,8 @@ working directory during a run is the user's dapp project — not this repo — 
 relative `scripts/cdp.py` finds nothing on an installed plugin:
 
 ```bash
-: "${CLAUDE_PLUGIN_ROOT:?CLAUDE_PLUGIN_ROOT is unset - run /sui-e2e as an installed plugin}"
-CDP="${CLAUDE_PLUGIN_ROOT}/skills/sui-e2e/scripts/cdp.py"
+: "${SUI_PILOT_ROOT:?Resolve SUI_PILOT_ROOT from the loaded skill path first}"
+CDP="${SUI_PILOT_ROOT}/skills/sui-e2e/scripts/cdp.py"
 [ -f "$CDP" ] || { echo "FATAL: cdp.py not found at $CDP - run /sui-setup"; exit 1; }
 echo "CDP=$CDP"
 ```

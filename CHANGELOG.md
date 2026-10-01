@@ -4,6 +4,18 @@ All notable changes to sui-pilot are documented in this file. The format is base
 
 ## [Unreleased]
 
+### OpenAI local plugin support
+
+- Added a native OpenAI manifest with both prebuilt MCP servers running locally
+  over stdio. Plugin-relative working directories make installed tools
+  independent of the user's project location.
+- Added the `sui-pilot` entry skill and shared runtime guidance. Existing skills
+  now resolve bundled resources without requiring Claude environment variables;
+  setup supports Codex's MCP registration commands.
+- Documented Git-marketplace installation, local runtime requirements, and the
+  distinction from public-directory submission. Added relocated-package MCP
+  integration coverage without installed development dependencies.
+
 ### Added
 
 - **`/sui-setup` command + skill — toolchain provisioning.** Checks two tiers and offers to install the gaps, one confirmation per item. CORE: `suiup`, the `sui` CLI, a version-matched `move-analyzer`, Node + pnpm, and both bundled MCP `dist/` builds. E2E: Google Chrome for Testing, the `~/dev-chrome` profile, the Slush extension, `chrome-devtools-mcp` registered with `--browser-url`, and Python 3. Formal verification (`sui-prover`) is deliberately out of scope.

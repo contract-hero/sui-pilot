@@ -5,6 +5,9 @@ description: "Analyzes Move code and suggests improvements using OpenZeppelin ma
 
 # OpenZeppelin Math Analyzer
 
+Read [runtime guidance](../sui-pilot/references/runtime.md) before locating
+bundled resources or calling host tools.
+
 You are an expert Move code analyzer specializing in identifying arithmetic patterns that could benefit from OpenZeppelin's math libraries. Your role is to find manual arithmetic implementations and recommend safer, more robust alternatives using `openzeppelin_math` and `openzeppelin_fp_math`.
 
 ## When to Use This Skill

@@ -5,11 +5,15 @@ description: "Re-verifies the formal specifications that `/specify` authored —
 
 # Verify — re-check Sui Move formal specifications against current code
 
+Read [runtime guidance](../sui-pilot/references/runtime.md) first. Resolve bundled
+documentation from the installed plugin and use the current host's MCP tool
+names; the package being verified stays in the user's project.
+
 > **Doc-First Requirement.** The spec language is the Sui Prover's, not legacy MSL. When interpreting `prove_package` findings, use the shared `../specify/references/failure-taxonomy.md` and `.sui-prover-docs/guide/spec-reference.md`. `/verify` reads and re-proves specs — it never emits new spec syntax.
 
 ## What `/verify` is (and is not)
 
-`/specify` and `/verify` are the two halves of the FV workflow (design doc `docs/specify-deliverable-design.html`, Q4):
+`/specify` and `/verify` are the two halves of the FV workflow:
 
 - **`/specify` authors.** It writes `#[spec(prove, target = …)]` twins into a sibling `<pkg>_specs/` package and emits a `spec-context.json` manifest binding each spec to the exact state it was proved against.
 - **`/verify` checks.** It is **read-mostly** — it re-proves the existing specs against *current* source/deps/toolchain and reports drift. It writes only a report (and optionally refreshes drift badges in `/specify`'s report). It never authors, edits, or deletes a spec.
@@ -95,7 +99,7 @@ The design's feedback loop (Q4 insight): a **violated** verdict means *"you brok
 
 ## Phase 5 — Report and exit
 
-1. **HTML report** at `--report` path (default `.verify-report.html`) — self-contained semantic HTML5, inline CSS, house style matching `docs/*.html`. Sections: verdict summary (counts per bucket), the holds/violated/stale table, context-drift warnings (toolchain + deps), coverage drift (uncovered + orphaned), and a "next steps" block routing each non-`holds` verdict to its fix (`/specify` for stale/uncovered, code investigation for violated).
+1. **HTML report** at `--report` path (default `.verify-report.html`) — self-contained semantic HTML5, inline CSS, accessible contrast, and readable code samples. Sections: verdict summary (counts per bucket), the holds/violated/stale table, context-drift warnings (toolchain + deps), coverage drift (uncovered + orphaned), and a "next steps" block routing each non-`holds` verdict to its fix (`/specify` for stale/uncovered, code investigation for violated).
 2. **Refresh `/specify`'s report badges (if present).** If `.specify-report.html` (or per-module `*.spec.html`) exists, update only its `specify:auto:freshness` / drift-badge zones to reflect current verdicts — never touch `specify:human:*` zones. This keeps the authored report's staleness badges live.
 3. **Chat summary** — one screen: "N specs: H hold, V violated, S stale, U uncovered. Context: <toolchain/dep drift one-liner>. Report at `<path>`."
 4. **Exit semantics.**

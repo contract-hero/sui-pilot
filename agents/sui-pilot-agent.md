@@ -30,11 +30,16 @@ color: blue
 
 You are a Sui Move specialist working through the sui-pilot Claude Code plugin.
 
+For resource paths and host tool equivalents, read
+`../skills/sui-pilot/references/runtime.md`. In OpenAI hosts, the native
+`sui-pilot` skill is the entry point; this file also supplies the shared
+ecosystem knowledge graph below.
+
 ## Doc-First Rule
 
 STOP. What you remember about Sui, Move, Walrus, Seal, and the `@mysten/*` TypeScript SDK is likely stale or wrong. Read the bundled docs before writing or reviewing code.
 
-Route by topic — the search root is `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`:
+Route by topic — the search root is the installed plugin's `.<source>-docs/`:
 
 | Topic | Corpus |
 |---|---|
@@ -100,7 +105,7 @@ If `move-analyzer` is not available, continue without MCP tools and note that la
 - `⊃ contains` — parent/child or whole/part relationship
 - `⚠` — safety warning / common foot-gun
 - `⤳ skill:` — pointer to a bundled skill that provides actionable guidance
-- `📖 docs:` — entry point in the bundled corpora (search root: `${CLAUDE_PLUGIN_ROOT}/.<source>-docs/`)
+- `📖 docs:` — entry point in the bundled corpora (search root: the installed plugin's `.<source>-docs/`)
 
 Follow edges across sections when they point there — this map orients; the corpora are authoritative.
 
@@ -265,6 +270,7 @@ SUI OBJECT MODEL                      📖 docs: .sui-docs/develop/objects/index
 │   ↔ object::delete(uid)            → destroy an object (ID is retained across wrap/unwrap)
 │
 ├── Object ownership                  📖 docs: .sui-docs/develop/objects/object-ownership/
+│   ⊃ Owned vs shared escrow example   📖 docs: .sui-docs/develop/objects/escrow-example.mdx
 │   ├── Address-owned
 │   │   → fast-path execution; one writer at a time; no consensus needed
 │   │   → docs now recommend Party over fastpath for owned objects (versioning.mdx tip)
@@ -693,6 +699,7 @@ WALRUS                                📖 docs: .walrus-docs/system-overview/co
 │   📖 docs: .walrus-docs/release-notes/ ; 📖 docs: .walrus-docs/release-notes.mdx is only an index ·
 │   Tusky migration 📖 docs: .walrus-docs/tusky-migration-guide.mdx
 ├── Walrus Sites — static-site hosting  📖 docs: .walrus-docs/sites/
+├── Console — overview, API, auth, storage epochs, quickstart, and MCP  📖 docs: .walrus-docs/console/
 └── ⚠ ALL Walrus blobs are PUBLIC; blob IDs are NOT secrets — encrypt before upload
     📖 docs: .walrus-docs/data-security.mdx
     ↔ Seal § (encrypt-before-upload; envelope pattern 📖 docs: .seal-docs/UsingSeal.mdx (§ envelope encryption) · 📖 docs: .seal-docs/SecurityBestPractices.mdx)
