@@ -15,6 +15,16 @@ absolute path. Shell variables do not persist between independent tool calls.
 Claude's `CLAUDE_PLUGIN_ROOT` may be used when present and verified, but is not
 required by these skills. Preserve quoting when paths contain spaces.
 
+## Resolve project paths before MCP calls
+
+Every `move-lsp` tool requires an absolute `filePath`. Resolve project-relative
+paths against the user's active project directory before calling a tool. For
+example, `sources/counter.move` in `/work/my-app` becomes
+`/work/my-app/sources/counter.move`. Do not resolve it against `SUI_PILOT_ROOT`:
+MCP processes start in the installed plugin directory, independently of the
+session's project. Relative LSP inputs return `INVALID_FILE_PATH` with guidance.
+The prover tools likewise document absolute project/package paths.
+
 ## Use the host's tools
 
 The workflow names `Bash`, `Read`, `Glob`, `Grep`, `Write`, `Edit`, and

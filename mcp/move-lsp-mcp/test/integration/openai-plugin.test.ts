@@ -89,6 +89,32 @@ describe('OpenAI plugin with local MCP servers', () => {
     });
   }, 15000);
 
+  it('rejects project-relative paths for every LSP tool before touching the plugin cwd', async () => {
+    await withServer('move-lsp', async (client) => {
+      const { tools } = await client.listTools();
+      for (const tool of tools) {
+        expect(tool.inputSchema.properties?.filePath).toMatchObject({
+          description: expect.stringContaining('Absolute path'),
+        });
+        for (const content of [undefined, 'module tiny::tiny {}']) {
+          const result = await client.callTool({
+            name: tool.name,
+            arguments: {
+              filePath: 'sources/tiny.move', content,
+              line: 0, character: 0, startLine: 0, startCharacter: 0,
+              endLine: 1, endCharacter: 0, newName: 'renamed',
+            },
+          });
+          expect(result.isError).toBe(true);
+          const parsed = JSON.parse((result.content as Array<{ text: string }>)[0].text);
+          expect(parsed.error.code).toBe('INVALID_FILE_PATH');
+          expect(parsed.error.message).toContain('user project');
+          expect(parsed.workspaceRoot).toBeNull();
+        }
+      }
+    });
+  }, 15000);
+
   it('discovers prover tools and reads a separate local project without a prover binary', async () => {
     await withServer('sui-prover', async (client) => {
       const { tools } = await client.listTools();

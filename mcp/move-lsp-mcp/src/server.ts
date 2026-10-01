@@ -8,7 +8,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { readFileSync, existsSync } from 'fs';
-import { resolve } from 'path';
+import { isAbsolute, resolve } from 'path';
 import { MoveLspClient } from './lsp-client.js';
 import { discoverBinary, getBinaryVersion } from './binary-discovery.js';
 import { parseConfig, validateConfig } from './config.js';
@@ -143,7 +143,7 @@ const TOOL_DEFINITIONS = [
       properties: {
         filePath: {
           type: 'string',
-          description: 'Path to the Move source file to analyze',
+          description: 'Absolute path to the Move source file to analyze',
         },
         content: {
           type: 'string',
@@ -167,7 +167,7 @@ const TOOL_DEFINITIONS = [
       properties: {
         filePath: {
           type: 'string',
-          description: 'Path to the Move source file',
+          description: 'Absolute path to the Move source file',
         },
         line: {
           type: 'number',
@@ -193,7 +193,7 @@ const TOOL_DEFINITIONS = [
       properties: {
         filePath: {
           type: 'string',
-          description: 'Path to the Move source file',
+          description: 'Absolute path to the Move source file',
         },
         line: {
           type: 'number',
@@ -219,7 +219,7 @@ const TOOL_DEFINITIONS = [
       properties: {
         filePath: {
           type: 'string',
-          description: 'Path to the Move source file',
+          description: 'Absolute path to the Move source file',
         },
         line: {
           type: 'number',
@@ -243,7 +243,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         line: { type: 'number', description: 'Line number (0-based)' },
         character: { type: 'number', description: 'Character offset (0-based)' },
         includeDeclaration: {
@@ -265,7 +265,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         content: {
           type: 'string',
           description: 'Optional file content (if not provided, reads from filePath)',
@@ -280,7 +280,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         line: { type: 'number', description: 'Line number (0-based)' },
         character: { type: 'number', description: 'Character offset (0-based)' },
         content: {
@@ -297,7 +297,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         line: { type: 'number', description: 'Start line number (0-based)' },
         character: { type: 'number', description: 'Start character offset (0-based)' },
         endLine: {
@@ -322,7 +322,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         startLine: { type: 'number', description: 'Range start line (0-based)' },
         startCharacter: { type: 'number', description: 'Range start character (0-based)' },
         endLine: { type: 'number', description: 'Range end line (0-based)' },
@@ -341,7 +341,7 @@ const TOOL_DEFINITIONS = [
     inputSchema: {
       type: 'object',
       properties: {
-        filePath: { type: 'string', description: 'Path to the Move source file' },
+        filePath: { type: 'string', description: 'Absolute path to the Move source file' },
         line: { type: 'number', description: 'Line number (0-based)' },
         character: { type: 'number', description: 'Character offset (0-based)' },
         newName: { type: 'string', description: 'The new identifier to rename the symbol to' },
@@ -920,7 +920,14 @@ export function createServer(): Server {
     if (!isValidToolName(name)) {
       throw new Error(`Unknown tool: ${name}`);
     }
-    return toolHandlers[name](args || {});
+    const filePath = args?.filePath;
+    if (typeof filePath !== 'string' || !isAbsolute(filePath)) {
+      throw new MoveLspError(
+        'filePath must be an absolute path to the Move source file. Resolve relative paths against the user project, not the plugin directory.',
+        INVALID_FILE_PATH,
+      );
+    }
+    return toolHandlers[name](args);
   }
 
   /**
@@ -931,7 +938,7 @@ export function createServer(): Server {
     let errorWorkspaceRoot: string | null = null;
     try {
       const filePath = args?.filePath;
-      if (filePath && typeof filePath === 'string') {
+      if (typeof filePath === 'string' && isAbsolute(filePath)) {
         errorWorkspaceRoot = workspaceResolver.resolve(resolve(filePath));
       }
     } catch {
