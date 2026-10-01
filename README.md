@@ -215,6 +215,15 @@ its path, without `node_modules` or Claude environment variables. It checks
 MCP initialization, tool discovery, and local spec-file access. Compiler and
 proof integration tests separately require the corresponding binaries.
 
+The live prover test requires a successful proof, including Boogie and Z3;
+run it with `SKIP_PROVER_NETWORK` unset. Its default framework dependencies
+track upstream branches, which can become incompatible with a released prover
+binary. To test a specific build, set `SUI_PROVER_FRAMEWORK_PATH` to a directory
+containing the matching `move-stdlib`, `sui-framework`, `sui-system`, `deepbook`,
+`sui-prover`, `sui-specs`, and `prover` packages. The test copies the fixture into
+a fresh temporary directory so generated lockfiles cannot override that choice.
+`SKIP_PROVER_NETWORK=1` explicitly skips the live proof for ordinary CI.
+
 For a local Codex install test, use a temporary marketplace containing a copy of
 this tree under `plugins/sui-pilot`, add it with
 `codex plugin marketplace add <marketplace-root>`, and install
