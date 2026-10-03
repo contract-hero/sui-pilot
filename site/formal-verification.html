@@ -5,28 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Formal verification in sui-pilot — the Sui Prover investigation</title>
   <meta name="description" content="Engineering notebook: how sui-pilot grew a formal-verification capability around the Sui Prover — the /specify authoring flow, the /verify re-checker, the sui-prover MCP server, a live eval against a production AMM, and what is still open.">
+  <link rel="icon" type="image/png" href="assets/contract-hero.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <style>
     :root {
-      --bg: #fafaf7;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --muted: #475569;
-      --border: #e5e7eb;
-      --accent: #0a4a8a;
-      --accent-soft: #e6eef4;
-      --code-bg: #f1f5f9;
-      --warn: #92400e;
-      --warn-soft: #fef3c7;
+      --bg:#0b0f0c;
+      --bg-2:#0e1410;
+      --bg-code:#060907;
+      --ink:#dfe6e0;
+      --ink-2:#b9c6bd;
+      --muted:#9fb0a4;
+      --muted-2:#8ea095;
+      --dim:#6b7d70;
+      --g:#3df08a;
+      --g-line:#245c3b;
+      --line:#1f2a22;
+      --warn:#f2b84b;
+      --warn-line:#5c4a24;
+      --r:2px;
+      --wrap:1180px;
+      --sans:"Space Grotesk",system-ui,sans-serif;
+      --mono:"JetBrains Mono",ui-monospace,monospace;
+      color-scheme: dark;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 17px;
-      line-height: 1.55;
-      color: var(--text);
       background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.6 var(--sans);
       -webkit-font-smoothing: antialiased;
     }
     .wrap {
@@ -34,71 +44,99 @@
       margin: 0 auto;
       padding: 0 24px;
     }
+    h1, h2, h3 {
+      font-family: var(--sans);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+    }
+
     header.site {
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: var(--bg);
     }
     header.site .wrap {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-top: 16px;
-      padding-bottom: 16px;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-top: 14px;
+      padding-bottom: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
     }
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      font-weight: 600;
-      color: var(--text);
+      font-family: var(--mono);
+      font-weight: 500;
+      color: var(--g);
       text-decoration: none;
-      letter-spacing: -0.01em;
     }
     .brand-mark {
       width: 28px;
       height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
       flex: none;
+      display: block;
     }
+    .brand .wordmark::after {
+      content: "_";
+      color: var(--g);
+    }
+    @media (prefers-reduced-motion: no-preference) {
+      .brand .wordmark::after { animation: blink 1.1s steps(1) infinite; }
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .byline {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--dim);
+      text-decoration: none;
+      margin-left: 6px;
+    }
+    .byline:hover { color: var(--g); }
     nav.site-nav a {
       color: var(--muted);
       text-decoration: none;
       margin-left: 20px;
-      font-size: 15px;
+      font-family: var(--mono);
+      font-size: 13px;
     }
-    nav.site-nav a:hover { color: var(--accent); }
+    nav.site-nav a:hover { color: var(--g); }
 
-    section { padding: 56px 0; }
-    section + section { border-top: 1px solid var(--border); }
+    section { padding: 56px 0; scroll-margin-top: 64px; }
+    section + section { border-top: 1px solid var(--line); }
 
-    .hero {
-      padding-top: 72px;
-      padding-bottom: 48px;
-    }
+    .hero { padding-top: 64px; padding-bottom: 48px; }
     .eyebrow {
       display: inline-block;
-      font-size: 12px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: var(--accent);
-      background: var(--accent-soft);
-      padding: 4px 10px;
-      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      letter-spacing: 0.04em;
+      color: var(--g);
       margin-bottom: 18px;
     }
+    .eyebrow::before {
+      content: "$ cat notebook  \2192  ";
+      color: var(--dim);
+    }
     h1 {
-      font-size: clamp(28px, 4.2vw, 42px);
-      line-height: 1.15;
-      letter-spacing: -0.02em;
+      font-size: clamp(38px, 5vw, 64px);
       margin: 0 0 18px 0;
-      max-width: 26ch;
+      max-width: 22ch;
+      color: var(--ink);
     }
-    h1 em {
-      font-style: normal;
-      color: var(--accent);
-    }
+    h1 em { font-style: normal; color: var(--g); }
     .lede {
-      font-size: 19px;
-      color: var(--muted);
+      font-size: 18px;
+      color: var(--ink-2);
       max-width: 62ch;
       margin: 0 0 28px 0;
     }
@@ -111,114 +149,165 @@
     .btn {
       display: inline-block;
       padding: 10px 18px;
-      border-radius: 6px;
+      border-radius: var(--r);
+      font-family: var(--mono);
       font-weight: 500;
-      font-size: 15px;
+      font-size: 14px;
       text-decoration: none;
       border: 1px solid transparent;
-      transition: background 120ms ease, border-color 120ms ease;
+      transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
     }
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
+      background: var(--g);
+      color: #04140a;
+      box-shadow: 0 0 18px rgba(61, 240, 138, 0.25);
     }
-    .btn-primary:hover { background: #083a6e; }
+    .btn-primary:hover { background: #57f79c; }
     .btn-secondary {
       background: transparent;
-      color: var(--accent);
-      border-color: var(--border);
+      color: var(--g);
+      border-color: var(--g-line);
     }
-    .btn-secondary:hover { border-color: var(--accent); }
+    .btn-secondary:hover { border-color: var(--g); }
 
     h2 {
-      font-size: clamp(22px, 2.4vw, 28px);
-      letter-spacing: -0.015em;
-      margin: 0 0 12px 0;
+      font-size: clamp(28px, 3.4vw, 44px);
+      margin: 0 0 14px 0;
+      color: var(--ink);
+    }
+    h2::before {
+      content: "## ";
+      color: var(--g);
+      font-family: var(--mono);
+      font-size: .6em;
+      vertical-align: middle;
     }
     h2 + p.section-lede {
-      color: var(--muted);
+      color: var(--muted-2);
       margin: 0 0 32px 0;
       max-width: 60ch;
     }
+    h3.sub {
+      margin: 40px 0 10px 0;
+      font-size: 20px;
+      color: var(--ink);
+    }
+    main p { max-width: 68ch; }
+    p.note { color: var(--muted-2); font-size: 15px; }
+    main strong { color: var(--ink); font-weight: 600; }
+    main a:not(.btn) {
+      color: var(--g);
+      text-decoration: none;
+      border-bottom: 1px solid var(--g-line);
+    }
+    main a:not(.btn):hover { border-bottom-color: var(--g); }
 
     .cards {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
     }
-    .cards.two { grid-template-columns: 1fr 1fr; }
+    .cards.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .spaced { margin-top: 24px; }
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 22px;
+      background: var(--bg);
+      padding: 18px;
     }
     .card h3 {
-      margin: 0 0 6px 0;
+      margin: 0 0 8px 0;
       font-size: 17px;
-      letter-spacing: -0.01em;
+      line-height: 1.25;
+      color: var(--ink);
     }
     .card .tag {
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      color: var(--g);
       display: block;
       margin-bottom: 8px;
     }
-    .card p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
     .card p + p { margin-top: 8px; }
 
+    .kinds {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border: 1px solid var(--line);
+      margin-top: 16px;
+    }
+    .kind-group { background: var(--bg); padding: 18px; }
+    .kind-group strong {
+      display: block;
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 13px;
+      color: var(--g);
+      margin-bottom: 8px;
+    }
+    .kind-group span {
+      display: block;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+    .kind-group p {
+      margin: 8px 0 0 0;
+      font-size: 14px;
+      color: var(--muted-2);
+    }
+
     pre {
-      background: var(--code-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: var(--bg-code);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
       padding: 14px 16px;
       overflow-x: auto;
-      font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-      font-size: 14px;
+      color: var(--g);
+      font-family: var(--mono);
+      font-size: 13.5px;
       line-height: 1.5;
       margin: 0 0 16px 0;
     }
-    code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+    code { font-family: var(--mono); }
     p code, li code, td code, blockquote code {
-      background: var(--code-bg);
+      background: var(--bg-code);
+      border: 1px solid var(--line);
+      color: var(--g);
       padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 0.92em;
+      border-radius: var(--r);
+      font-size: 0.9em;
+      overflow-wrap: anywhere;
     }
 
     .step {
       display: grid;
-      grid-template-columns: 32px 1fr;
+      grid-template-columns: 32px minmax(0, 1fr);
       gap: 14px;
       margin-bottom: 18px;
     }
     .step .n {
       width: 28px;
       height: 28px;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 14px;
+      border-radius: var(--r);
+      border: 1px solid var(--g-line);
+      background: var(--bg-2);
+      color: var(--g);
+      font-family: var(--mono);
+      font-weight: 500;
+      font-size: 13px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .step h3 {
-      margin: 2px 0 4px 0;
-      font-size: 16px;
-    }
-    .step p {
-      margin: 0 0 6px 0;
-      color: var(--muted);
-      font-size: 15px;
-    }
+    .step h3 { margin: 2px 0 4px 0; font-size: 16px; line-height: 1.3; color: var(--ink); }
+    .step p { margin: 0 0 6px 0; color: var(--muted); font-size: 15px; }
 
     .tools-table {
       width: 100%;
@@ -227,70 +316,87 @@
     }
     .tools-table th {
       text-align: left;
+      font-family: var(--mono);
       font-size: 12px;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: var(--muted);
+      color: var(--muted-2);
       padding: 8px 12px;
-      border-bottom: 2px solid var(--border);
+      border-bottom: 1px solid var(--line);
     }
     .tools-table td {
       padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
       font-size: 15px;
       vertical-align: top;
     }
-    .tools-table code {
-      font-size: 13px;
-    }
+    .tools-table td:first-child { white-space: nowrap; }
+    .tools-table td strong { color: var(--ink); }
+    .tools-table code { font-size: 13px; overflow-wrap: normal; }
 
     blockquote.pull {
-      margin: 24px 0;
+      margin: 28px 0;
       padding: 16px 20px;
-      border-left: 3px solid var(--accent);
-      background: var(--surface);
-      border-radius: 0 8px 8px 0;
-      color: var(--text);
+      border-left: 2px solid var(--g);
+      background: var(--bg-2);
+      color: var(--ink-2);
       font-size: 16px;
+      max-width: 68ch;
     }
     blockquote.pull footer {
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 13px;
+      margin-top: 10px;
+      color: var(--muted-2);
+      font-family: var(--mono);
+      font-size: 12.5px;
     }
+    blockquote.pull footer::before { content: "\2014  "; }
 
     .callout {
-      background: var(--warn-soft);
-      border: 1px solid var(--warn);
-      border-radius: 8px;
-      padding: 14px 18px;
-      color: var(--warn);
+      background: var(--bg-2);
+      border: 1px solid var(--warn-line);
+      border-left: 2px solid var(--warn);
+      border-radius: var(--r);
+      padding: 16px 20px;
+      color: var(--muted);
       font-size: 15px;
-      margin: 20px 0 0 0;
+      margin: 24px 0 0 0;
     }
-    .callout strong { color: var(--warn); }
+    .callout .label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--warn);
+      margin-bottom: 8px;
+    }
+    .callout .label::before { content: "! "; }
+    .callout ul { margin: 0; padding-left: 20px; }
+    .callout p { margin: 0; }
+    .callout li + li { margin-top: 6px; }
 
     .pill {
       display: inline-block;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-weight: 600;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      letter-spacing: 0.04em;
+      padding: 1px 8px;
+      border-radius: var(--r);
+      border: 1px solid var(--g-line);
+      background: var(--bg-2);
+      color: var(--g);
+      white-space: nowrap;
     }
     .pill.warn {
-      background: var(--warn-soft);
+      border-color: var(--warn-line);
       color: var(--warn);
     }
 
     footer.site {
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--line);
       padding: 28px 0 40px 0;
-      color: var(--muted);
-      font-size: 14px;
+      color: var(--dim);
+      font-family: var(--mono);
+      font-size: 12.5px;
     }
     footer.site .wrap {
       display: flex;
@@ -299,19 +405,24 @@
       justify-content: space-between;
       align-items: center;
     }
-    footer.site a { color: var(--accent); text-decoration: none; }
-    footer.site a:hover { text-decoration: underline; }
-
-    main a { color: var(--accent); }
+    footer.site a {
+      color: var(--g);
+      text-decoration: none;
+      border-bottom: 1px solid var(--g-line);
+    }
+    footer.site a:hover { border-bottom-color: var(--g); }
 
     @media (max-width: 720px) {
       section { padding: 40px 0; }
-      .hero { padding-top: 48px; }
-      .cards, .cards.two { grid-template-columns: 1fr; }
+      .hero { padding-top: 40px; }
+      .cards, .cards.two, .kinds { grid-template-columns: 1fr; }
       .tools-table { display: block; overflow-x: auto; }
-      nav.site-nav a { margin-left: 12px; font-size: 14px; }
+      .tools-table td:first-child { white-space: normal; }
+      nav.site-nav a { margin-left: 12px; font-size: 12.5px; }
       nav.site-nav a:first-child { margin-left: 0; }
-      .lede { font-size: 17px; }
+      .lede { font-size: 16px; }
+      h1 { font-size: clamp(32px, 8.5vw, 42px); }
+      section { scroll-margin-top: 96px; }
     }
   </style>
 </head>
@@ -319,16 +430,13 @@
   <header class="site">
     <div class="wrap">
       <a class="brand" href="index.html">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
-          <rect x="2" y="2" width="28" height="28" rx="6" fill="#0a4a8a"/>
-          <path d="M8 23 L16 7 L24 23" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="16" cy="18" r="3" fill="#fff" opacity="0.9"/>
-        </svg>
-        <span>sui-pilot</span>
+        <img class="brand-mark" src="assets/contract-hero.png" alt="" width="28" height="28">
+        <span class="wordmark">sui-pilot</span>
       </a>
+      <a class="byline" href="https://contracthero.dev">by Contract Hero</a>
       <nav class="site-nav" aria-label="Site">
         <a href="index.html">Home</a>
-        <a href="classic.html#features">Features</a>
+        <a href="classic.html">Overview</a>
         <a href="classic.html#start">Install</a>
         <a href="classic.html#research">Research</a>
         <a href="https://github.com/contract-hero/sui-pilot">GitHub</a>
@@ -339,19 +447,19 @@
   <main>
     <section class="hero" id="top">
       <div class="wrap">
-        <span class="eyebrow">Engineering Notebook</span>
+        <span class="eyebrow">Engineering notebook</span>
         <h1>Formal verification for Move &mdash; the <em>Sui Prover</em> investigation.</h1>
         <p class="lede">
           How sui-pilot grew a formal-verification capability: a <code>/specify</code> skill that
           authors <code>#[spec(prove)]</code> specifications, a <code>/verify</code> skill that
-          re-checks them against drifting code, an MCP server wrapping the sui-prover binary, and a
+          re-checks them against drifting code, an MCP server that wraps the sui-prover binary, and a
           bundled prover-docs corpus &mdash; hardened by a live evaluation against a production AMM.
           This page is the candid record: what shipped, what the eval exposed, and what is still open.
         </p>
         <div class="cta-row">
           <a class="btn btn-primary" href="#ships">What ships today</a>
+          <a class="btn btn-secondary" href="#try">Try it</a>
           <a class="btn btn-secondary" href="#eval">The live eval</a>
-          <a class="btn btn-secondary" href="https://github.com/contract-hero/sui-pilot">View on GitHub</a>
         </div>
       </div>
     </section>
@@ -368,27 +476,41 @@
           The <strong>Sui Prover</strong> (by Asymptotic) verifies Sui Move code against
           specifications written as ordinary Move functions annotated with
           <code>#[spec(prove)]</code>, using <code>requires</code>, <code>ensures</code>,
-          <code>asserts</code>, and macros like <code>forall!</code>, <code>exists!</code>, and
-          <code>invariant!</code>. It installs via
-          <code>brew install asymptotic-code/sui-prover/sui-prover</code> and expects implicit
-          framework dependencies in <code>Move.toml</code>.
+          <code>asserts</code>, and the macros <code>clone!</code>, <code>forall!</code>,
+          <code>exists!</code>, and <code>invariant!</code>. It installs with
+          <code>brew install asymptotic-code/sui-prover/sui-prover</code> and relies on the implicit
+          framework dependencies of Sui 1.45+, so a <code>Move.toml</code> that pins
+          <code>Sui</code> or <code>MoveStdlib</code> explicitly has to drop those entries first.
         </p>
         <p>
           Crucially, this is <strong>not</strong> the legacy Move Prover's MSL. The old syntax an LLM
           remembers from training &mdash; <code>aborts_if</code>, <code>pragma</code>,
-          <code>apply</code>, <code>assume</code>, <code>free axiom</code> &mdash; is not what the
+          <code>apply</code>, <code>assume</code>, free <code>axiom</code> &mdash; is not what the
           Sui Prover uses. That is exactly the failure mode sui-pilot exists to fix, so the plugin
-          bundles <code>.sui-prover-docs/</code> as its sixth doc corpus (20 files):
-          <code>guide/</code> with the canonical installation and spec-reference prose,
-          <code>sources/</code> with the actual prover construct definitions specs import
-          (<code>prover.move</code> with native <code>requires</code>/<code>ensures</code>/<code>asserts</code>
-          plus Boogie tuning hooks, <code>ghost.move</code> for ghost global state), and
-          <code>examples/</code> with four working spec packages from asymptotic-code/sui-kit.
+          bundles <code>.sui-prover-docs/</code> as the sixth of its doc corpora (800+ docs across
+          all six), synced from Asymptotic's upstream repos:
         </p>
+        <div class="kinds">
+          <div class="kind-group">
+            <strong>guide/</strong>
+            <span>SKILL.md &middot; spec-reference.md</span>
+            <p>The canonical prose: installation, <code>Move.toml</code> setup, spec constructs, CLI options. From <code>asymptotic-code/sui-prover</code>.</p>
+          </div>
+          <div class="kind-group">
+            <strong>sources/</strong>
+            <span>prover.move &middot; ghost.move &middot; log.move &middot; vector.move</span>
+            <p>The construct definitions specs import via <code>#[spec_only] use prover::...</code>: native <code>requires</code>/<code>ensures</code>/<code>asserts</code>, Boogie tuning hooks, ghost global state.</p>
+          </div>
+          <div class="kind-group">
+            <strong>examples/</strong>
+            <span>amm &middot; guide &middot; integer-mate-bug &middot; showcase</span>
+            <p>Four working spec packages from <code>asymptotic-code/sui-kit</code>.</p>
+          </div>
+        </div>
         <blockquote class="pull">
-          &ldquo;FV is only as good as the specs you can write &mdash; so the deliverable has to make
-          spec intent and coverage auditable, not just hand the prover machine-readable clauses.&rdquo;
-          <footer>Design premise of the deliverable redesign, May 2026</footer>
+          &ldquo;Read <code>.sui-prover-docs/</code> before drafting any spec. The Sui Prover spec
+          language is <strong>not</strong> the legacy Move Prover MSL.&rdquo;
+          <footer>skills/specify/SKILL.md, Doc-First Requirement</footer>
         </blockquote>
       </div>
     </section>
@@ -397,8 +519,8 @@
       <div class="wrap">
         <h2>Four waves in two weeks</h2>
         <p class="section-lede">
-          The capability landed and matured in four traceable waves over roughly two weeks in May
-          2026 &mdash; all in git history, plus one untracked design note.
+          The capability landed and matured in four waves over roughly two weeks in May 2026.
+          Three are in git history (PRs #24 and #27, #30, #32); one is a design note that lives outside the repo.
         </p>
 
         <div class="step">
@@ -409,8 +531,8 @@
               A single squashed PR delivered the whole stack in four planned phases: the
               <code>.sui-prover-docs/</code> corpus, the <code>sui-prover-mcp</code> server with
               three tools, the <code>/specify</code> command + skill (specs persisted inline in the
-              user's <code>.move</code> files at that point), and a non-interactive eval mode.
-              The same afternoon, a live <code>/specify</code> run against Aftermath Finance's
+              user's <code>.move</code> files at that point), and a non-interactive mode with a
+              discovery eval. The same afternoon, a live <code>/specify</code> run against Aftermath Finance's
               public AMM surfaced 12 findings (3 BUG, 6 GAP, 3 UX) &mdash; all fixed the same day
               in PR #27.
             </p>
@@ -420,13 +542,13 @@
         <div class="step">
           <div class="n">2</div>
           <div>
-            <h3>The deliverable-redesign exploration &mdash; 2026-05-19</h3>
+            <h3>The deliverable-redesign exploration &mdash; between PR #27 and PR #30</h3>
             <p>
-              A design conversation in a separate worktree explored splitting the capability in two:
-              <code>/specify</code> for spec authoring, <code>/verify</code> for prover execution.
-              Five design questions &mdash; report granularity, living-vs-snapshot reports, source
-              rendering, verification-context binding, and narrative structure &mdash; were resolved
-              and locked. This wave lives only in an untracked WIP note, not in git history.
+              A design pass explored splitting the capability in two: <code>/specify</code> for
+              spec authoring, <code>/verify</code> for re-checking. Five design questions &mdash;
+              report granularity, living-vs-snapshot reports, source rendering,
+              verification-context binding, and narrative structure &mdash; were resolved and
+              locked. The note itself is not in git; the skills cite its Q and L labels.
             </p>
           </div>
         </div>
@@ -451,8 +573,9 @@
             <h3>Polish &mdash; 2026-05-25 (PR #32)</h3>
             <p>
               Pre-sharing cleanup registered <code>/verify</code> as a slash command
-              (<code>commands/verify.md</code>), added it to the README and landing-page tables, and
-              revised the Sui Prover doc count to 24 (since re-standardized to 20, the sync-docs.sh md+move convention).
+              (<code>commands/verify.md</code>), added it to the README and landing-page command
+              tables, added the <code>sui-prover-mcp</code> build step to the README, and refreshed
+              the per-corpus doc counts.
             </p>
           </div>
         </div>
@@ -463,8 +586,10 @@
       <div class="wrap">
         <h2>What ships today</h2>
         <p class="section-lede">
-          One MCP server, one bundled docs corpus, and two skills with an explicit boundary between
-          them: <code>/specify</code> authors; <code>/verify</code> checks.
+          One dedicated MCP server (the skills also call three <code>move-lsp</code> tools), one bundled docs corpus, and two of sui-pilot's five skills, with an
+          explicit boundary between them: <code>/specify</code> authors; <code>/verify</code>
+          checks. The other three skills &mdash; <code>/oz-math</code>, <code>/sui-setup</code>,
+          <code>/sui-e2e</code> &mdash; are outside the FV workflow.
         </p>
 
         <div class="cards">
@@ -474,26 +599,34 @@
             <p>
               An interactive, multi-phase orchestrator that authors <code>#[spec(prove)]</code>
               specs for every externally reachable function (<code>public</code> non-package plus
-              <code>entry</code>) of a Sui Move package &mdash; validate, discover, cascade,
-              prioritize, then a per-function draft&nbsp;&rarr;&nbsp;prove&nbsp;&rarr;&nbsp;iterate
-              loop, ending in an HTML report and a reproducibility manifest.
+              <code>entry</code>) of a Sui Move package. It ends with a
+              <code>spec-context.json</code> manifest and an invariant-driven HTML report.
+            </p>
+            <p>
+              Interactive by default; <code>SPECIFY_AUTO_DEFAULTS=1</code> or an explicit
+              &ldquo;don't stop&rdquo; directive switches to non-interactive mode, which picks
+              defaults and caps iterations at one.
             </p>
           </article>
           <article class="card">
             <span class="tag">Skill</span>
             <h3>/verify &mdash; the consumer</h3>
             <p>
-              Read-mostly: it never authors, edits, or deletes a spec. It reads the manifest,
-              detects drift, re-runs the prover on every spec package with its recorded flags, and
-              reports which guarantees still hold. Uncovered functions get routed back to
-              <code>/specify</code>.
+              Read-mostly: it never authors, edits, or deletes a spec, and never edits a
+              <code>Move.toml</code>. It reads the manifest, detects drift, re-runs the prover on
+              every spec package with its recorded flags, and reports which guarantees still hold.
+              Uncovered functions get routed back to <code>/specify</code>.
+            </p>
+            <p>
+              Flags: <code>--strict</code>, <code>--report &lt;path&gt;</code> (default
+              <code>.verify-report.html</code>), <code>--package &lt;name&gt;</code>.
             </p>
           </article>
           <article class="card">
             <span class="tag">MCP server</span>
             <h3>sui-prover-mcp</h3>
             <p>
-              A TypeScript wrapper around the sui-prover binary exposing exactly three tools:
+              A TypeScript wrapper around the sui-prover binary that exposes exactly three tools:
               <code>prove_package</code>, <code>list_specs</code>,
               <code>prover_capabilities</code>. By design it never edits the user's
               <code>Move.toml</code> &mdash; setup issues surface as
@@ -502,50 +635,143 @@
           </article>
         </div>
 
-        <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">The load-bearing decision: specs live in a sibling package</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 8px 0; max-width: 68ch;">
+        <h3 class="sub">The load-bearing decision: specs live in a sibling package</h3>
+        <p class="note">
           Verification scaffolding never touches deployed source. Specs land in a separate
           <code>&lt;pkg&gt;_specs/</code> package of <code>#[spec(prove, target = ...)]</code> twin
           functions &mdash; one <code>&lt;mod&gt;_specs.move</code> per source module &mdash; leaving
           the production package with no <code>#[spec_only]</code>, no prover dependency, no marker
           blocks. Inline emission remains available as an <code>--inline</code> opt-out. Functions
           that need a non-default prover invocation (e.g. <code>--no-bv-int-encoding</code> for
-          bit-exact semantics) move to a lazily-created second
+          bit-exact semantics) move to a lazily created second
           <code>&lt;pkg&gt;_specs_bv/</code> package with its own recorded flag set.
         </p>
 
-        <h3 style="margin-top: 32px; margin-bottom: 8px; font-size: 18px;">MCP tool surface</h3>
+        <h3 class="sub">The /specify phases</h3>
         <table class="tools-table">
-          <thead><tr><th>Tool</th><th>What it does</th><th>Notable design choices</th></tr></thead>
+          <thead><tr><th>Phase</th><th>What happens</th></tr></thead>
+          <tbody>
+            <tr><td><strong>0 &middot; Validate</strong></td><td>Hard gate: <code>prover_capabilities</code> probe, a compile-health check via <code>move_diagnostics</code>, a <code>git ls-remote</code> reachability check on every git dependency, and setup warnings. A missing binary stops an interactive run with the brew command; a non-interactive run falls back to discovery only.</td></tr>
+            <tr><td><strong>1 &middot; Discover</strong></td><td>Comment-aware regex over <code>sources/</code> finds the <code>public</code> + <code>entry</code> surface; the skill uses <code>list_specs</code> to mark each function verified, pending, or partial; progress goes to <code>.specify-progress.json</code>.</td></tr>
+            <tr><td><strong>1.5 &middot; Scope + callees</strong></td><td>Above 25 functions, ask how to scope. Flag stub callee modules (every body <code>abort 0</code> or <code>native</code>) that would make proofs vacuous.</td></tr>
+            <tr><td><strong>2 &middot; Cascade</strong></td><td>Per function: callers via <code>move_find_references</code>, callees via <code>move_goto_definition</code>, depth 2 by default.</td></tr>
+            <tr><td><strong>3 &middot; Prioritize</strong></td><td><code>entry</code> first, then mutating <code>public</code> functions, then read-only ones.</td></tr>
+            <tr><td><strong>3.5 &middot; Scaffold</strong></td><td>Create the sibling <code>&lt;pkg&gt;_specs/</code> package (skipped under <code>--inline</code>).</td></tr>
+            <tr><td><strong>4 &middot; Per-function loop</strong></td><td>Surface a fact sheet &rarr; elicit abort conditions first, then postconditions, preconditions, invariants &rarr; draft &rarr; review &rarr; persist &rarr; prove &rarr; diagnose via the failure taxonomy &rarr; iterate (up to 3 attempts by default).</td></tr>
+            <tr><td><strong>5 &middot; Hand off</strong></td><td>Write <code>spec-context.json</code> and the report; under <code>--audit</code>, add counterexample regressions and a <code>prover.yml</code> CI stub; point the user at <code>/verify</code>.</td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="sub">MCP tool surface</h3>
+        <table class="tools-table">
+          <thead><tr><th>Tool</th><th>Inputs</th><th>Output and design choices</th></tr></thead>
           <tbody>
             <tr>
               <td><code>prove_package</code></td>
-              <td>Spawns the sui-prover binary shell-free with <code>--path</code>, <code>--timeout</code> (default 60s per spec), optional function/module scoping, and an <code>extra_args</code> escape hatch.</td>
-              <td>Returns a typed <code>summary.overall</code> (<code>verified_all</code> / <code>failed_some</code> / <code>no_specs</code> / <code>compile_failure</code> / <code>timeout</code> / <code>error</code>) plus findings tagged with a 19-kind taxonomy; unknown extra flags are dropped with a warning, never forwarded; raw output is ANSI-stripped and truncated on compile failures.</td>
+              <td><code>path</code> (package dir or a <code>.move</code> file; walks up to <code>Move.toml</code>), <code>target_function</code> <em>or</em> <code>target_module</code>, <code>timeout_seconds</code> (per spec, default 60), <code>verbose</code>, <code>extra_args</code>.</td>
+              <td>Spawns the binary shell-free. Returns a typed <code>summary.overall</code> (<code>verified_all</code> / <code>failed_some</code> / <code>no_specs</code> / <code>compile_failure</code> / <code>timeout</code> / <code>error</code>) with verified/failed/skipped/timeout counts, plus <code>findings[]</code> tagged with 19 kinds. Unknown <code>extra_args</code> flags are dropped with a warning, never forwarded; raw output is ANSI-stripped and truncated to head + tail on compile failures.</td>
             </tr>
             <tr>
               <td><code>list_specs</code></td>
-              <td>Comment-aware regex scanner for <code>#[spec(...)]</code>-annotated functions across a package.</td>
-              <td>Exists because the binary has no &ldquo;list existing specs&rdquo; command; used by <code>/specify</code> for idempotency and resume.</td>
+              <td><code>path</code> (package dir, <code>.move</code> file, or <code>sources/</code>).</td>
+              <td>Comment-aware regex scan for <code>#[spec(...)]</code> functions: file, line, name, <code>target</code>, attributes. Exists because the binary has no &ldquo;list existing specs&rdquo; command; <code>/specify</code> uses it for idempotency and resume, <code>/verify</code> to cross-check the manifest.</td>
             </tr>
             <tr>
               <td><code>prover_capabilities</code></td>
-              <td>Probes binary presence/version/flags, cloud config, Sui toolchain version, per-package setup warnings, and declared git dependencies.</td>
-              <td>Gates on Sui 1.45+ implicit framework deps; reachability probing of git deps is deliberately left to the caller.</td>
+              <td><code>move_toml_path</code> (optional).</td>
+              <td>Reports binary presence, version, and <code>sui_prover_flags</code> (parsed from <code>--help</code>), cloud config, Sui toolchain version, per-package setup warnings (explicit framework deps, non-2024 edition), and declared git dependencies. Reachability of those deps is left to the caller.</td>
             </tr>
           </tbody>
         </table>
 
-        <h3 style="margin-top: 32px; margin-bottom: 8px; font-size: 18px;">Two details worth knowing</h3>
-        <p style="color: var(--muted); font-size: 15px; margin: 0 0 8px 0; max-width: 68ch;">
-          Discovery is regex, not LSP: an empirical probe showed <code>move_document_symbols</code>
-          collapses all visibilities to <code>kind: "function"</code>, so Phase 1 runs comment-aware
-          regex over the source to find the <code>public</code>/<code>entry</code> surface.
-          And stub or external callees are axiomatized with
-          <code>#[spec(skip, target = ...)]</code> functions in a <code>specify_axioms.move</code>
-          sidecar &mdash; every such axiom is trusted, not proved, and each one is disclosed in the
-          report's &ldquo;Trusted axioms &mdash; not proved&rdquo; section.
+        <div class="kinds">
+          <div class="kind-group">
+            <strong>per-spec verdicts</strong>
+            <span>verified &middot; failed &middot; skipped &middot; timeout</span>
+          </div>
+          <div class="kind-group">
+            <strong>pre-spec compile failures</strong>
+            <span>dep_address_conflict &middot; unresolved_named_address &middot; unresolved_module &middot; dep_fetch_failure &middot; function_not_found &middot; spec_target_body_no_call &middot; no_specs_to_prove</span>
+          </div>
+          <div class="kind-group">
+            <strong>legacy / generic</strong>
+            <span>ensures_failed &middot; asserts_failed &middot; abort_unspecified &middot; no_spec &middot; parse_error &middot; compile_error &middot; setup_warning &middot; unknown</span>
+          </div>
+        </div>
+        <p class="note">
+          The 19 finding kinds, from <code>mcp/sui-prover-mcp/src/parse-output.ts</code>. Each one
+          maps to a repair recipe in <code>skills/specify/references/failure-taxonomy.md</code>.
         </p>
+
+        <h3 class="sub">Two details worth knowing</h3>
+        <p class="note">
+          Discovery is regex, not LSP: <code>move_document_symbols</code> returns every function as
+          <code>kind: 'function'</code> with no visibility, so Phase 1 runs comment-aware regex over
+          the source to find the <code>public</code>/<code>entry</code> surface.
+          And stub or external callees are axiomatized with
+          <code>#[spec(skip, target = ...)]</code> functions in a
+          <code>&lt;pkg&gt;_specs/sources/specify_axioms.move</code> sidecar &mdash; every such
+          axiom is trusted, not proved. Each one, plus any hand-written Boogie axiom loaded via
+          <code>extra_bpl</code>, is disclosed in the report's &ldquo;Trusted axioms &mdash; not
+          proved&rdquo; section.
+        </p>
+      </div>
+    </section>
+
+    <section id="try">
+      <div class="wrap">
+        <h2>Try it</h2>
+        <p class="section-lede">
+          The prover is a separate install: <code>/sui-setup</code> checks the Sui toolchain and the
+          MCP builds, but leaves <code>sui-prover</code> out of scope on purpose. Read the toolchain
+          note below first: on 2026-09-28 the default prover install could not produce a verified spec.
+        </p>
+
+        <div class="step">
+          <div class="n">1</div>
+          <div>
+            <h3>Install the plugin</h3>
+            <p>From any Claude Code session, then restart Claude Code so the MCP servers start:</p>
+            <pre><code>/plugin marketplace add contract-hero/plugin-marketplace
+/plugin install sui-pilot@contract-hero</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="n">2</div>
+          <div>
+            <h3>Install the prover</h3>
+            <p>Also remove any explicit <code>Sui</code> / <code>MoveStdlib</code> entries from your package's <code>[dependencies]</code>.</p>
+            <pre><code>brew install asymptotic-code/sui-prover/sui-prover</code></pre>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="n">3</div>
+          <div>
+            <h3>Author, then re-check</h3>
+            <p>Run from the package root. <code>--strict</code> is the CI posture.</p>
+            <pre><code>/specify
+/verify
+/verify --strict</code></pre>
+          </div>
+        </div>
+
+        <div class="callout">
+          <span class="label">Toolchain status, 2026-09-28</span>
+          <p>
+            A cold eval of <code>/specify</code> and <code>/verify</code> on 2026-09-28
+            (<a href="https://github.com/contract-hero/sui-pilot/issues/31">issue #31</a>) found that
+            the default install cannot produce a verified spec. The brew bottle (built 2026-05-28;
+            <code>sui-prover --version</code> prints 1.5.3) fetches its runtime dependencies from
+            moving branches: <code>asymptotic-code/sui-prover</code> <code>main</code> and
+            <code>asymptotic-code/sui</code> <code>next</code>. Upstream changed the spec syntax on
+            2026-09-18. With those branches at their 2026-09-25 heads, a toy spec fails with 42
+            <code>restricted visibility</code> errors, and <code>/specify</code> Phase 0 does not
+            detect it. Until the bottle and the upstream branches agree again, steps 2 and 3 do not
+            end in a verified spec.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -574,8 +800,9 @@
             </p>
             <p>
               The default hash recipe (<code>normalized_source</code>) strips comments, collapses
-              whitespace, then takes the first 16 hex chars of sha2-256 &mdash; so reformatting does
-              not register as drift, but any token change does.
+              whitespace, then keeps the first 16 hex chars of sha2-256 &mdash; so reformatting does
+              not register as drift, but any token change does. A <code>bytecode</code> method is
+              opt-in and needs a successful build.
             </p>
           </article>
           <article class="card">
@@ -597,16 +824,20 @@
           </article>
         </div>
 
-        <h3 style="margin-top: 32px; margin-bottom: 8px; font-size: 18px;">CI posture</h3>
-        <p style="max-width: 68ch;">
-          Default mode is warn-and-run: non-zero exit only on hard spec failure.
-          <code>/verify --strict</code> is the CI contract &mdash; refuse-on-drift, non-zero exit on
-          any spec failure, staleness, uncovered function, missing spec package, or context drift.
-          It is exactly what the <code>prover.yml</code> stub emitted by
-          <code>/specify --audit</code> runs, because CI must catch &ldquo;the proof is no longer
-          about the current code,&rdquo; not just &ldquo;a spec failed.&rdquo; Without a manifest,
-          <code>/verify</code> degrades gracefully: it re-proves the spec packages but announces that
-          drift detection is unavailable.
+        <h3 class="sub">CI posture</h3>
+        <p>
+          Default mode is warn-and-run: exit zero unless a spec hard-fails to prove
+          (<code>failed_some</code>, <code>compile_failure</code>, or <code>error</code>).
+          <code>/verify --strict</code> is the CI contract &mdash; the skill specifies a non-zero exit on any spec failure,
+          stale spec, uncovered function, missing spec package, or context drift (moved dep or
+          changed prover version), because CI must catch &ldquo;the proof is no longer about the
+          current code,&rdquo; not just &ldquo;a spec failed.&rdquo; A package with no specs at all
+          exits zero even under <code>--strict</code>. The <code>prover.yml</code> stub that
+          <code>/specify --audit</code> emits runs the prover once per spec package with its recorded
+          flags. Without a manifest, <code>/verify</code> degrades honestly: it re-proves the spec
+          packages and reports verdicts, but announces that drift detection is unavailable.
+          The 2026-09-28 eval found that the <code>--strict</code> exit code is prose only: a headless
+          <code>--strict</code> run reported a failure and still exited zero.
         </p>
       </div>
     </section>
@@ -619,16 +850,18 @@
           observed against a real production codebase: Aftermath Finance's public AMM.
         </p>
 
-        <p style="max-width: 68ch;">
+        <p>
           The target: 4 packages, 229 externally reachable public/entry functions, private git
           dependencies, and a stub-only <code>utilities::fixed</code> module whose every function
           body is <code>abort 0</code>. The method: a second Claude Code session in a sibling
           worktree armed a <code>tail -F</code> on the target session's transcript and a 5-second
           mtime poll on its files &mdash; non-intrusive observation, no edits to the target repo.
-          Toolchain: sui-prover 1.5.3, sui 1.69.2. Verdict: <span class="pill">Conditional Pass</span>
+          Toolchain at the time of the run: sui-prover 1.5.3, sui 1.69.2. The run first stopped at a
+          private-dependency blocker, then continued after Option B (a local clone of the private dependency) unblocked the build.
+          Verdict: <span class="pill">Conditional Pass</span>
         </p>
 
-        <div class="cards" style="margin-top: 24px;">
+        <div class="cards spaced">
           <article class="card">
             <span class="tag">Outcome</span>
             <h3>47 verified specs</h3>
@@ -659,8 +892,8 @@
           </article>
         </div>
 
-        <h3 style="margin-top: 40px; margin-bottom: 8px; font-size: 18px;">The most critical finding</h3>
-        <p style="max-width: 68ch;">
+        <h3 class="sub">The most critical finding</h3>
+        <p>
           BUG-03: the MCP failed to parse <em>successful</em> prover output. A run with four
           checkmark verifications and a literal &ldquo;Verification successful&rdquo; line still
           returned <code>summary {verified: 0, failed: 0, skipped: 0, timeouts: 0}</code> and
@@ -673,7 +906,7 @@
           the structured output is wrong.&rdquo;
           <footer>evals/specify-aftermath-eval/report.html, BUG-03</footer>
         </blockquote>
-        <p style="max-width: 68ch;">
+        <p>
           The report's conclusion: the feature is conclusively workable on hard real-world Move code
           &mdash; the GAP/BUG/UX items were &ldquo;friction in the surrounding tooling, not
           capability gaps.&rdquo; The eval also caught things the skill spec never taught: the agent
@@ -681,7 +914,7 @@
           artifacts (a structured <code>.specify-progress.json</code> blocker record plus a
           self-contained HTML report) exceeded the documented contract.
         </p>
-        <p style="color: var(--muted); font-size: 15px; max-width: 68ch;">
+        <p class="note">
           This live-observation eval is distinct from the project's automated
           <a href="EVAL_FRAMEWORK.html">v1-vs-v2 A/B eval framework</a> (27 tasks as documented,
           since grown to 32 in <code>evals/tasks.json</code>) &mdash; it was a
@@ -696,10 +929,9 @@
       <div class="wrap">
         <h2>The deliverable redesign: five locked decisions</h2>
         <p class="section-lede">
-          The 2026-05-19 design exploration resolved five questions about what a formal-verification
-          deliverable should be. Four of the five decisions (Q1, Q2, Q4, Q5) are verifiably present
-          in today's <code>skills/specify/SKILL.md</code>; Q3's source-rendering rule is not yet
-          reflected in the skill text.
+          The design pass resolved five questions about what a formal-verification deliverable
+          should be. Four of the five decisions (Q1, Q2, Q4, Q5) are visible in today's
+          <code>skills/specify/SKILL.md</code>; Q3's source-rendering rule is not.
         </p>
 
         <table class="tools-table">
@@ -707,7 +939,7 @@
           <tbody>
             <tr>
               <td><strong>Q1 &middot; Granularity</strong></td>
-              <td>Hybrid &mdash; per-module reports next to source (<code>&lt;mod&gt;.spec.html</code>) plus a package-level <code>index.html</code> for cross-module invariants; <code>--single-file</code> opt-in for tiny packages.</td>
+              <td>Hybrid &mdash; a per-module report (<code>&lt;mod&gt;.spec.html</code>) next to each spec module, plus a package-level <code>index.html</code> for cross-module invariants and the coverage matrix; <code>--single-file</code> for tiny packages.</td>
             </tr>
             <tr>
               <td><strong>Q2 &middot; Living vs. snapshot</strong></td>
@@ -715,26 +947,28 @@
             </tr>
             <tr>
               <td><strong>Q3 &middot; Source rendering</strong></td>
-              <td>Hybrid &mdash; function signature + spec body inline, link out for full source; <code>--audit</code> upgrades to full-source-inline. <span class="pill warn">not yet in SKILL.md</span></td>
+              <td>Proposed in the design note as a hybrid &mdash; signature + spec body inline, link out for full source, full source inline under <code>--audit</code>. <span class="pill warn">not in SKILL.md</span></td>
             </tr>
             <tr>
               <td><strong>Q4 &middot; Context binding</strong></td>
-              <td>v1 = manifest only (<code>spec-context.json</code> capturing source hashes, dep commits, toolchain versions). v2 = preflight dep clone. v3 = drift enforcement.</td>
+              <td>v1 = manifest only (<code>spec-context.json</code> capturing source hashes, dep pins, toolchain versions). v2 = preflight dep clone. v3 = drift enforcement.</td>
             </tr>
             <tr>
               <td><strong>Q5 &middot; Narrative structure</strong></td>
-              <td>Invariant-driven primary view + function-index appendix. Invariants get a human name and a stable slug (<code>INV-supply-conservation</code>), linked from source via explicit <code>// invariant:</code> markers, each with Threat model and Proof obligations sections.</td>
+              <td>Invariant-driven primary view + function-index appendix. Invariants get a human name and a stable slug (<code>INV-supply-conservation</code>), linked from the spec module via explicit <code>// invariant:</code> markers, each with Abort conditions, Threat model, and Proof obligations sections.</td>
             </tr>
           </tbody>
         </table>
 
-        <p style="max-width: 68ch; margin-top: 24px;">
+        <p class="spaced">
           The implementation (PR #30) also folded in nine learnings from a real Sui-Prover engagement
           &mdash; the integer-library work from Asymptotic &times; Bluefin &mdash; including abort
           conditions as first-class output, math-domain modeling for custom integer types,
           defining-property postconditions, per-package prover flags, and <code>--audit</code>
-          regression artifacts with a <code>prover.yml</code> CI stub. Q4's v1 shipped exactly as
-          designed; v3's drift enforcement became <code>/verify --strict</code>.
+          regression artifacts with a <code>prover.yml</code> CI stub. Q4's v1 shipped as designed,
+          and <code>SKILL.md</code> still lists v2 and v3 as roadmap. <code>/verify --strict</code>
+          defines the drift checks, but the CI stub runs <code>sui-prover</code> once per spec package
+          and does not compare source hashes, so CI alone does not catch a stale spec that still passes.
         </p>
       </div>
     </section>
@@ -743,7 +977,7 @@
       <div class="wrap">
         <h2>Status: in progress, honestly</h2>
         <p class="section-lede">
-          This is an investigation being written down as it happens. Shipped is shipped; open is open.
+          This is an investigation written down as it happens. Shipped is shipped; open is open.
         </p>
 
         <div class="cards two">
@@ -751,34 +985,44 @@
             <span class="tag">Shipped</span>
             <h3>In the plugin today</h3>
             <p>
-              The <code>.sui-prover-docs/</code> corpus (20 files), the three-tool
-              <code>sui-prover-mcp</code> server, <code>/specify</code> with the sibling-package
-              deliverable, invariant-driven HTML report and <code>spec-context.json</code> manifest,
-              and <code>/verify</code> as a registered slash command with <code>--strict</code> for CI.
+              The <code>.sui-prover-docs/</code> corpus, the three-tool <code>sui-prover-mcp</code>
+              server, <code>/specify</code> with the sibling-package deliverable, invariant-driven
+              HTML report and <code>spec-context.json</code> manifest, and <code>/verify</code> as a
+              registered slash command with <code>--strict</code> for CI.
+            </p>
+            <p>
+              Since PR #32 the FV code has only seen maintenance: the weekly doc sync re-pulls the
+              prover corpus from upstream (its content last changed on 2026-08-25; the last sync ran
+              2026-09-14), and PR #52 (2026-09-15) removed the review skills, so
+              <code>/specify</code> and <code>/verify</code> now point only at each other.
             </p>
           </article>
           <article class="card">
             <span class="tag">Open</span>
             <h3>Not done yet</h3>
             <p>
-              The design was never walked back through the Aftermath AMM eval to check whether the
-              12 findings would have been caught by the redesigned deliverable &mdash; no commit
-              evidences that validation. The eval's own recommended follow-up &mdash; a
-              <code>/specify</code> run on a fully-buildable package to exercise the happy path of
-              Phases 2&ndash;4 in production &mdash; also remains open. And the Aftermath specs'
-              <code>ignore_abort</code> caveat still stands.
+              No commit in the repo records a walk-back of the redesigned deliverable through the
+              Aftermath AMM eval, to check whether it would have caught the 12 findings. The eval's
+              own recommended follow-up &mdash; a <code>/specify</code> run on fully buildable
+              packages to exercise Phases 2&ndash;4 &mdash; ran cold on 2026-09-28
+              (<a href="https://github.com/contract-hero/sui-pilot/issues/31">issue #31</a>). Its
+              verdict: skill logic is a conditional pass, and the toolchain is blocked today (see
+              <a href="#try">Try it</a>). And the Aftermath specs' <code>ignore_abort</code> caveat
+              still stands.
             </p>
           </article>
         </div>
 
         <div class="callout">
-          <strong>Known doc drift:</strong> <code>commands/specify.md</code> still describes the
-          legacy inline-marker layout as the default, while <code>skills/specify/SKILL.md</code> has
-          moved the default to the sibling-package layout with <code>--inline</code> as the opt-out.
-          The command doc lags the skill. Smaller notebook noise: the wave-2 design note is still an
-          untracked file in the working tree, and it dates the AMM eval as &ldquo;yesterday&rsquo;s&rdquo;
-          on 2026-05-19 even though the fix commit landed 2026-05-14 &mdash; the record keeps the
-          tension rather than smoothing it over.
+          <span class="label">Known doc drift</span>
+          <ul>
+            <li><code>commands/specify.md</code> still describes the legacy inline-marker layout and a single <code>.specify-report.html</code> as the default, and calls the <code>target =</code> form deferred. <code>skills/specify/SKILL.md</code> has moved the default to the sibling-package layout with <code>--inline</code> as the opt-out. The command doc lags the skill.</li>
+            <li>Both skills cite the design note as <code>docs/specify-deliverable-design.html</code>, but that file is not in the repo.</li>
+            <li>Both skills tell the agent to call <code>prove_package</code> with <code>move_toml_path</code>; the tool's input is <code>path</code>. <code>move_toml_path</code> belongs to <code>prover_capabilities</code>.</li>
+            <li><code>skills/specify/SKILL.md</code> 5.1 says to reuse <code>dep-pins-capture</code> logic for the <code>deps</code> block; nothing else in the repo defines it.</li>
+            <li>5.1 also says toolchain versions come from <code>prover_capabilities</code>, but that tool reports only the sui-prover and Sui CLI versions, not Boogie or Z3.</li>
+            <li><code>skills/specify/SKILL.md</code> 4.6 targets <code>&lt;pkg&gt;_specs::&lt;mod&gt;_specs::&lt;fn&gt;_spec</code>; the 2026-09-28 eval found that sui-prover returns <code>function_not_found</code> for that form and accepts <code>&lt;mod&gt;_specs::&lt;fn&gt;_spec</code>.</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -789,9 +1033,14 @@
       <div>sui-pilot &middot; open source</div>
       <div>
         <a href="index.html">Home</a> &middot;
+        <a href="classic.html">Overview</a> &middot;
         <a href="https://github.com/contract-hero/sui-pilot">Source</a> &middot;
-        <a href="https://github.com/contract-hero/plugin-marketplace">Marketplace</a> &middot;
         <a href="https://github.com/contract-hero/sui-pilot/blob/main/CHANGELOG.md">Changelog</a>
+      </div>
+      <div>
+        <a href="https://contracthero.dev">contracthero.dev</a> &middot;
+        <a href="https://contract-hero.github.io/plugin-marketplace/">Plugin marketplace</a> &middot;
+        <a href="https://github.com/contract-hero">GitHub</a>
       </div>
     </div>
   </footer>
