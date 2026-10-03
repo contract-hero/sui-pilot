@@ -54,6 +54,8 @@ All notable changes to sui-pilot are documented in this file. The format is base
 
 ### Changed
 
+- **`sui-pilot` skill: Move editing loop.** The single line asking agents to "use the local `move-lsp` tools" is now a three-step loop: hover before using an unfamiliar API, `move_diagnostics` after each `.move` edit, then build and test. The skill description now names the LSP loop. In the Sui Agent Tank runs, models given the plugin with its LSP loaded made almost no `move-lsp` calls: across nine cards, only one model called it at all.
+
 - **`plugin.json` description and keywords.** The description no longer claims "code quality tools" (the referent was removed) and now names toolchain setup and end-to-end dapp testing. Added `e2e-testing`, `dapp` and `wallet` keywords.
 
 ### Removed

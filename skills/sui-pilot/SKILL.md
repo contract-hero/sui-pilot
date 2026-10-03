@@ -1,6 +1,6 @@
 ---
 name: sui-pilot
-description: Doc-first guidance for Sui Move, Walrus, Seal, the Sui TypeScript SDK, dapp-kit, and Sui Prover. Use when building or reviewing Sui applications or when the user invokes Sui Pilot.
+description: Doc-first guidance and a Move LSP editing loop (diagnostics, hover, references) for Sui Move, Walrus, Seal, the Sui TypeScript SDK, dapp-kit, and Sui Prover. Use when writing, building or reviewing Sui Move code or Sui applications, or when the user invokes Sui Pilot.
 ---
 
 # Sui Pilot
@@ -39,10 +39,25 @@ SDK major version; preserve intentional dependency pins.
 - `verify`: check existing specifications and source/toolchain drift.
 - `sui-e2e`: test a dapp in a locally configured Chrome with a test wallet.
 
-For Move implementation, use the local `move-lsp` tools for diagnostics and
-navigation, and run the project's relevant build and tests. If the LSP is
-unavailable, explain the limitation and use available shell checks. Never claim
-a successful proof when `sui-prover` is unavailable or has not been run.
+## Move editing loop
+
+When you write or change Move code, use the `move-lsp` tools as part of each
+edit, not only after a build fails. Every path is absolute (see the runtime
+guidance).
+
+1. Before you call an unfamiliar function or use an unfamiliar type, run
+   `move_hover` on an existing use of it to read its signature and abilities
+   instead of recalling them from memory. `move_find_references` shows how the
+   package already calls it.
+2. After each edit to a `.move` file, call `move_diagnostics` on that file and
+   fix every `error` before you move on. It points at the exact line. To check a
+   draft before you write it, pass the draft as `content`.
+3. Before you finish, run the project's `sui move build` and `sui move test`.
+   Diagnostics do not replace them: they run no tests, and cross-package lookups
+   can be incomplete.
+
+If the LSP is unavailable, say so once and use the shell checks alone. Never
+claim a successful proof when `sui-prover` is unavailable or has not been run.
 
 Skills can also be invoked directly; the host's skill menu determines whether
 the invocation uses `$`, `@`, or `/`.
