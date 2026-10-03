@@ -65,7 +65,7 @@ describe('diagnostics integration', () => {
     expect(diagnosticsTool).toBeDefined();
     expect(diagnosticsTool).toMatchObject({
       name: 'move_diagnostics',
-      description: expect.stringContaining('Move language diagnostics'),
+      description: expect.stringContaining('Compile-check one Move file'),
       inputSchema: {
         type: 'object',
         properties: {

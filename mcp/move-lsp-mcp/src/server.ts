@@ -137,7 +137,7 @@ function severityToString(severity: number): 'error' | 'warning' | 'information'
 const TOOL_DEFINITIONS = [
   {
     name: 'move_diagnostics',
-    description: 'Get Move language diagnostics for a file using move-analyzer',
+    description: 'Compile-check one Move file with move-analyzer and return its errors and warnings with exact positions, in seconds. Call it after every edit to a .move file, before sui move build: fix every error it reports first. Pass content to check a draft before writing it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -161,7 +161,7 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: 'move_hover',
-    description: 'Get hover information (type, documentation) for a symbol at a position in a Move file',
+    description: 'Show the type, signature and abilities of the symbol at a position in a Move file, as the compiler resolves it. Use it before calling an unfamiliar function or using an unfamiliar type, instead of recalling its signature from memory.',
     inputSchema: {
       type: 'object',
       properties: {
