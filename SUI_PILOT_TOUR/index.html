@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contract Hero has moved</title><link rel="canonical" href="https://contracthero.dev/sui-pilot/SUI_PILOT_TOUR/"><noscript><meta http-equiv="refresh" content="0;url=https://contracthero.dev/sui-pilot/SUI_PILOT_TOUR/"></noscript><style>body{max-width:40rem;margin:15vh auto;padding:24px;background:#0b0f0c;color:#dfe6e0;font:18px/1.6 system-ui}a{color:#3df08a}</style></head><body><h1>Now at contracthero.dev</h1><p><a id="destination" href="https://contracthero.dev/sui-pilot/SUI_PILOT_TOUR/">Continue to Contract Hero →</a></p><script>
+const routes = [{"from":"/agentic-community-college","to":"/agentic-community-college"},{"from":"/agentic-identity-crisis","to":"/learn/sui-dapp-testing"},{"from":"/contract-hero-devfolio","to":""},{"from":"/acc-deepbook-course","to":"/acc-deepbook-course"},{"from":"/plugin-marketplace","to":"/plugins"},{"from":"/deepbook-snippets","to":"/deepbook-snippets"},{"from":"/display-v2-forum","to":"/display-v2"},{"from":"/skypies-core","to":"/skypies"},{"from":"/acc-evm-wal","to":"/acc-evm-wal"},{"from":"/code-forge","to":"/code-forge"},{"from":"/sui-pilot","to":"/sui-pilot"},{"from":"/artifacts","to":"/work"}];
+const path = location.pathname.replace(/\/index\.html$/, '/');
+const route = routes.find(r => path === r.from || path.startsWith(r.from + '/'));
+let next = route ? route.to + path.slice(route.from.length) : '/work/';
+const destination = new URL('https://contracthero.dev');
+destination.pathname = next || '/';
+destination.search = location.search;
+destination.hash = location.hash;
+if (!route && (path === '/' || path === '')) {
+  const anchors = {talks:'/learn/#workshops',workshops:'/learn/#workshops',products:'/work/#tools',plugins:'/plugins/',standards:'/work/#engineering',courses:'/learn/#experiments',games:'/work/#catalog',top:'/work/'};
+  const mapped = anchors[location.hash.slice(1)];
+  if (mapped) { const section = new URL(mapped, destination); destination.pathname = section.pathname; destination.hash = section.hash; }
+}
+document.getElementById('destination').href = destination.href;
+location.replace(destination.href);
+</script></body></html>
